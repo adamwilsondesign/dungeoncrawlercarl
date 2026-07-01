@@ -1,9 +1,24 @@
 /**
  * r00_test — engine proving ground: irregular walkable area, a blocked pillar
  * mid-room, a narrow corridor along the right that climbs above the floor
- * line, looping edge exits, one NPC, and 0.6→1.0 depth scale bands.
+ * line, looping edge exits, one NPC, 0.6→1.0 depth scale bands, and a set of
+ * hotspots exercising the full P2 interface surface (LOOK-only, two-verb
+ * flag-driven state change, flag-enabled hotspot, polygon hit-testing,
+ * multi-box narration, and NPC talk).
  */
 
+import {
+  awardAchievement,
+  enableHotspot,
+  facePlayer,
+  giveItem,
+  ifFlag,
+  narrate,
+  say,
+  setFlag,
+  wait,
+  walkPlayerTo,
+} from '../script';
 import type { RoomDef, SpriteSheetDef } from '../types';
 
 const npcSheet: SpriteSheetDef = {
@@ -28,6 +43,7 @@ export const r00_test: RoomDef = {
   exits: [
     // Left edge → reappear near the right edge (loops back into this room)
     {
+      id: 'west',
       rect: { x: 0, y: 128, w: 8, h: 60 },
       targetRoom: 'r00_test',
       targetSpawn: { x: 290, y: 165 },
@@ -35,6 +51,7 @@ export const r00_test: RoomDef = {
     },
     // Right edge → reappear near the left edge
     {
+      id: 'east',
       rect: { x: 312, y: 128, w: 8, h: 60 },
       targetRoom: 'r00_test',
       targetSpawn: { x: 30, y: 165 },
@@ -51,6 +68,108 @@ export const r00_test: RoomDef = {
       y: 122,
       anim: 'idle_down',
       facing: 'down',
+    },
+  ],
+  hotspots: [
+    // LOOK-only hotspot
+    {
+      id: 'scrawl',
+      name: 'SCRAWLED WARNING',
+      rect: { x: 208, y: 56, w: 48, h: 44 },
+      verbs: {
+        look: [
+          narrate(
+            "Someone scratched a single word into the stone: 'DON'T.' Don't what? Unclear. They stopped writing rather abruptly.",
+          ),
+        ],
+      },
+    },
+    // Two-verb hotspot: LOOK hints, HAND flips a flag and enables the hatch
+    {
+      id: 'lever',
+      name: 'RUSTY LEVER',
+      rect: { x: 44, y: 88, w: 20, h: 26 },
+      verbs: {
+        look: [
+          narrate(
+            "A rusty lever bolted to the wall. A helpful plaque reads 'PULL ME.' The dungeon has never once lied to you. Today.",
+          ),
+        ],
+        hand: [
+          ifFlag(
+            'r00.lever_pulled',
+            [narrate('The lever is already down. Pulling harder will not impress anyone.')],
+            [
+              walkPlayerTo(54, 118),
+              facePlayer('up'),
+              narrate('CLUNK. Somewhere under the floor, machinery grinds into motion.'),
+              setFlag('r00.lever_pulled', true),
+              enableHotspot('hatch'),
+              wait(300),
+              narrate('A floor hatch unseals to the east. That was almost certainly a good idea.'),
+            ],
+          ),
+        ],
+      },
+    },
+    // Disabled at room start; the lever enables it
+    {
+      id: 'hatch',
+      name: 'FLOOR HATCH',
+      enabled: false,
+      rect: { x: 100, y: 148, w: 32, h: 20 },
+      verbs: {
+        look: [
+          narrate('A freshly unsealed floor hatch. It is not going anywhere. Neither are you, yet.'),
+        ],
+        hand: [
+          walkPlayerTo(116, 172),
+          facePlayer('up'),
+          narrate('You give the hatch a confident tug. It is locked from the other side. Naturally.'),
+          giveItem('hatch_dust'),
+          awardAchievement('HATCH TOUCHER'),
+        ],
+      },
+    },
+    // Polygon hotspot over the pillar, with a multi-box LOOK sequence
+    {
+      id: 'obelisk',
+      name: 'CRACKED OBELISK',
+      polygon: [
+        { x: 162, y: 112 },
+        { x: 184, y: 132 },
+        { x: 178, y: 162 },
+        { x: 146, y: 162 },
+        { x: 140, y: 132 },
+      ],
+      verbs: {
+        look: [
+          narrate(
+            'An obelisk of black stone, cracked down the middle. It is warm to look at. That should not be possible.',
+          ),
+          narrate('The crack pulses faintly, like something inside is breathing. Slowly. Patiently.'),
+          narrate('You get the distinct feeling it will matter later. The dungeon loves foreshadowing.'),
+        ],
+        hand: [
+          narrate(
+            'You touch the obelisk. It is exactly as warm as a sleeping animal. You stop touching the obelisk.',
+          ),
+        ],
+      },
+    },
+    // NPC talk hotspot (placeholder say() until P3 dialogue)
+    {
+      id: 'npc',
+      name: 'NERVOUS SURVIVOR',
+      rect: { x: 82, y: 92, w: 28, h: 32 },
+      verbs: {
+        look: [narrate('Another crawler. Still alive, which around here counts as a personality.')],
+        talk: [
+          say('npc', 'Oh good, a new one. Do not pull the lever. Everyone pulls the lever.'),
+          say('npc', 'You are going to pull the lever, are you not.'),
+          narrate('The survivor sighs with their whole body.'),
+        ],
+      },
     },
   ],
   scaleBands: [

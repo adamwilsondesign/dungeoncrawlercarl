@@ -3,7 +3,18 @@
  * This module is pure types — it must not import engine code.
  */
 
+import type { ScriptAction } from './script';
+
 export type Facing = 'up' | 'down' | 'left' | 'right';
+
+/** Value type stored in GameState flags. */
+export type FlagValue = boolean | number | string;
+
+/** Verbs that hotspots can respond to (WALK never targets hotspots). */
+export type ActionVerb = 'look' | 'hand' | 'talk' | 'item';
+
+/** Glyph ids the placeholder system can paint for cursors and icon-bar icons. */
+export type UiGlyph = 'walk' | 'look' | 'hand' | 'talk' | 'item' | 'inventory' | 'settings';
 
 /** Known mood strings map to distinct placeholder palettes. */
 export type Mood = 'cold' | 'dungeon' | 'safe' | 'workshop' | 'boss';
@@ -56,10 +67,28 @@ export interface ActorDef {
 }
 
 export interface ExitDef {
+  /** Stable id so scripts can enableExit/disableExit it. */
+  id: string;
   rect: Rect;
   targetRoom: string;
   targetSpawn: Point;
   facing: Facing;
+}
+
+/**
+ * An interactive region. Provide `rect` or `polygon` (polygon wins when both
+ * are present). Enabled-state lives in GameState under `hotspot:<room>:<id>`
+ * so scripts and flags can show/hide hotspots as the story changes;
+ * `enabled` here is only the initial value (default true).
+ */
+export interface HotspotDef {
+  id: string;
+  /** Short noun shown near the cursor on hover. */
+  name: string;
+  rect?: Rect;
+  polygon?: Point[];
+  enabled?: boolean;
+  verbs: Partial<Record<ActionVerb, ScriptAction[]>>;
 }
 
 /**
@@ -83,6 +112,7 @@ export interface RoomDef {
   playerSpawn: SpawnPoint;
   exits: ExitDef[];
   actors: ActorDef[];
+  hotspots: HotspotDef[];
   scaleBands: ScaleBand[];
   /**
    * Only used when the walkmask file is missing: extra drawing applied on top
@@ -95,4 +125,6 @@ export interface RoomDef {
 
 export type PlaceholderSpec =
   | { kind: 'background'; label: string; mood: Mood }
-  | { kind: 'actor'; label: string; color: string; frameW: number; frameH: number };
+  | { kind: 'actor'; label: string; color: string; frameW: number; frameH: number }
+  | { kind: 'cursor'; glyph: UiGlyph }
+  | { kind: 'icon'; glyph: UiGlyph; label: string; w: number; h: number };

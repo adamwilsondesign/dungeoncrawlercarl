@@ -13,6 +13,7 @@ export class Input {
 
   private readonly clicks: Point[] = [];
   private readonly pressed = new Set<string>();
+  private rightClicks = 0;
 
   constructor(target: HTMLElement, toLogical: (clientX: number, clientY: number) => Point) {
     target.addEventListener('mousemove', (e: MouseEvent) => {
@@ -20,12 +21,13 @@ export class Input {
       this.mouse.x = p.x;
       this.mouse.y = p.y;
     });
+    target.addEventListener('contextmenu', (e: Event) => e.preventDefault());
     target.addEventListener('mousedown', (e: MouseEvent) => {
-      if (e.button !== 0) return;
       const p = toLogical(e.clientX, e.clientY);
-      if (p.x >= 0 && p.x < LOGICAL_W && p.y >= 0 && p.y < LOGICAL_H) {
-        this.clicks.push(p);
-      }
+      const inBounds = p.x >= 0 && p.x < LOGICAL_W && p.y >= 0 && p.y < LOGICAL_H;
+      if (!inBounds) return;
+      if (e.button === 0) this.clicks.push(p);
+      else if (e.button === 2) this.rightClicks++;
     });
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (!e.repeat) this.pressed.add(e.code);
@@ -43,6 +45,18 @@ export class Input {
   /** Drop any queued clicks (used while transitions ignore input). */
   clearClicks(): void {
     this.clicks.length = 0;
+  }
+
+  /** Consume one queued right-click (KQ5 verb cycling); call until false. */
+  consumeRightClick(): boolean {
+    if (this.rightClicks === 0) return false;
+    this.rightClicks--;
+    return true;
+  }
+
+  /** Drop any queued right-clicks (used while scripts block input). */
+  clearRightClicks(): void {
+    this.rightClicks = 0;
   }
 
   /** True once per physical key press; consuming clears the edge. */

@@ -7,7 +7,7 @@
  * code changes. Missing files produce legible, spec-driven placeholders.
  */
 
-import type { Mood, PlaceholderSpec } from '../data/types';
+import type { Mood, PlaceholderSpec, UiGlyph } from '../data/types';
 
 export type LoadedImage = HTMLImageElement | HTMLCanvasElement;
 
@@ -68,6 +68,14 @@ function makePlaceholder(path: string, spec?: PlaceholderSpec): HTMLCanvasElemen
   if (spec?.kind === 'actor') {
     logPlaceholder(path, `actor sheet "${spec.label}", ${spec.frameW}x${spec.frameH} frames`);
     return makeActorPlaceholder(spec);
+  }
+  if (spec?.kind === 'cursor') {
+    logPlaceholder(path, `cursor glyph "${spec.glyph}"`);
+    return makeCursorPlaceholder(spec);
+  }
+  if (spec?.kind === 'icon') {
+    logPlaceholder(path, `icon "${spec.label}" (${spec.glyph})`);
+    return makeIconPlaceholder(spec);
   }
   logPlaceholder(path, 'generic fallback');
   return makeGenericPlaceholder(path);
@@ -362,6 +370,126 @@ function drawHumanoidFrame(
   }
   ctx.closePath();
   ctx.fill();
+}
+
+// ---------------------------------------------------------------------------
+// Cursor & icon placeholders (verb cursors, icon-bar buttons)
+// ---------------------------------------------------------------------------
+
+function outlineRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+): void {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, 1);
+  ctx.fillRect(x, y + h - 1, w, 1);
+  ctx.fillRect(x, y, 1, h);
+  ctx.fillRect(x + w - 1, y, 1, h);
+}
+
+/** Paint a crisp 12x12 pixel glyph for a verb/UI concept at (ox, oy). */
+export function drawUiGlyph(
+  ctx: CanvasRenderingContext2D,
+  glyph: UiGlyph,
+  ox: number,
+  oy: number,
+  color: string,
+): void {
+  ctx.fillStyle = color;
+  const r = (x: number, y: number, w: number, h: number): void => {
+    ctx.fillRect(ox + x, oy + y, w, h);
+  };
+  switch (glyph) {
+    case 'walk': // boot
+      r(5, 1, 3, 6);
+      r(5, 7, 6, 3);
+      r(4, 10, 7, 1);
+      break;
+    case 'look': // eye with pupil
+      r(4, 3, 4, 1);
+      r(2, 4, 2, 1);
+      r(8, 4, 2, 1);
+      r(1, 5, 2, 2);
+      r(9, 5, 2, 2);
+      r(5, 5, 2, 2);
+      r(2, 7, 2, 1);
+      r(8, 7, 2, 1);
+      r(4, 8, 4, 1);
+      break;
+    case 'hand': // palm with fingers and thumb
+      r(2, 2, 1, 4);
+      r(4, 1, 1, 5);
+      r(6, 1, 1, 5);
+      r(8, 2, 1, 4);
+      r(2, 6, 7, 4);
+      r(9, 6, 2, 2);
+      break;
+    case 'talk': // speech bubble with tail and dots
+      outlineRect(ctx, ox + 1, oy + 1, 10, 7, color);
+      ctx.fillStyle = color;
+      r(3, 8, 2, 1);
+      r(2, 9, 2, 1);
+      r(3, 4, 1, 1);
+      r(5, 4, 1, 1);
+      r(7, 4, 1, 1);
+      break;
+    case 'item': // small lidded box
+      outlineRect(ctx, ox + 2, oy + 3, 8, 7, color);
+      ctx.fillStyle = color;
+      r(2, 5, 8, 1);
+      r(5, 7, 2, 1);
+      break;
+    case 'inventory': // satchel with handle
+      outlineRect(ctx, ox + 4, oy + 1, 4, 3, color);
+      outlineRect(ctx, ox + 2, oy + 3, 8, 8, color);
+      ctx.fillStyle = color;
+      r(2, 5, 8, 1);
+      break;
+    case 'settings': // gear
+      r(5, 0, 2, 2);
+      r(5, 10, 2, 2);
+      r(0, 5, 2, 2);
+      r(10, 5, 2, 2);
+      outlineRect(ctx, ox + 3, oy + 3, 6, 6, color);
+      ctx.fillStyle = color;
+      r(5, 5, 2, 2);
+      break;
+  }
+}
+
+function makeCursorPlaceholder(spec: { glyph: UiGlyph }): HTMLCanvasElement {
+  const [canvas, ctx] = makeCanvas(12, 12);
+  // Dark drop-shadow first so the cursor reads on any background.
+  drawUiGlyph(ctx, spec.glyph, 1, 1, '#000000');
+  drawUiGlyph(ctx, spec.glyph, 0, 0, '#ffffff');
+  return canvas;
+}
+
+function makeIconPlaceholder(spec: {
+  glyph: UiGlyph;
+  label: string;
+  w: number;
+  h: number;
+}): HTMLCanvasElement {
+  const { w, h } = spec;
+  const [canvas, ctx] = makeCanvas(w, h);
+  ctx.fillStyle = '#1b2432';
+  ctx.fillRect(0, 0, w, h);
+  outlineRect(ctx, 0, 0, w, h, '#5f7392');
+  drawUiGlyph(ctx, spec.glyph, 3, Math.floor((h - 12) / 2), '#cfe0ff');
+  const maxChars = Math.max(1, Math.floor((w - 18) / 4));
+  drawPixelText(
+    ctx,
+    spec.label.slice(0, maxChars),
+    17,
+    Math.floor((h - 5) / 2),
+    '#9fb4d8',
+  );
+  return canvas;
 }
 
 // ---------------------------------------------------------------------------

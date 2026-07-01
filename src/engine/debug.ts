@@ -4,7 +4,7 @@
  * mouse position in logical coords.
  */
 
-import type { ExitDef, Point } from '../data/types';
+import type { ExitDef, HotspotDef, Point } from '../data/types';
 import type { Actor } from './actor';
 import { drawPixelText } from './assets';
 import { CELL_SIZE, type WalkGrid } from './pathfinding';
@@ -15,6 +15,7 @@ export interface DebugState {
   path: Point[];
   actors: Actor[];
   exits: ExitDef[];
+  hotspots: Array<{ def: HotspotDef; enabled: boolean }>;
   fps: number;
   mouse: Point;
 }
@@ -44,6 +45,23 @@ export class DebugOverlay {
     ctx.lineWidth = 1;
     for (const exit of state.exits) {
       ctx.strokeRect(exit.rect.x + 0.5, exit.rect.y + 0.5, exit.rect.w - 1, exit.rect.h - 1);
+    }
+
+    // Hotspots, magenta (dimmed when disabled)
+    for (const { def, enabled } of state.hotspots) {
+      ctx.strokeStyle = enabled ? '#ff66ff' : 'rgba(255,102,255,0.35)';
+      ctx.lineWidth = 1;
+      if (def.polygon && def.polygon.length >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(def.polygon[0].x + 0.5, def.polygon[0].y + 0.5);
+        for (let i = 1; i < def.polygon.length; i++) {
+          ctx.lineTo(def.polygon[i].x + 0.5, def.polygon[i].y + 0.5);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      } else if (def.rect) {
+        ctx.strokeRect(def.rect.x + 0.5, def.rect.y + 0.5, def.rect.w - 1, def.rect.h - 1);
+      }
     }
 
     // Current path, yellow polyline

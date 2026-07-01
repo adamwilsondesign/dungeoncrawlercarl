@@ -2,6 +2,7 @@ import { r00_test } from './data/rooms/r00_test';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
 import { RoomScene } from './engine/room';
+import { GameState } from './engine/state';
 
 /**
  * Player sprite sheet. The frame layout matches the placeholder generator's
@@ -33,11 +34,12 @@ async function boot(): Promise<void> {
   if (!canvas) throw new Error('Missing #game canvas');
 
   const game = new Game(canvas);
-  const scene = new RoomScene(game, rooms, {
-    label: 'CARL',
-    color: '#f2a65a',
-    sheet: carlSheet,
-  });
+  const scene = new RoomScene(
+    game,
+    rooms,
+    { label: 'CARL', color: '#f2a65a', sheet: carlSheet },
+    new GameState(),
+  );
   await scene.enterRoom('r00_test');
   game.pushScene(scene);
   game.start();
