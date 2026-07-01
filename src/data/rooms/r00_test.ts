@@ -16,6 +16,8 @@ import {
   narrate,
   say,
   setFlag,
+  startDialogue,
+  takeItem,
   wait,
   walkPlayerTo,
 } from '../script';
@@ -112,7 +114,8 @@ export const r00_test: RoomDef = {
         ],
       },
     },
-    // Disabled at room start; the lever enables it
+    // Disabled at room start; the lever enables it. Also the item-use puzzle:
+    // the NPC's rusty key unlocks it; anything else gets the default line.
     {
       id: 'hatch',
       name: 'FLOOR HATCH',
@@ -120,15 +123,32 @@ export const r00_test: RoomDef = {
       rect: { x: 100, y: 148, w: 32, h: 20 },
       verbs: {
         look: [
-          narrate('A freshly unsealed floor hatch. It is not going anywhere. Neither are you, yet.'),
+          ifFlag(
+            'r00.hatch_unlocked',
+            [narrate('The hatch sits unlocked. It radiates smug potential energy.')],
+            [narrate('A freshly unsealed floor hatch, held shut by a lock with a familiar rusty tint.')],
+          ),
         ],
         hand: [
           walkPlayerTo(116, 172),
           facePlayer('up'),
-          narrate('You give the hatch a confident tug. It is locked from the other side. Naturally.'),
-          giveItem('hatch_dust'),
+          narrate('You give the hatch a confident tug. Locked. You do collect some premium hatch-adjacent debris.'),
+          giveItem('pocket_lint'),
           awardAchievement('HATCH TOUCHER'),
         ],
+        item: {
+          rusty_key: [
+            walkPlayerTo(116, 172),
+            facePlayer('up'),
+            narrate('The rusty key grinds into the rusty lock. A match made in tetanus.'),
+            takeItem('rusty_key'),
+            setFlag('r00.hatch_unlocked', true),
+            narrate('CLICK. The hatch is unlocked. It stays closed anyway. Floor two is a later problem.'),
+          ],
+          default: [
+            narrate('You jam it against the hatch hopefully. The lock is unmoved by improvisation.'),
+          ],
+        },
       },
     },
     // Polygon hotspot over the pillar, with a multi-box LOOK sequence
@@ -154,21 +174,18 @@ export const r00_test: RoomDef = {
           narrate(
             'You touch the obelisk. It is exactly as warm as a sleeping animal. You stop touching the obelisk.',
           ),
+          say('donut', 'Carl. Stop petting the ominous monolith. You do not know where it has been.'),
         ],
       },
     },
-    // NPC talk hotspot (placeholder say() until P3 dialogue)
+    // NPC talk hotspot: full dialogue tree (see data/dialogues.ts)
     {
       id: 'npc',
       name: 'NERVOUS SURVIVOR',
       rect: { x: 82, y: 92, w: 28, h: 32 },
       verbs: {
         look: [narrate('Another crawler. Still alive, which around here counts as a personality.')],
-        talk: [
-          say('npc', 'Oh good, a new one. Do not pull the lever. Everyone pulls the lever.'),
-          say('npc', 'You are going to pull the lever, are you not.'),
-          narrate('The survivor sighs with their whole body.'),
-        ],
+        talk: [startDialogue('npc_survivor')],
       },
     },
   ],

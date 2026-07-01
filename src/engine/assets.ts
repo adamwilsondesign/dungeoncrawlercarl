@@ -77,6 +77,14 @@ function makePlaceholder(path: string, spec?: PlaceholderSpec): HTMLCanvasElemen
     logPlaceholder(path, `icon "${spec.label}" (${spec.glyph})`);
     return makeIconPlaceholder(spec);
   }
+  if (spec?.kind === 'portrait') {
+    logPlaceholder(path, `portrait "${spec.label}" (${spec.expression})`);
+    return makePortraitPlaceholder(spec);
+  }
+  if (spec?.kind === 'item') {
+    logPlaceholder(path, `item icon "${spec.label}"`);
+    return makeItemPlaceholder(spec);
+  }
   logPlaceholder(path, 'generic fallback');
   return makeGenericPlaceholder(path);
 }
@@ -159,6 +167,9 @@ const FONT: Record<string, number[]> = {
   '_': [0b000, 0b000, 0b000, 0b000, 0b111],
   '?': [0b111, 0b001, 0b011, 0b000, 0b010],
   '!': [0b010, 0b010, 0b010, 0b000, 0b010],
+  '>': [0b100, 0b010, 0b001, 0b010, 0b100],
+  '<': [0b001, 0b010, 0b100, 0b010, 0b001],
+  '+': [0b000, 0b010, 0b111, 0b010, 0b000],
 };
 
 export function pixelTextWidth(text: string, scale = 1): number {
@@ -376,6 +387,21 @@ function drawHumanoidFrame(
 // Cursor & icon placeholders (verb cursors, icon-bar buttons)
 // ---------------------------------------------------------------------------
 
+/** Filled panel with a 1px crisp border (shared UI chrome helper). */
+export function outlinedPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  bg: string,
+  border: string,
+): void {
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, w, h);
+  outlineRect(ctx, x, y, w, h, border);
+}
+
 function outlineRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -489,6 +515,104 @@ function makeIconPlaceholder(spec: {
     Math.floor((h - 5) / 2),
     '#9fb4d8',
   );
+  return canvas;
+}
+
+// ---------------------------------------------------------------------------
+// Portrait placeholder (48x48 head-and-shoulders for dialogue boxes)
+// ---------------------------------------------------------------------------
+
+export const PORTRAIT_SIZE = 48;
+
+function makePortraitPlaceholder(spec: {
+  label: string;
+  color: string;
+  expression: string;
+}): HTMLCanvasElement {
+  const s = PORTRAIT_SIZE;
+  const { color } = spec;
+  const [canvas, ctx] = makeCanvas(s, s);
+
+  ctx.fillStyle = shade(color, 0.22);
+  ctx.fillRect(0, 0, s, s);
+  outlineRect(ctx, 0, 0, s, s, color);
+  outlineRect(ctx, 1, 1, s - 2, s - 2, shade(color, 0.5));
+
+  // Shoulders
+  ctx.fillStyle = shade(color, 0.75);
+  ctx.beginPath();
+  ctx.roundRect(9, 33, 30, 14, 5);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = shade(color, 0.45);
+  ctx.beginPath();
+  ctx.arc(24, 20, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(color, 1.15);
+  ctx.beginPath();
+  ctx.arc(24, 20, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Simple face; the mouth (and brows) vary by expression
+  const dark = shade(color, 0.3);
+  ctx.fillStyle = dark;
+  ctx.fillRect(20, 17, 2, 2);
+  ctx.fillRect(27, 17, 2, 2);
+  const e = spec.expression;
+  if (e.includes('smug') || e.includes('happy')) {
+    ctx.fillRect(20, 24, 2, 1);
+    ctx.fillRect(22, 25, 5, 1);
+    ctx.fillRect(27, 24, 2, 1);
+  } else if (e.includes('worried') || e.includes('sad')) {
+    ctx.fillRect(21, 25, 7, 1);
+    ctx.fillRect(20, 26, 2, 1);
+    ctx.fillRect(27, 26, 2, 1);
+  } else if (e.includes('angry') || e.includes('annoyed')) {
+    ctx.fillRect(19, 15, 4, 1);
+    ctx.fillRect(26, 15, 4, 1);
+    ctx.fillRect(21, 25, 7, 1);
+  } else {
+    ctx.fillRect(21, 25, 7, 1);
+  }
+
+  // Expression tag (top-left) and name (bottom center)
+  drawPixelText(ctx, spec.expression.slice(0, 9), 3, 3, shade(color, 1.4));
+  const maxChars = Math.floor((s - 6) / 4);
+  drawPixelText(ctx, spec.label.slice(0, maxChars), s / 2, s - 8, '#ffffff', 1, 'center');
+
+  return canvas;
+}
+
+// ---------------------------------------------------------------------------
+// Item icon placeholder (24x24 for inventory slots and the held-item cursor)
+// ---------------------------------------------------------------------------
+
+export const ITEM_ICON_SIZE = 24;
+
+const ITEM_PALETTE = ['#e2b053', '#7fd4a3', '#7fb2e0', '#d98fd9', '#e08f8f', '#a3e07f', '#e0d47f'];
+
+function makeItemPlaceholder(spec: { label: string }): HTMLCanvasElement {
+  const s = ITEM_ICON_SIZE;
+  const [canvas, ctx] = makeCanvas(s, s);
+  let hash = 0;
+  for (const ch of spec.label) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+  const color = ITEM_PALETTE[Math.abs(hash) % ITEM_PALETTE.length];
+
+  ctx.fillStyle = shade(color, 0.3);
+  ctx.beginPath();
+  ctx.roundRect(1, 1, s - 2, s - 2, 4);
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(1.5, 1.5, s - 3, s - 3, 4);
+  ctx.stroke();
+
+  // Big initial letter, centered
+  drawPixelText(ctx, spec.label.slice(0, 1), s / 2, 7, shade(color, 1.35), 2, 'center');
+  drawPixelText(ctx, spec.label.slice(0, 5), s / 2, 17, shade(color, 1.1), 1, 'center');
+
   return canvas;
 }
 

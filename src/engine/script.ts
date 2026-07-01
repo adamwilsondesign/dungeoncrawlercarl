@@ -6,9 +6,9 @@
  */
 
 import type { ScriptAction } from '../data/script';
-import type { Facing, SpawnPoint } from '../data/types';
+import type { Facing, ItemDef, SpawnPoint } from '../data/types';
 import type { GameState } from './state';
-import { achievementLine } from './verbs';
+import { achievementLine, acquiredLine } from './verbs';
 
 /** What a script needs from the world; implemented by the active scene. */
 export interface ScriptHost {
@@ -16,6 +16,11 @@ export interface ScriptHost {
   currentRoomId(): string;
   /** Show a narrator box (speaker tag optional); resolves on dismissal. */
   narrate(text: string, speakerId?: string): Promise<void>;
+  /** One-line portrait dialogue (the say() action); resolves on advance. */
+  sayLine(actorId: string, text: string): Promise<void>;
+  /** Play a registered DialogueTree to 'end'. */
+  runDialogue(treeId: string): Promise<void>;
+  getItemDef(id: string): ItemDef | undefined;
   /** Path the player to a point; resolves on arrival (or immediately if unreachable). */
   walkPlayerTo(x: number, y: number): Promise<void>;
   facePlayer(dir: Facing): void;
@@ -53,8 +58,10 @@ export class ScriptRunner {
         await host.narrate(action.text);
         break;
       case 'say':
-        // TEMP until P3 dialogue: a narrator-style box tagged with the speaker.
-        await host.narrate(action.text, action.actorId);
+        await host.sayLine(action.actorId, action.text);
+        break;
+      case 'startDialogue':
+        await host.runDialogue(action.treeId);
         break;
       case 'walkPlayerTo':
         await host.walkPlayerTo(action.x, action.y);
@@ -72,8 +79,20 @@ export class ScriptRunner {
         await this.run(matched ? action.then : action.else);
         break;
       }
-      case 'giveItem':
-        console.info(`[script] giveItem "${action.id}" — inventory arrives in P3 (no-op)`);
+      case 'giveItem': {
+        const def = host.getItemDef(action.id);
+        if (!def) console.warn(`[script] giveItem: unknown item "${action.id}"`);
+        const count = state.addItem(action.id, def?.stackable === true);
+        await host.narrate(acquiredLine(def?.name ?? action.id.toUpperCase(), count));
+        break;
+      }
+      case 'takeItem':
+        if (!state.removeItem(action.id)) {
+          console.warn(`[script] takeItem: not holding "${action.id}"`);
+        }
+        break;
+      case 'ifItem':
+        await this.run(state.hasItem(action.id) ? action.then : action.else);
         break;
       case 'playAnim':
         host.playAnim(action.actorId, action.anim);

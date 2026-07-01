@@ -10,14 +10,20 @@ import type { Facing, FlagValue, SpawnPoint } from './types';
 
 export type ScriptAction =
   | { type: 'narrate'; text: string }
-  /** TEMP: routed to a narrator-style box tagged with the speaker until P3 dialogue. */
+  /** A one-line dialogue box: portrait + name plate, no choices. */
   | { type: 'say'; actorId: string; text: string }
+  /** Play a registered DialogueTree from its entry node until it routes to 'end'. */
+  | { type: 'startDialogue'; treeId: string }
   | { type: 'walkPlayerTo'; x: number; y: number }
   | { type: 'facePlayer'; dir: Facing }
   | { type: 'setFlag'; key: string; value: FlagValue }
   | { type: 'ifFlag'; key: string; equals?: FlagValue; then: ScriptAction[]; else: ScriptAction[] }
-  /** No-op (console-logged) until P3 builds inventory. */
+  /** Add to inventory (stacks if the ItemDef is stackable) + in-voice confirmation. */
   | { type: 'giveItem'; id: string }
+  /** Remove one of the item from inventory (silent; warns if absent). */
+  | { type: 'takeItem'; id: string }
+  /** Branch on whether the player holds at least one of the item. */
+  | { type: 'ifItem'; id: string; then: ScriptAction[]; else: ScriptAction[] }
   | { type: 'playAnim'; actorId: string; anim: string }
   | { type: 'wait'; ms: number }
   | { type: 'enableHotspot'; id: string }
@@ -49,7 +55,17 @@ export const ifFlag = (
   equals?: FlagValue,
 ): ScriptAction => ({ type: 'ifFlag', key, equals, then, else: elseActions });
 
+export const startDialogue = (treeId: string): ScriptAction => ({ type: 'startDialogue', treeId });
+
 export const giveItem = (id: string): ScriptAction => ({ type: 'giveItem', id });
+
+export const takeItem = (id: string): ScriptAction => ({ type: 'takeItem', id });
+
+export const ifItem = (
+  id: string,
+  then: ScriptAction[],
+  elseActions: ScriptAction[] = [],
+): ScriptAction => ({ type: 'ifItem', id, then, else: elseActions });
 
 export const playAnim = (actorId: string, anim: string): ScriptAction => ({ type: 'playAnim', actorId, anim });
 

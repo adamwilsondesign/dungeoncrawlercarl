@@ -1,15 +1,19 @@
 /**
  * Room system: a Room bundles a background, sampled walkmask grid, exits,
  * actors, hotspots and depth scale bands. RoomScene drives the current room —
- * the verb/cursor system, icon bar, hotspots, click-to-walk, the narrator box,
- * script execution (as ScriptHost), and exit transitions with fade out/in.
+ * the verb/cursor system, icon bar, hotspots, click-to-walk, the narrator
+ * box, dialogue (portrait boxes + trees), the inventory screen, script
+ * execution (as ScriptHost), and exit transitions with fade out/in.
  */
 
 import type { ScriptAction } from '../data/script';
 import type {
+  CharacterDef,
+  DialogueTree,
   ExitDef,
   Facing,
   HotspotDef,
+  ItemDef,
   Point,
   RoomDef,
   SpawnPoint,
@@ -26,9 +30,11 @@ import {
   type LoadedImage,
 } from './assets';
 import { DebugOverlay } from './debug';
+import { DialogueBox, DialoguePlayer } from './dialogue';
 import type { Game, Scene } from './game';
 import { hotspotAt } from './hotspot';
 import { IconBar } from './iconbar';
+import { InventoryScreen } from './inventory';
 import { NarratorBox } from './narrator';
 import { findPath, Mover, WalkGrid } from './pathfinding';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
@@ -36,12 +42,13 @@ import { ScriptRunner, type ScriptHost } from './script';
 import type { GameState } from './state';
 import {
   emptyClickLine,
-  INVENTORY_LINE,
+  itemOnNothingLine,
   loadCursors,
   nextVerb,
   noItemLine,
   SETTINGS_LINE,
   unhandledLine,
+  wrongItemLine,
   type Verb,
 } from './verbs';
 
@@ -180,6 +187,15 @@ export interface PlayerTemplate {
   sheet: SpriteSheetDef;
 }
 
+/** Everything the scene needs to resolve content references. */
+export interface GameContent {
+  rooms: Record<string, RoomDef>;
+  player: PlayerTemplate;
+  characters: Record<string, CharacterDef>;
+  dialogues: Record<string, DialogueTree>;
+  items: Record<string, ItemDef>;
+}
+
 const FADE_MS = 250;
 
 type Transition =
@@ -200,11 +216,15 @@ export class RoomScene implements Scene, ScriptHost {
   private readonly debug = new DebugOverlay();
   private readonly iconBar = new IconBar();
   private readonly narrator = new NarratorBox();
+  private readonly dialogue = new DialogueBox();
+  private readonly dialoguePlayer: DialoguePlayer;
+  private readonly invScreen = new InventoryScreen();
   private readonly runner = new ScriptRunner(this);
   private transition: Transition = { kind: 'loading' };
 
   private activeVerb: Verb = 'walk';
   private cursors: Record<Verb, LoadedImage> | null = null;
+  private readonly itemIcons = new Map<string, LoadedImage>();
   private hover: HotspotDef | null = null;
   private readonly timers: Timer[] = [];
   private scriptWalkResolve: (() => void) | null = null;
@@ -212,26 +232,50 @@ export class RoomScene implements Scene, ScriptHost {
 
   constructor(
     private readonly game: Game,
-    private readonly rooms: Record<string, RoomDef>,
-    private readonly playerTemplate: PlayerTemplate,
+    private readonly content: GameContent,
     readonly state: GameState,
-  ) {}
+  ) {
+    this.dialoguePlayer = new DialoguePlayer({
+      trees: content.dialogues,
+      characters: content.characters,
+      state,
+      box: this.dialogue,
+      runScript: (actions) => this.runner.run(actions),
+      fallbackCharacter: (id) => {
+        const actor = this.room?.findActor(id);
+        return actor ? { name: actor.label, color: '#9aa7b8' } : null;
+      },
+    });
+  }
 
-  /** Load the initial room, cursors and icon bar, then fade in from black. */
+  /** Load the initial room, cursors, icon bar and item icons, then fade in. */
   async enterRoom(roomId: string): Promise<void> {
-    const def = this.rooms[roomId];
+    const def = this.content.rooms[roomId];
     if (!def) throw new Error(`Unknown room "${roomId}"`);
     const [cursors] = await Promise.all([
       loadCursors(),
       this.iconBar.load(),
+      this.loadItemIcons(),
       this.loadRoom(roomId, def.playerSpawn),
     ]);
     this.cursors = cursors;
     this.transition = { kind: 'fade-in', t: 0 };
   }
 
+  private async loadItemIcons(): Promise<void> {
+    await Promise.all(
+      Object.values(this.content.items).map(async (item) => {
+        const icon = await loadImage(`ui/item_${item.id}.png`, {
+          kind: 'item',
+          label: item.name,
+        });
+        this.itemIcons.set(item.id, icon);
+      }),
+    );
+  }
+
   private async loadRoom(roomId: string, spawn: SpawnPoint): Promise<void> {
-    const def = this.rooms[roomId];
+    const def = this.content.rooms[roomId];
     if (!def) throw new Error(`Unknown room "${roomId}"`);
     this.mover.stop();
     this.hover = null;
@@ -239,17 +283,17 @@ export class RoomScene implements Scene, ScriptHost {
     this.finishScriptWalk(true);
 
     const room = await Room.load(def);
-    const sheet = this.playerTemplate.sheet;
+    const sheet = this.content.player.sheet;
     const image = await loadImage(sheet.path, {
       kind: 'actor',
-      label: this.playerTemplate.label,
-      color: this.playerTemplate.color,
+      label: this.content.player.label,
+      color: this.content.player.color,
       frameW: sheet.frameW,
       frameH: sheet.frameH,
     });
     const player = new Actor({
       id: 'player',
-      label: this.playerTemplate.label,
+      label: this.content.player.label,
       sheet,
       image,
       x: spawn.x,
@@ -279,6 +323,18 @@ export class RoomScene implements Scene, ScriptHost {
         ? undefined
         : this.room?.findActor(speakerId)?.label ?? speakerId.toUpperCase();
     return this.narrator.show(text, speaker);
+  }
+
+  sayLine(actorId: string, text: string): Promise<void> {
+    return this.dialoguePlayer.say(actorId, text);
+  }
+
+  runDialogue(treeId: string): Promise<void> {
+    return this.dialoguePlayer.play(treeId);
+  }
+
+  getItemDef(id: string): ItemDef | undefined {
+    return this.content.items[id];
   }
 
   walkPlayerTo(x: number, y: number): Promise<void> {
@@ -316,7 +372,7 @@ export class RoomScene implements Scene, ScriptHost {
   }
 
   gotoRoom(roomId: string, spawn?: SpawnPoint): Promise<void> {
-    const def = this.rooms[roomId];
+    const def = this.content.rooms[roomId];
     if (!def) {
       console.warn(`[script] gotoRoom: unknown room "${roomId}"`);
       return Promise.resolve();
@@ -388,10 +444,27 @@ export class RoomScene implements Scene, ScriptHost {
     if (!room || !player) return;
     const input = this.game.input;
 
-    this.iconBar.update(dtMs, input.mouse);
+    const barMouse = this.invScreen.open ? { x: -1, y: -1 } : input.mouse;
+    this.iconBar.update(dtMs, barMouse);
     this.narrator.update(dtMs);
+    this.dialogue.update(dtMs);
     this.tickTimers(dtMs);
     this.state.playerFacing = player.facing;
+
+    // Dialogue box (lines or choices) owns input first.
+    if (this.dialogue.active) {
+      input.clearRightClicks();
+      if (input.consumePress('ArrowUp')) this.dialogue.moveSelection(-1);
+      if (input.consumePress('ArrowDown')) this.dialogue.moveSelection(1);
+      if (input.consumePress('Enter')) this.dialogue.confirm();
+      if (input.consumePress('Space')) this.dialogue.advanceIntent();
+      this.dialogue.hover(input.mouse);
+      const click = input.consumeClick();
+      if (click) this.dialogue.click(click);
+      this.hover = null;
+      this.stepMover(dtMs);
+      return;
+    }
 
     // Narrator open: it owns all input (advance/dismiss); world is frozen.
     if (this.narrator.active) {
@@ -402,6 +475,27 @@ export class RoomScene implements Scene, ScriptHost {
       if (clicked || spaced || entered) this.narrator.advance();
       this.hover = null;
       this.stepMover(dtMs);
+      return;
+    }
+
+    // Inventory screen: world paused; LOOK examines, other verbs select.
+    if (this.invScreen.open) {
+      while (input.consumeRightClick()) this.activeVerb = nextVerb(this.activeVerb);
+      if (input.consumePress('Escape')) this.invScreen.close();
+      const click = input.consumeClick();
+      if (click) {
+        const action = this.invScreen.actionAt(click, this.activeVerb, this.state.inventory);
+        if (action?.kind === 'close') this.invScreen.close();
+        else if (action?.kind === 'select') {
+          this.state.heldItem = action.id;
+          this.activeVerb = 'item';
+          this.invScreen.close();
+        } else if (action?.kind === 'look') {
+          const def = this.content.items[action.id];
+          this.runLine(def?.description ?? `It's ${action.id}. The dungeon shrugs.`);
+        }
+      }
+      this.hover = null;
       return;
     }
 
@@ -482,7 +576,7 @@ export class RoomScene implements Scene, ScriptHost {
     const action = this.iconBar.actionAt(p);
     if (!action) return;
     if (action.kind === 'verb') this.activeVerb = action.verb;
-    else if (action.kind === 'inventory') this.runLine(INVENTORY_LINE);
+    else if (action.kind === 'inventory') this.invScreen.show();
     else this.runLine(SETTINGS_LINE);
   }
 
@@ -498,8 +592,7 @@ export class RoomScene implements Scene, ScriptHost {
         break;
       }
       case 'item':
-        // No inventory until P3, so ITEM always reports the empty hand.
-        this.runLine(noItemLine());
+        this.handleItemClick(click);
         break;
       default: {
         const verb = this.activeVerb;
@@ -513,6 +606,32 @@ export class RoomScene implements Scene, ScriptHost {
         }
       }
     }
+  }
+
+  private handleItemClick(click: Point): void {
+    const held = this.state.heldItem;
+    if (!held) {
+      this.runLine(noItemLine());
+      return;
+    }
+    const heldName = this.content.items[held]?.name ?? held.toUpperCase();
+    const hotspot = this.hotspotUnderPoint(click);
+    if (!hotspot) {
+      this.runLine(itemOnNothingLine(heldName));
+      return;
+    }
+    const handler = hotspot.verbs.item;
+    if (!handler) {
+      this.runLine(wrongItemLine(heldName, hotspot.name));
+      return;
+    }
+    if (Array.isArray(handler)) {
+      this.runScript(handler);
+      return;
+    }
+    const actions = handler[held] ?? handler['default'];
+    if (actions) this.runScript(actions);
+    else this.runLine(wrongItemLine(heldName, hotspot.name));
   }
 
   private runScript(actions: readonly ScriptAction[]): void {
@@ -551,8 +670,18 @@ export class RoomScene implements Scene, ScriptHost {
         mouse,
       });
       this.iconBar.render(ctx, this.activeVerb);
+      this.invScreen.render(
+        ctx,
+        this.state.inventory,
+        this.content.items,
+        this.itemIcons,
+        this.state.heldItem,
+      );
       this.narrator.render(ctx);
-      if (this.hover && !this.narrator.active) this.drawHoverLabel(ctx, this.hover.name);
+      this.dialogue.render(ctx);
+      if (this.hover && !this.narrator.active && !this.dialogue.active) {
+        this.drawHoverLabel(ctx, this.hover.name);
+      }
     }
 
     // Fade overlay
@@ -576,7 +705,7 @@ export class RoomScene implements Scene, ScriptHost {
       ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
     }
 
-    // Verb cursor, topmost
+    // Cursor, topmost: the held item icon under the ITEM verb, else the verb cursor.
     if (
       this.cursors &&
       mouse.x >= 0 &&
@@ -584,7 +713,12 @@ export class RoomScene implements Scene, ScriptHost {
       mouse.y >= 0 &&
       mouse.y < LOGICAL_H
     ) {
-      ctx.drawImage(this.cursors[this.activeVerb], mouse.x - 6, mouse.y - 6);
+      const held = this.state.heldItem;
+      const heldIcon =
+        this.activeVerb === 'item' && held ? this.itemIcons.get(held) : undefined;
+      const img = heldIcon ?? this.cursors[this.activeVerb];
+      const half = Math.floor(img.width / 2);
+      ctx.drawImage(img, mouse.x - half, mouse.y - half);
     }
   }
 

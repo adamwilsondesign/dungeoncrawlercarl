@@ -1,3 +1,6 @@
+import { characters } from './data/characters';
+import { dialogues } from './data/dialogues';
+import { items } from './data/items';
 import { r00_test } from './data/rooms/r00_test';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
@@ -36,8 +39,13 @@ async function boot(): Promise<void> {
   const game = new Game(canvas);
   const scene = new RoomScene(
     game,
-    rooms,
-    { label: 'CARL', color: '#f2a65a', sheet: carlSheet },
+    {
+      rooms,
+      player: { label: 'CARL', color: '#f2a65a', sheet: carlSheet },
+      characters,
+      dialogues,
+      items,
+    },
     new GameState(),
   );
   await scene.enterRoom('r00_test');

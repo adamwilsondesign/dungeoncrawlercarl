@@ -103,3 +103,26 @@ export const SETTINGS_LINE =
 export function achievementLine(id: string): string {
   return `NEW ACHIEVEMENT: ${id.toUpperCase()}! Reward: our continued attention. Congratulations, Crawler.`;
 }
+
+/** giveItem confirmation, with the running count for stackables. */
+export function acquiredLine(name: string, count: number): string {
+  return count > 1
+    ? `ACQUIRED: ${name.toUpperCase()} (X${count}). Hoarding already. The audience approves.`
+    : `ACQUIRED: ${name.toUpperCase()}. Try not to lose it immediately.`;
+}
+
+/** Held item used on a hotspot with no matching handler and no default. */
+export function wrongItemLine(itemName: string, targetName: string): string {
+  return cycleLine('wrongitem', [
+    `The ${itemName} accomplishes nothing against the ${targetName}. Zero points awarded.`,
+    `Interesting theory. The ${targetName} disagrees with your ${itemName}.`,
+  ]);
+}
+
+/** Held item clicked on empty space. */
+export function itemOnNothingLine(itemName: string): string {
+  return cycleLine('itemnothing', [
+    `You brandish the ${itemName} at empty air. Menacing. Pointless.`,
+    `The ${itemName} is not a wand, Crawler. Aim it at something.`,
+  ]);
+}
