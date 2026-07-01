@@ -1,10 +1,14 @@
+import { achievements } from './data/achievements';
 import { characters } from './data/characters';
+import { cutscenes } from './data/cutscenes';
 import { dialogues } from './data/dialogues';
 import { items } from './data/items';
 import { r00_test } from './data/rooms/r00_test';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
+import { AchievementsScene, ListMenuScene, TitleScene } from './engine/menus';
 import { RoomScene } from './engine/room';
+import { formatPlaytime, formatTimestamp, MANUAL_SLOTS, readSave, type SaveSlot } from './engine/saves';
 import { GameState } from './engine/state';
 
 /**
@@ -32,12 +36,16 @@ const rooms: Record<string, RoomDef> = {
   [r00_test.id]: r00_test,
 };
 
-async function boot(): Promise<void> {
+function boot(): void {
   const canvas = document.querySelector<HTMLCanvasElement>('#game');
   if (!canvas) throw new Error('Missing #game canvas');
 
   const game = new Game(canvas);
-  const scene = new RoomScene(
+  const state = new GameState();
+
+  let titleScene: TitleScene;
+
+  const roomScene = new RoomScene(
     game,
     {
       rooms,
@@ -45,12 +53,70 @@ async function boot(): Promise<void> {
       characters,
       dialogues,
       items,
+      cutscenes,
+      achievements,
+      startRoom: r00_test.id,
     },
-    new GameState(),
+    state,
+    { quitToTitle: () => game.resetTo(titleScene) },
   );
-  await scene.enterRoom('r00_test');
-  game.pushScene(scene);
+
+  const openTitleLoadMenu = (): void => {
+    const slots: SaveSlot[] = ['auto', ...MANUAL_SLOTS];
+    game.pushScene(
+      new ListMenuScene(game, {
+        title: 'LOAD GAME',
+        items: slots.map((slot) => {
+          const file = readSave(slot);
+          return {
+            label: slot === 'auto' ? 'AUTOSAVE' : `SLOT ${slot}`,
+            sub: file
+              ? `${file.roomLabel} - ${formatTimestamp(file.savedAt)} - ${formatPlaytime(file.playtimeMs)}`
+              : 'EMPTY',
+            disabled: !file,
+          };
+        }),
+        footer: 'ESC: BACK',
+        onPick: (i) => {
+          game.resetTo(roomScene);
+          void roomScene.loadSlot(slots[i]);
+        },
+        onCancel: () => game.popScene(),
+      }),
+    );
+  };
+
+  titleScene = new TitleScene(game, {
+    canContinue: () => readSave('auto') !== null,
+    onNewGame: () => {
+      game.resetTo(roomScene);
+      void roomScene.startNewGame();
+    },
+    onContinue: () => {
+      game.resetTo(roomScene);
+      void roomScene.continueFromAutosave().then((ok) => {
+        if (!ok) void roomScene.startNewGame();
+      });
+    },
+    onSettings: () => {
+      game.pushScene(
+        new ListMenuScene(game, {
+          title: 'SETTINGS',
+          items: [{ label: 'LOAD GAME' }, { label: 'ACHIEVEMENTS' }, { label: 'BACK' }],
+          footer: 'ESC: BACK',
+          onPick: (i) => {
+            if (i === 0) openTitleLoadMenu();
+            else if (i === 1) game.pushScene(new AchievementsScene(game, achievements, state));
+            else game.popScene();
+          },
+          onCancel: () => game.popScene(),
+        }),
+      );
+    },
+  });
+
+  game.pushScene(titleScene);
   game.start();
 }
 
-void boot();
+boot();

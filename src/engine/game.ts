@@ -11,6 +11,8 @@ import { Renderer } from './renderer';
 export interface Scene {
   update(dtMs: number): void;
   render(ctx: CanvasRenderingContext2D): void;
+  /** Called instead of update() while another scene is on top (e.g. toast anims). */
+  updatePassive?(dtMs: number): void;
 }
 
 const STEP_MS = 1000 / 60;
@@ -48,6 +50,23 @@ export class Game {
     this.scenes.push(scene);
   }
 
+  /** True when this scene is receiving input (top of the stack). */
+  isTop(scene: Scene): boolean {
+    return this.scenes[this.scenes.length - 1] === scene;
+  }
+
+  /** Pop scenes until the given scene is on top (no-op if absent). */
+  popTo(scene: Scene): void {
+    if (!this.scenes.includes(scene)) return;
+    while (this.scenes.length > 0 && !this.isTop(scene)) this.scenes.pop();
+  }
+
+  /** Replace the whole stack with a single scene. */
+  resetTo(scene: Scene): void {
+    this.scenes.length = 0;
+    this.scenes.push(scene);
+  }
+
   start(): void {
     if (this.running) return;
     this.running = true;
@@ -60,10 +79,13 @@ export class Game {
     this.lastTime = now;
     this.accumulator += delta;
 
-    const scene = this.scenes[this.scenes.length - 1];
     let stepped = false;
     while (this.accumulator >= STEP_MS) {
-      scene?.update(STEP_MS);
+      const top = this.scenes[this.scenes.length - 1];
+      top?.update(STEP_MS);
+      for (const s of this.scenes) {
+        if (s !== top) s.updatePassive?.(STEP_MS);
+      }
       this.accumulator -= STEP_MS;
       stepped = true;
     }

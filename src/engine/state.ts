@@ -12,6 +12,9 @@ export interface GameStateData {
   flags: Record<string, FlagValue>;
   currentRoom: string;
   playerFacing: Facing;
+  playerX: number;
+  playerY: number;
+  playtimeMs: number;
   inventory: InventoryEntry[];
   heldItem: string | null;
 }
@@ -21,12 +24,46 @@ export type FlagListener = (key: string, value: FlagValue | undefined) => void;
 export class GameState {
   currentRoom = '';
   playerFacing: Facing = 'down';
+  playerX = 0;
+  playerY = 0;
+  playtimeMs = 0;
   /** Item id currently selected for the ITEM verb, or null. */
   heldItem: string | null = null;
+  /** Wired by the active scene; lets content trigger checkpoints. */
+  autosaveHook: (() => void) | null = null;
 
   private flags: Record<string, FlagValue> = {};
   private items: InventoryEntry[] = [];
   private readonly listeners = new Set<FlagListener>();
+
+  /** Write the autosave slot (content checkpoints call this via the autosave() action). */
+  autosave(): void {
+    this.autosaveHook?.();
+  }
+
+  /** Fresh state for New Game. Listeners and hooks are kept. */
+  reset(): void {
+    this.flags = {};
+    this.items = [];
+    this.heldItem = null;
+    this.currentRoom = '';
+    this.playerFacing = 'down';
+    this.playerX = 0;
+    this.playerY = 0;
+    this.playtimeMs = 0;
+  }
+
+  /** Restore from a save payload (inverse of serialize). */
+  restore(data: GameStateData): void {
+    this.flags = { ...data.flags };
+    this.items = data.inventory.map((e) => ({ ...e }));
+    this.heldItem = data.heldItem;
+    this.currentRoom = data.currentRoom;
+    this.playerFacing = data.playerFacing;
+    this.playerX = data.playerX;
+    this.playerY = data.playerY;
+    this.playtimeMs = data.playtimeMs;
+  }
 
   getFlag(key: string): FlagValue | undefined {
     return this.flags[key];
@@ -110,12 +147,15 @@ export class GameState {
     this.setFlag(GameState.exitKey(roomId, exitId), enabled);
   }
 
-  /** Plain-data snapshot; P4 will serialize this. */
+  /** Plain-data snapshot used by the save system. */
   serialize(): GameStateData {
     return {
       flags: { ...this.flags },
       currentRoom: this.currentRoom,
       playerFacing: this.playerFacing,
+      playerX: this.playerX,
+      playerY: this.playerY,
+      playtimeMs: this.playtimeMs,
       inventory: this.items.map((e) => ({ ...e })),
       heldItem: this.heldItem,
     };

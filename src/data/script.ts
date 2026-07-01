@@ -6,7 +6,7 @@
  * so room definitions can use it freely.
  */
 
-import type { Facing, FlagValue, SpawnPoint } from './types';
+import type { Facing, FlagValue, SpawnPoint, SpriteSheetDef } from './types';
 
 export type ScriptAction =
   | { type: 'narrate'; text: string }
@@ -31,8 +31,29 @@ export type ScriptAction =
   | { type: 'enableExit'; id: string }
   | { type: 'disableExit'; id: string }
   | { type: 'gotoRoom'; roomId: string; spawn?: SpawnPoint }
-  /** Narrator box (and an `ach:<id>` flag) until the real system arrives. */
-  | { type: 'awardAchievement'; id: string };
+  /** Idempotent: sets ach:<id> and shows a slide-in toast (no-op if already earned). */
+  | { type: 'awardAchievement'; id: string }
+  // --- Cutscene actions (P4) ---
+  /** Move an actor and await arrival. The player pathfinds; others glide straight. */
+  | { type: 'moveActor'; actorId: string; x: number; y: number; speed?: number }
+  /** Add an actor to the current room for a scene (name/color resolve from characters). */
+  | { type: 'spawnActor'; actorId: string; sheet: SpriteSheetDef; x: number; y: number; anim?: string; facing?: Facing }
+  | { type: 'despawnActor'; actorId: string }
+  /** Horizontal camera tween for rooms wider than 320; no-op on single-screen rooms. */
+  | { type: 'cameraPan'; fromX: number; toX: number; ms: number }
+  | { type: 'fadeOut'; ms: number }
+  | { type: 'fadeIn'; ms: number }
+  /** Cinematic top/bottom black bars on or off. */
+  | { type: 'setLetterbox'; on: boolean }
+  /** Logged no-op until the audio system lands; keep cue ids stable. */
+  | { type: 'musicCue'; id: string }
+  | { type: 'sfxCue'; id: string }
+  /** Play a registered cutscene (once per scene:<id>:played unless repeatable). */
+  | { type: 'playCutscene'; id: string }
+  /** Kill the player: aborts the running script and opens the death dialog. */
+  | { type: 'killPlayer'; reason: string }
+  /** Write the autosave slot (content checkpoints). */
+  | { type: 'autosave' };
 
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
@@ -86,3 +107,43 @@ export const gotoRoom = (roomId: string, spawn?: SpawnPoint): ScriptAction => ({
 });
 
 export const awardAchievement = (id: string): ScriptAction => ({ type: 'awardAchievement', id });
+
+export const moveActor = (
+  actorId: string,
+  x: number,
+  y: number,
+  opts: { speed?: number } = {},
+): ScriptAction => ({ type: 'moveActor', actorId, x, y, speed: opts.speed });
+
+export const spawnActor = (
+  actorId: string,
+  sheet: SpriteSheetDef,
+  x: number,
+  y: number,
+  opts: { anim?: string; facing?: Facing } = {},
+): ScriptAction => ({ type: 'spawnActor', actorId, sheet, x, y, anim: opts.anim, facing: opts.facing });
+
+export const despawnActor = (actorId: string): ScriptAction => ({ type: 'despawnActor', actorId });
+
+export const cameraPan = (fromX: number, toX: number, ms: number): ScriptAction => ({
+  type: 'cameraPan',
+  fromX,
+  toX,
+  ms,
+});
+
+export const fadeOut = (ms: number): ScriptAction => ({ type: 'fadeOut', ms });
+
+export const fadeIn = (ms: number): ScriptAction => ({ type: 'fadeIn', ms });
+
+export const setLetterbox = (on: boolean): ScriptAction => ({ type: 'setLetterbox', on });
+
+export const musicCue = (id: string): ScriptAction => ({ type: 'musicCue', id });
+
+export const sfxCue = (id: string): ScriptAction => ({ type: 'sfxCue', id });
+
+export const playCutscene = (id: string): ScriptAction => ({ type: 'playCutscene', id });
+
+export const killPlayer = (reason: string): ScriptAction => ({ type: 'killPlayer', reason });
+
+export const autosave = (): ScriptAction => ({ type: 'autosave' });

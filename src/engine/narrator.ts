@@ -136,6 +136,13 @@ export class NarratorBox {
     if (this.current) this.tw.set(this.current.text, MAX_CHARS);
   }
 
+  /** Instantly dismiss the current and all queued messages (cutscene skip). */
+  skipAll(): void {
+    const all = this.current ? [this.current, ...this.queue.splice(0)] : this.queue.splice(0);
+    this.current = null;
+    for (const message of all) message.resolve();
+  }
+
   /** First advance completes the typewriter reveal; second dismisses. */
   advance(): void {
     if (!this.current) return;

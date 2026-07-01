@@ -293,6 +293,9 @@ function dominantFacing(dx: number, dy: number): Facing {
  * actor's current depth scale, picking walk/idle anims by segment direction.
  */
 export class Mover {
+  /** Logical px/sec at depth scale 1.0 (cutscenes may override per move). */
+  speed = WALK_SPEED;
+
   private waypoints: Point[] = [];
   private index = 0;
 
@@ -316,10 +319,20 @@ export class Mover {
     this.index = 0;
   }
 
+  /** Teleport the actor to the final waypoint and end the move (cutscene skip). */
+  finish(actor: Actor): void {
+    if (!this.active) return;
+    const last = this.waypoints[this.waypoints.length - 1];
+    actor.x = last.x;
+    actor.y = last.y;
+    this.index = this.waypoints.length;
+    actor.play('idle');
+  }
+
   update(dtMs: number, actor: Actor, scaleAt: (y: number) => number): void {
     if (!this.active) return;
 
-    let budget = WALK_SPEED * scaleAt(actor.y) * (dtMs / 1000);
+    let budget = this.speed * scaleAt(actor.y) * (dtMs / 1000);
     while (budget > 0 && this.active) {
       const target = this.waypoints[this.index];
       const dx = target.x - actor.x;

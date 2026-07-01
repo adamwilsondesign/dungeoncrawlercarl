@@ -1,14 +1,28 @@
 /**
  * The script runner: executes ScriptAction[] sequentially against a host
  * (the active scene). The runner is deliberately decoupled from hotspots —
- * dialogue and cutscenes (P3+) reuse it unchanged. While any script runs,
- * the scene blocks world input but keeps narrator advancement live.
+ * dialogue, cutscenes and (later) combat reuse it unchanged. While any
+ * script runs, the scene blocks world input but keeps narrator/dialogue
+ * advancement live.
+ *
+ * Cutscenes are ordinary scripts run through runCutscene(): Esc requests a
+ * skip, after which every remaining action applies its end state instantly
+ * (host methods check `skipping`); the scene force-resolves whatever action
+ * was pending when the skip was requested.
  */
 
 import type { ScriptAction } from '../data/script';
-import type { Facing, ItemDef, SpawnPoint } from '../data/types';
+import type { CutsceneDef, Facing, ItemDef, SpawnPoint, SpriteSheetDef } from '../data/types';
 import type { GameState } from './state';
-import { achievementLine, acquiredLine } from './verbs';
+import { acquiredLine } from './verbs';
+
+/** Thrown by killPlayer to unwind the running script cleanly. */
+export class ScriptAbort extends Error {
+  constructor() {
+    super('script aborted');
+    this.name = 'ScriptAbort';
+  }
+}
 
 /** What a script needs from the world; implemented by the active scene. */
 export interface ScriptHost {
@@ -21,18 +35,41 @@ export interface ScriptHost {
   /** Play a registered DialogueTree to 'end'. */
   runDialogue(treeId: string): Promise<void>;
   getItemDef(id: string): ItemDef | undefined;
+  getCutscene(id: string): CutsceneDef | undefined;
   /** Path the player to a point; resolves on arrival (or immediately if unreachable). */
   walkPlayerTo(x: number, y: number): Promise<void>;
+  /** Move any actor; the player pathfinds, others glide straight. Awaits arrival. */
+  moveActor(actorId: string, x: number, y: number, speed?: number): Promise<void>;
+  spawnActor(spec: {
+    actorId: string;
+    sheet: SpriteSheetDef;
+    x: number;
+    y: number;
+    anim?: string;
+    facing?: Facing;
+  }): Promise<void>;
+  despawnActor(actorId: string): void;
   facePlayer(dir: Facing): void;
   playAnim(actorId: string, anim: string): void;
   /** Game-time wait, ticked by the fixed-timestep update. */
   wait(ms: number): Promise<void>;
   /** Fade to the target room; resolves once the fade-in completes. */
   gotoRoom(roomId: string, spawn?: SpawnPoint): Promise<void>;
+  /** Tween the script fade overlay to an alpha (1 = black). */
+  scriptFade(targetAlpha: number, ms: number): Promise<void>;
+  /** Horizontal camera tween; no-op for single-screen rooms. */
+  cameraPan(fromX: number, toX: number, ms: number): Promise<void>;
+  setLetterbox(on: boolean): void;
+  /** Idempotent achievement award: flag + queued toast. */
+  awardAchievement(id: string): void;
+  /** Begin the death sequence (fade + death dialog). */
+  killPlayer(reason: string): void;
 }
 
 export class ScriptRunner {
   private activeCount = 0;
+  private cutsceneDepth = 0;
+  private skipRequested = false;
 
   constructor(private readonly host: ScriptHost) {}
 
@@ -41,12 +78,37 @@ export class ScriptRunner {
     return this.activeCount > 0;
   }
 
+  /** True while a skippable cutscene is playing (Esc fast-forwards). */
+  get inCutscene(): boolean {
+    return this.cutsceneDepth > 0;
+  }
+
+  /** True once a skip was requested; host methods apply end states instantly. */
+  get skipping(): boolean {
+    return this.skipRequested;
+  }
+
+  requestSkip(): void {
+    if (this.cutsceneDepth > 0) this.skipRequested = true;
+  }
+
   async run(actions: readonly ScriptAction[]): Promise<void> {
     this.activeCount++;
     try {
       for (const action of actions) await this.exec(action);
     } finally {
       this.activeCount--;
+    }
+  }
+
+  /** Run actions as a skippable cutscene; clears skip state when the scene ends. */
+  async runCutscene(actions: readonly ScriptAction[]): Promise<void> {
+    this.cutsceneDepth++;
+    try {
+      await this.run(actions);
+    } finally {
+      this.cutsceneDepth--;
+      if (this.cutsceneDepth === 0) this.skipRequested = false;
     }
   }
 
@@ -116,8 +178,59 @@ export class ScriptRunner {
         await host.gotoRoom(action.roomId, action.spawn);
         break;
       case 'awardAchievement':
-        state.setFlag(`ach:${action.id}`, true);
-        await host.narrate(achievementLine(action.id));
+        host.awardAchievement(action.id);
+        break;
+      case 'moveActor':
+        await host.moveActor(action.actorId, action.x, action.y, action.speed);
+        break;
+      case 'spawnActor':
+        await host.spawnActor({
+          actorId: action.actorId,
+          sheet: action.sheet,
+          x: action.x,
+          y: action.y,
+          anim: action.anim,
+          facing: action.facing,
+        });
+        break;
+      case 'despawnActor':
+        host.despawnActor(action.actorId);
+        break;
+      case 'cameraPan':
+        await host.cameraPan(action.fromX, action.toX, action.ms);
+        break;
+      case 'fadeOut':
+        await host.scriptFade(1, action.ms);
+        break;
+      case 'fadeIn':
+        await host.scriptFade(0, action.ms);
+        break;
+      case 'setLetterbox':
+        host.setLetterbox(action.on);
+        break;
+      case 'musicCue':
+        console.info(`[audio] music cue "${action.id}" (audio system pending)`);
+        break;
+      case 'sfxCue':
+        console.info(`[audio] sfx cue "${action.id}" (audio system pending)`);
+        break;
+      case 'playCutscene': {
+        const def = host.getCutscene(action.id);
+        if (!def) {
+          console.warn(`[script] playCutscene: unknown cutscene "${action.id}"`);
+          break;
+        }
+        const playedFlag = `scene:${action.id}:played`;
+        if (!def.repeatable && state.getFlag(playedFlag)) break;
+        state.setFlag(playedFlag, true);
+        await this.runCutscene(def.actions);
+        break;
+      }
+      case 'killPlayer':
+        host.killPlayer(action.reason);
+        throw new ScriptAbort();
+      case 'autosave':
+        state.autosave();
         break;
     }
   }

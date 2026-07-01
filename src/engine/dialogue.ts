@@ -58,6 +58,7 @@ type Mode =
 export class DialogueBox {
   private mode: Mode = { kind: 'idle' };
   private readonly tw = new Typewriter(40);
+  private lastHover: Point = { x: -1, y: -1 };
 
   get active(): boolean {
     return this.mode.kind !== 'idle';
@@ -113,9 +114,11 @@ export class DialogueBox {
     this.advanceIntent();
   }
 
-  /** Update the highlighted choice from the mouse position. */
+  /** Update the highlighted choice from the mouse (only when it moves). */
   hover(p: Point): void {
-    if (this.mode.kind !== 'choices') return;
+    const moved = p.x !== this.lastHover.x || p.y !== this.lastHover.y;
+    this.lastHover = { x: p.x, y: p.y };
+    if (!moved || this.mode.kind !== 'choices') return;
     const row = this.rowAt(p);
     if (row !== null) this.mode.selected = row;
   }
@@ -131,6 +134,22 @@ export class DialogueBox {
         this.mode.selected = row;
         this.confirm();
       }
+    }
+  }
+
+  /**
+   * Cutscene skip: resolve whatever is pending. A pending choice resolves
+   * with -1, which the player treats as "route via the node's goto".
+   */
+  forceResolveAll(): void {
+    if (this.mode.kind === 'line') {
+      const { resolve } = this.mode;
+      this.mode = { kind: 'idle' };
+      resolve();
+    } else if (this.mode.kind === 'choices') {
+      const { resolve } = this.mode;
+      this.mode = { kind: 'idle' };
+      resolve(-1);
     }
   }
 
@@ -232,6 +251,8 @@ export interface DialoguePlayerDeps {
   runScript: (actions: readonly ScriptAction[]) => Promise<void>;
   /** Room-actor fallback for speakers missing from the character registry. */
   fallbackCharacter: (id: string) => { name: string; color: string } | null;
+  /** True while a cutscene is being fast-forwarded: lines are skipped. */
+  isSkipping: () => boolean;
 }
 
 export class DialoguePlayer {
@@ -239,6 +260,7 @@ export class DialoguePlayer {
 
   /** One-line dialogue (the say() action). */
   async say(speakerId: string, text: string, expression = 'neutral'): Promise<void> {
+    if (this.deps.isSkipping()) return;
     const speaker = await this.speakerView(speakerId, expression);
     await this.deps.box.showLine(speaker, text);
   }
@@ -274,8 +296,14 @@ export class DialoguePlayer {
         .map((choice, index) => ({ choice, index }))
         .filter(({ choice, index }) => this.choiceVisible(tree.id, nodeId, choice, index));
 
-      if (visible.length > 0) {
+      // Skip mode never presents choices; route via the node's goto.
+      if (visible.length > 0 && !this.deps.isSkipping()) {
         const picked = await box.showChoices(visible.map((v) => v.choice.text));
+        if (picked < 0) {
+          // Force-resolved mid-menu by a cutscene skip.
+          nodeId = node.goto ?? 'end';
+          continue;
+        }
         const { choice, index } = visible[picked];
         if (choice.once) state.setFlag(onceKey(tree.id, nodeId, index), true);
         nodeId = choice.goto;

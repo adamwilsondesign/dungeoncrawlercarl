@@ -191,6 +191,28 @@ export interface InventoryEntry {
   count: number;
 }
 
+// ---------------------------------------------------------------------------
+// Cutscenes & achievements
+// ---------------------------------------------------------------------------
+
+/**
+ * A registered, skippable scripted scene. Played via playCutscene(id), which
+ * is a no-op once the flag scene:<id>:played is set unless `repeatable`.
+ */
+export interface CutsceneDef {
+  id: string;
+  actions: ScriptAction[];
+  repeatable?: boolean;
+}
+
+export interface AchievementDef {
+  id: string;
+  name: string;
+  description: string;
+  /** Hidden achievements show as ??? in the panel until earned. */
+  hidden?: boolean;
+}
+
 /**
  * KQ5-style depth band. Inside a band the scale is constant; between two
  * bands the scale interpolates linearly by foot y. Above the first band /
@@ -208,12 +230,24 @@ export interface RoomDef {
   label: string;
   backgroundPath: string;
   backgroundMood: Mood;
+  /**
+   * Rooms authored wider than 320 can be panned with cameraPan; walkmasks
+   * and pathfinding remain 320x200, so wide rooms are cinematic-only for
+   * now. Default 320.
+   */
+  backgroundWidth?: number;
   walkmaskPath: string;
   playerSpawn: SpawnPoint;
   exits: ExitDef[];
   actors: ActorDef[];
   hotspots: HotspotDef[];
   scaleBands: ScaleBand[];
+  /**
+   * Runs through the script runner every time the room is entered (after
+   * the fade-in). Use playCutscene(id) inside it for once-only intros —
+   * playCutscene itself is guarded by the scene:<id>:played flag.
+   */
+  onEnter?: ScriptAction[];
   /**
    * Only used when the walkmask file is missing: extra drawing applied on top
    * of the default placeholder mask (everything below y=110 walkable).

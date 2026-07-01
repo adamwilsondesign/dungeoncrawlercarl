@@ -13,9 +13,12 @@ import {
   facePlayer,
   giveItem,
   ifFlag,
+  killPlayer,
   narrate,
+  playCutscene,
   say,
   setFlag,
+  sfxCue,
   startDialogue,
   takeItem,
   wait,
@@ -42,6 +45,7 @@ export const r00_test: RoomDef = {
   backgroundMood: 'dungeon',
   walkmaskPath: 'masks/r00_test.png',
   playerSpawn: { x: 160, y: 185, facing: 'up' },
+  onEnter: [playCutscene('r00_intro')],
   exits: [
     // Left edge → reappear near the right edge (loops back into this room)
     {
@@ -106,6 +110,7 @@ export const r00_test: RoomDef = {
               facePlayer('up'),
               narrate('CLUNK. Somewhere under the floor, machinery grinds into motion.'),
               setFlag('r00.lever_pulled', true),
+              awardAchievement('lever_puller'),
               enableHotspot('hatch'),
               wait(300),
               narrate('A floor hatch unseals to the east. That was almost certainly a good idea.'),
@@ -134,7 +139,7 @@ export const r00_test: RoomDef = {
           facePlayer('up'),
           narrate('You give the hatch a confident tug. Locked. You do collect some premium hatch-adjacent debris.'),
           giveItem('pocket_lint'),
-          awardAchievement('HATCH TOUCHER'),
+          awardAchievement('hatch_toucher'),
         ],
         item: {
           rusty_key: [
@@ -175,6 +180,26 @@ export const r00_test: RoomDef = {
             'You touch the obelisk. It is exactly as warm as a sleeping animal. You stop touching the obelisk.',
           ),
           say('donut', 'Carl. Stop petting the ominous monolith. You do not know where it has been.'),
+        ],
+      },
+    },
+    // Death demo: HAND the obviously lethal thing (KQ5 tradition)
+    {
+      id: 'conduit',
+      name: 'SPARKING CONDUIT',
+      rect: { x: 260, y: 64, w: 26, h: 40 },
+      verbs: {
+        look: [
+          narrate('A power conduit, arcing merrily. It is labeled DO NOT TOUCH in four languages and one pictogram of a skeleton.'),
+        ],
+        hand: [
+          walkPlayerTo(272, 118),
+          facePlayer('up'),
+          narrate('You reach for the sparking conduit, bare-handed. Somewhere, an audience leans forward.'),
+          sfxCue('zap_big'),
+          killPlayer(
+            'You grabbed the clearly electrified conduit. Cause of death: curiosity, conducted. The dungeon awards style points: zero.',
+          ),
         ],
       },
     },
