@@ -64,7 +64,13 @@ export type ScriptAction =
   /** Equip an inventory item onto a party member (slot from its EquipDef). */
   | { type: 'equipItem'; memberId: string; itemId: string }
   /** Add a combatant to the active party (no-op if already present). */
-  | { type: 'joinParty'; memberId: string };
+  | { type: 'joinParty'; memberId: string }
+  /** Add gold with an in-voice acquisition line (P7 gap addition). */
+  | { type: 'giveGold'; amount: number }
+  /** Bump the broadcast Views counter (the diegetic score; P7 gap). */
+  | { type: 'addViews'; amount: number }
+  /** Story skill unlock for a party member (P7 gap; e.g. Donut's claws). */
+  | { type: 'learnSkill'; memberId: string; skillId: string };
 
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
@@ -171,3 +177,13 @@ export const equipItem = (memberId: string, itemId: string): ScriptAction => ({
 });
 
 export const joinParty = (memberId: string): ScriptAction => ({ type: 'joinParty', memberId });
+
+export const giveGold = (amount: number): ScriptAction => ({ type: 'giveGold', amount });
+
+export const addViews = (amount: number): ScriptAction => ({ type: 'addViews', amount });
+
+export const learnSkill = (memberId: string, skillId: string): ScriptAction => ({
+  type: 'learnSkill',
+  memberId,
+  skillId,
+});

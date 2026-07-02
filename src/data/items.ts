@@ -59,6 +59,33 @@ export const items: Record<string, ItemDef> = {
     stackable: true,
     use: { target: 'ally', heal: true, power: 6 },
   },
+  // --- Act II part 1 ---
+  dynamite: {
+    id: 'dynamite',
+    name: 'DYNAMITE',
+    description:
+      "Demolition-grade persuasion, fuse included. Carl's love language. Hits every enemy. Single use.",
+    stackable: true,
+    use: { target: 'allEnemies', power: 16 },
+  },
+  polished_hubcap: {
+    id: 'polished_hubcap',
+    name: 'POLISHED HUBCAP',
+    description:
+      'The shiniest object left in the maze. Worthless to you. Priceless to anything that hoards.',
+  },
+  neighborhood_map: {
+    id: 'neighborhood_map',
+    name: 'NEIGHBORHOOD MAP',
+    description:
+      'The Hoarder had the whole block memorized. Now the memorizing is your problem too. Minimap data: acquired.',
+  },
+  riot_vest: {
+    id: 'riot_vest',
+    name: 'RIOT VEST',
+    description: 'Somebody upstairs came prepared. It was not enough. It might be for you. DEFENSE +3.',
+    equip: { slot: 'armor', defense: 3 },
+  },
   // --- Combat consumables ---
   goblin_bomb: {
     id: 'goblin_bomb',

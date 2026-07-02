@@ -21,7 +21,7 @@ import type {
   SpriteSheetDef,
 } from '../data/types';
 import type { GameState } from './state';
-import { acquiredLine } from './verbs';
+import { acquiredLine, goldLine } from './verbs';
 
 /** Thrown by killPlayer to unwind the running script cleanly. */
 export class ScriptAbort extends Error {
@@ -259,6 +259,16 @@ export class ScriptRunner {
       }
       case 'joinParty':
         if (!state.party.includes(action.memberId)) state.party.push(action.memberId);
+        break;
+      case 'giveGold':
+        state.gold += action.amount;
+        await host.narrate(goldLine(action.amount));
+        break;
+      case 'addViews':
+        state.views += action.amount;
+        break;
+      case 'learnSkill':
+        state.learnSkill(action.memberId, action.skillId);
         break;
       case 'startCombat': {
         const encounter = host.getEncounter(action.encounterId);

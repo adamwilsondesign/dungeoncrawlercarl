@@ -68,6 +68,35 @@ export const skills: Record<string, SkillDef> = {
     power: 10,
     description: 'Stitches a party member back together. Mostly in the right order.',
   },
+  // --- Donut, story-unlocked in R08 ---
+  claw_flurry: {
+    id: 'claw_flurry',
+    name: 'CLAW FLURRY',
+    cooldown: 2,
+    target: 'enemy',
+    power: 9,
+    scaling: 'str',
+    description: 'Eighteen razors, royal provenance, no mana required.',
+  },
+  // --- The Hoarder ---
+  trash_slam: {
+    id: 'trash_slam',
+    name: 'TRASH SLAM',
+    cooldown: 2,
+    target: 'enemy',
+    power: 7,
+    scaling: 'str',
+    description: 'A compacted century of garbage, applied directly.',
+  },
+  garbage_avalanche: {
+    id: 'garbage_avalanche',
+    name: 'GARBAGE AVALANCHE',
+    cooldown: 4,
+    target: 'allEnemies',
+    power: 4,
+    scaling: 'str',
+    description: 'The pile fights back. All of it. At once.',
+  },
   // --- Enemies ---
   ember_spit: {
     id: 'ember_spit',

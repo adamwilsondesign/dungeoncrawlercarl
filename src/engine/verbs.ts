@@ -104,6 +104,11 @@ export function achievementLine(id: string): string {
   return `NEW ACHIEVEMENT: ${id.toUpperCase()}! Reward: our continued attention. Congratulations, Crawler.`;
 }
 
+/** giveGold confirmation line. */
+export function goldLine(amount: number): string {
+  return `ACQUIRED: ${amount} GOLD. Try to outlive the exchange rate.`;
+}
+
 /** giveItem confirmation, with the running count for stackables. */
 export function acquiredLine(name: string, count: number): string {
   return count > 1

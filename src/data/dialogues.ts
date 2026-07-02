@@ -147,7 +147,75 @@ const donutCourt: DialogueTree = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Tally — the MoonBurger safe-room attendant (polite, cheerful, rule-bound)
+// ---------------------------------------------------------------------------
+
+const tally: DialogueTree = {
+  id: 'tally',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'tally', text: 'Welcome to MoonBurger! I am Tally. I am contractually delighted to see you. The delight is also genuine, which is a nice overlap.' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'What is this place?', goto: 'saferoom' },
+        { text: 'Can we rest here?', goto: 'rest' },
+        { text: 'What is that terminal?', goto: 'shop' },
+        { text: 'Are you a prisoner here?', goto: 'prisoner', once: true },
+        { text: 'The show premiered...', goto: 'premiere', showIf: { flag: 'act2:premiere_seen' }, once: true },
+        { text: 'We should go.', goto: 'bye' },
+      ],
+    },
+    saferoom: {
+      lines: [
+        { speakerId: 'tally', text: 'A safe room! Nothing hostile may enter, by rule. The rule is very strict and the things outside are very angry about it.' },
+        { speakerId: 'tally', text: 'We offer food, rest, and a door that locks. On this floor, that makes us a five-star establishment.' },
+      ],
+      goto: 'hub',
+    },
+    rest: {
+      lines: [
+        { speakerId: 'tally', text: 'The corner booth is reserved for exactly this. Sit, breathe, let the walls do the worrying. Your progress is recorded while you rest.' },
+      ],
+      goto: 'hub',
+    },
+    shop: {
+      lines: [
+        { speakerId: 'tally', text: 'Our shop terminal! It is still coming online. Corporate says SOON. Corporate has said SOON for two seasons.', expression: 'smug' },
+        { speakerId: 'tally', text: 'When it wakes, your gold will be very welcome here. Until then, admire the menu board. The pictures are aspirational.' },
+      ],
+      goto: 'hub',
+    },
+    prisoner: {
+      lines: [
+        { speakerId: 'tally', text: 'Oh, I prefer RESIDENT. I was born in a break room and I will retire in one. Between those, I get to meet everyone brave on this floor.' },
+        { speakerId: 'tally', text: 'It is not freedom. But it is a kindness with a roof, and I have decided that counts.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    premiere: {
+      lines: [
+        { speakerId: 'tally', text: 'I saw! You are on the big screens now. Your cat tested extremely well. You tested... present! Present is survivable.' },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'tally', text: 'Come back whenever the outside becomes too much outside. I will keep a booth warm.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
 export const dialogues: Record<string, DialogueTree> = {
   [mordecai.id]: mordecai,
   [donutCourt.id]: donutCourt,
+  [tally.id]: tally,
 };

@@ -48,8 +48,8 @@ export const r04_guild: RoomDef = {
     {
       id: 'onward',
       rect: { x: 312, y: 128, w: 8, h: 64 },
-      targetRoom: 'r05_act2_stub',
-      targetSpawn: { x: 36, y: 160 },
+      targetRoom: 'r05_maze',
+      targetSpawn: { x: 30, y: 162 },
       facing: 'right',
     },
   ],

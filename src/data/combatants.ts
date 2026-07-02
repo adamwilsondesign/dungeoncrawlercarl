@@ -48,6 +48,27 @@ export const combatants: Record<string, CombatantDef> = {
     xpReward: 30,
     ai: 'basic',
   },
+  tunnel_rat: {
+    id: 'tunnel_rat',
+    name: 'TUNNEL RAT',
+    color: '#8f8073',
+    sprite: 'sprites/tunnel_rat.png',
+    stats: { maxHp: 10, hp: 10, str: 3, dex: 3, con: 2, int: 1, spd: 5 },
+    skills: [],
+    xpReward: 30,
+    ai: 'basic',
+  },
+  // Neighborhood boss: near-invulnerable until baited (phase table on the encounter)
+  hoarder: {
+    id: 'hoarder',
+    name: 'THE HOARDER',
+    color: '#7a9a5a',
+    sprite: 'sprites/hoarder.png',
+    stats: { maxHp: 70, hp: 70, str: 9, dex: 3, con: 9, int: 2, spd: 3 },
+    skills: ['trash_slam', 'garbage_avalanche'],
+    xpReward: 120,
+    ai: 'boss',
+  },
   scuttler: {
     id: 'scuttler',
     name: 'SCUTTLER',

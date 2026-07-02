@@ -32,4 +32,16 @@ export const characters: Record<string, CharacterDef> = {
     color: '#b08a5a',
     portrait: { characterId: 'mordecai', expressions: ['neutral', 'worried'] },
   },
+  hoarder: {
+    id: 'hoarder',
+    name: 'THE HOARDER',
+    color: '#7a9a5a',
+    portrait: { characterId: 'hoarder', expressions: ['neutral', 'angry'] },
+  },
+  tally: {
+    id: 'tally',
+    name: 'TALLY',
+    color: '#8fd4a8',
+    portrait: { characterId: 'tally', expressions: ['neutral', 'smug'] },
+  },
 };

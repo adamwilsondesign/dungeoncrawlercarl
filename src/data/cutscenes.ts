@@ -7,6 +7,7 @@
  */
 
 import {
+  addViews,
   awardAchievement,
   despawnActor,
   disableHotspot,
@@ -18,6 +19,7 @@ import {
   giveItem,
   gotoRoom,
   joinParty,
+  learnSkill,
   moveActor,
   musicCue,
   narrate,
@@ -164,9 +166,63 @@ const act1DonutTransformation: CutsceneDef = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// R07 — the show premiere (the Views counter becomes meaningful)
+// ---------------------------------------------------------------------------
+
+const act2Premiere: CutsceneDef = {
+  id: 'act2_premiere',
+  actions: [
+    setLetterbox(true),
+    musicCue('premiere_fanfare'),
+    sfxCue('broadcast_static'),
+    narrate('Every screen in the restaurant blinks on at once. So does something behind your eyes. ATTENTION: YOUR EPISODE IS NOW AIRING.'),
+    addViews(1412),
+    narrate('CONGRATULATIONS, CRAWLERS. YOU ARE ENTERTAINMENT NOW. SEVENTEEN SYSTEMS RECEIVE THIS FEED. BE INTERESTING OR BE BRIEF.'),
+    addViews(2304),
+    wait(400),
+    say('donut', 'Carl. CARL. Do you see the number. The number is GOING UP. They can SEE me.'),
+    say('carl', 'They can see everything, Donut. That is the problem.'),
+    addViews(1871),
+    narrate('The counter climbs while you stand still. Standing still, it turns out, polls well when a cat is present.'),
+    say('donut', 'Naturally. Chin up, Carl. We have a demographic now.'),
+    setFlag('act2:premiere_seen', true),
+    awardAchievement('prime_time'),
+    setLetterbox(false),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// R08 — Donut learns to fight with claws
+// ---------------------------------------------------------------------------
+
+const act2DonutClaws: CutsceneDef = {
+  id: 'act2_donut_claws',
+  actions: [
+    setLetterbox(true),
+    sfxCue('skitter'),
+    narrate('Something greasy bolts out from under the fallen crawler and heads straight for Carl.'),
+    spawnActor('donut', donutSheet, 120, 150, { facing: 'right' }),
+    moveActor('donut', 200, 154, { speed: 140 }),
+    sfxCue('claw_shred'),
+    narrate('A pink blur crosses the alcove. There is a brief, comprehensive sound. The greasy thing stops existing as a single object.'),
+    say('donut', 'I have KNIVES, Carl. I have ALWAYS had knives. I simply never needed to know it before now.'),
+    say('carl', 'You did that for me.'),
+    say('donut', 'I did that AT you. The protecting was incidental. ...Are you hurt?'),
+    learnSkill('donut', 'claw_flurry'),
+    narrate('SKILL REGISTERED: CLAW FLURRY. THE PRINCESS IS ARMED. THE AUDIENCE IS DELIGHTED. THE RATS ARE NOT.'),
+    setFlag('act2:claws_learned', true),
+    moveActor('donut', 120, 150, { speed: 100 }),
+    despawnActor('donut'),
+    setLetterbox(false),
+  ],
+};
+
 export const cutscenes: Record<string, CutsceneDef> = {
   [act1Intro.id]: act1Intro,
   [act1Descent.id]: act1Descent,
   [act1CharacterCreation.id]: act1CharacterCreation,
   [act1DonutTransformation.id]: act1DonutTransformation,
+  [act2Premiere.id]: act2Premiere,
+  [act2DonutClaws.id]: act2DonutClaws,
 };

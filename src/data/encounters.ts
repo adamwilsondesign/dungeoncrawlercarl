@@ -5,7 +5,15 @@
  * three — real bosses set their flags from environmental puzzle actions).
  */
 
-import { narrate } from './script';
+import {
+  awardAchievement,
+  despawnActor,
+  disableHotspot,
+  enableExit,
+  giveItem,
+  narrate,
+  setFlag,
+} from './script';
 import type { EncounterDef } from './types';
 
 const scrapPit: EncounterDef = {
@@ -72,8 +80,111 @@ const firstBlood: EncounterDef = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Act II part 1 — the maze
+// ---------------------------------------------------------------------------
+
+// Mandatory fight 1 (gates the R05 east door)
+const mazeRats: EncounterDef = {
+  id: 'maze_rats',
+  enemies: ['tunnel_rat', 'tunnel_rat'],
+  backdrop: 'backgrounds/combat_maze.png',
+  backdropLabel: 'THE MAZE',
+  backdropMood: 'dungeon',
+  introText: 'TWO RATS. ONE CAT. THE MATH FAVORS THE CAT.',
+  rewards: { xp: 60, gold: 10 },
+  victoryScript: [
+    disableHotspot('mob1'),
+    enableExit('east'),
+    awardAchievement('blooded'),
+    narrate('The scratching stops. The corridor east unclenches. THE AUDIENCE RATES YOUR FORM: ADEQUATE.'),
+  ],
+};
+
+// Mandatory fight 2 (gates the R05b exit toward the Hoarder)
+const mazePack: EncounterDef = {
+  id: 'maze_pack',
+  enemies: ['tunnel_rat', 'tunnel_rat', 'scuttler'],
+  backdrop: 'backgrounds/combat_maze.png',
+  backdropLabel: 'THE MAZE',
+  backdropMood: 'dungeon',
+  introText: 'THE HEAP WAS OCCUPIED. IT IS ABOUT TO BE VACANT.',
+  rewards: { xp: 60, gold: 10 },
+  victoryScript: [
+    disableHotspot('mob2'),
+    enableExit('east'),
+    narrate('The pack scatters into the walls. The way toward the smell - and it is a considerable smell - stands open.'),
+  ],
+};
+
+// Optional over-leveling fight (repeatable; the nest refills)
+const mazeNest: EncounterDef = {
+  id: 'maze_nest',
+  enemies: ['ember_rat', 'ember_rat'],
+  backdrop: 'backgrounds/combat_maze.png',
+  backdropLabel: 'THE MAZE',
+  backdropMood: 'dungeon',
+  introText: 'OPTIONAL VIOLENCE DETECTED. THE AUDIENCE APPRECIATES AN OVERACHIEVER.',
+  rewards: { xp: 60, items: ['healing_salve'] },
+  victoryScript: [
+    narrate('The nest empties. Give it an hour and something worse will move in. The dungeon calls this PROPERTY TURNOVER.'),
+  ],
+};
+
+/**
+ * THE HOARDER — the first combat-puzzle hybrid, and the authoring template
+ * for the War Chieftain (P8) and the Ball (P9):
+ * - Base phase: enemyDamageTakenMult 0.15 — attacking blind barely scratches.
+ * - Gated phase: when flag 'hoarder:baited' is set (by USING the polished
+ *   hubcap on her treasure midden in R06, pre-fight), damage is full.
+ * - beforeTurn nags the hint from round 3 if the player charged in unbaited.
+ * The bait flag is set OUTSIDE combat, so phases work whether the player
+ * baits first (fight opens vulnerable) or realizes mid-wipe and dies once
+ * (death restores the room-entry autosave; the bait resets with it).
+ */
+const hoarderLair: EncounterDef = {
+  id: 'hoarder_lair',
+  enemies: ['hoarder'],
+  backdrop: 'backgrounds/combat_hoarder.png',
+  backdropLabel: 'THE LAIR',
+  backdropMood: 'boss',
+  noFlee: true,
+  introText: 'NEIGHBORHOOD BOSS: THE HOARDER. SHE HAS NEVER ONCE SHARED.',
+  phases: [
+    {
+      when: { flag: 'hoarder:baited' },
+      enemyDamageTakenMult: 1,
+      announce: 'HER BACK IS TO THE TREASURE. NOW, CRAWLER. NOW.',
+    },
+    {
+      enemyDamageTakenMult: 0.15,
+      announce: 'SHE BARELY NOTICES YOU. HER EYES NEVER LEAVE THE PILE.',
+    },
+  ],
+  beforeTurn: (ctx) => {
+    if (ctx.round >= 3 && !ctx.state.getFlag('hoarder:baited')) {
+      return 'DONUT: CARL. SHE ONLY CARES ABOUT SHINY THINGS. USE YOUR HEAD.';
+    }
+  },
+  rewards: { xp: 120, gold: 40, items: ['healing_salve'] },
+  victoryScript: [
+    setFlag('map:neighborhood', true),
+    giveItem('neighborhood_map'),
+    narrate('MINIMAP DATA ABSORBED. THE NEIGHBORHOOD IS NOW LABELED. MOST LABELS ARE WARNINGS.'),
+    awardAchievement('trash_taker'),
+    despawnActor('hoarder'),
+    disableHotspot('hoarder'),
+    enableExit('east'),
+    narrate('The pile settles into ordinary garbage. Somewhere beneath it, a burger sign flickers on.'),
+  ],
+};
+
 export const encounters: Record<string, EncounterDef> = {
   [scrapPit.id]: scrapPit,
   [junkGolemLair.id]: junkGolemLair,
   [firstBlood.id]: firstBlood,
+  [mazeRats.id]: mazeRats,
+  [mazePack.id]: mazePack,
+  [mazeNest.id]: mazeNest,
+  [hoarderLair.id]: hoarderLair,
 };

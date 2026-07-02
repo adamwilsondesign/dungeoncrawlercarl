@@ -31,6 +31,8 @@ export interface GameStateData {
   xp: number;
   level: number;
   equipment: PartyEquipment;
+  views?: number;
+  extraSkills?: Record<string, string[]>;
 }
 
 /** Cumulative XP required to REACH a level (level 1 = 0, 2 = 100, 3 = 300...). */
@@ -69,6 +71,16 @@ export class GameState {
   level = 1;
   /** memberId -> slot -> equipped item id. */
   equipment: PartyEquipment = {};
+  /** Broadcast audience count (the diegetic score; P7 gap addition). */
+  views = 0;
+  /** Story-unlocked skills per member, beyond def.skills + learnset (P7 gap). */
+  extraSkills: Record<string, string[]> = {};
+
+  /** Story skill unlock (e.g. Donut's claws); no-op if already known. */
+  learnSkill(memberId: string, skillId: string): void {
+    const list = (this.extraSkills[memberId] ??= []);
+    if (!list.includes(skillId)) list.push(skillId);
+  }
 
   private flags: Record<string, FlagValue> = {};
   private items: InventoryEntry[] = [];
@@ -126,6 +138,8 @@ export class GameState {
     this.xp = 0;
     this.level = 1;
     this.equipment = {};
+    this.views = 0;
+    this.extraSkills = {};
   }
 
   /** Restore from a save payload (inverse of serialize). */
@@ -145,6 +159,11 @@ export class GameState {
     this.equipment = {};
     for (const [member, slots] of Object.entries(data.equipment ?? {})) {
       this.equipment[member] = { ...slots };
+    }
+    this.views = data.views ?? 0;
+    this.extraSkills = {};
+    for (const [member, list] of Object.entries(data.extraSkills ?? {})) {
+      this.extraSkills[member] = [...list];
     }
   }
 
@@ -247,6 +266,10 @@ export class GameState {
       level: this.level,
       equipment: Object.fromEntries(
         Object.entries(this.equipment).map(([member, slots]) => [member, { ...slots }]),
+      ),
+      views: this.views,
+      extraSkills: Object.fromEntries(
+        Object.entries(this.extraSkills).map(([member, list]) => [member, [...list]]),
       ),
     };
   }

@@ -27,6 +27,21 @@ export const achievements: Record<string, AchievementDef> = {
     name: 'THE ROYAL COURT',
     description: 'Party formed. Leadership structure: contested. Cat: in charge.',
   },
+  blooded: {
+    id: 'blooded',
+    name: 'PROPERLY BLOODED',
+    description: 'Your first real fight. The rats respected the effort, briefly.',
+  },
+  trash_taker: {
+    id: 'trash_taker',
+    name: 'TOOK OUT THE TRASH',
+    description: 'Neighborhood boss defeated. The pile has a new manager: nobody.',
+  },
+  prime_time: {
+    id: 'prime_time',
+    name: 'PRIME TIME',
+    description: 'You premiered. The galaxy is watching. Wave, or do not. They love both.',
+  },
   first_death: {
     id: 'first_death',
     name: 'FRESH MEAT',

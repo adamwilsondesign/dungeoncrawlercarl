@@ -1264,6 +1264,16 @@ export class RoomScene implements Scene, ScriptHost {
 
       this.narrator.render(ctx);
       this.dialogue.render(ctx);
+      // Diegetic score: broadcast viewer count, once the show has premiered.
+      if (this.state.views > 0) {
+        const label = `LIVE ${this.state.views}`;
+        const w = pixelTextWidth(label) + 9;
+        ctx.fillStyle = 'rgba(10,17,32,0.85)';
+        ctx.fillRect(LOGICAL_W - w - 2, 2, w, 9);
+        ctx.fillStyle = '#ff5a5a';
+        ctx.fillRect(LOGICAL_W - w + 1, 5, 3, 3);
+        drawPixelText(ctx, label, LOGICAL_W - w + 6, 4, '#ffd9d9');
+      }
       this.toasts.render(ctx);
       if (this.hover && !this.narrator.active && !this.dialogue.active && isTop) {
         this.drawHoverLabel(ctx, this.hover.name);

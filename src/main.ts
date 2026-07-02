@@ -10,7 +10,12 @@ import { r01_street } from './data/rooms/r01_street';
 import { r02_descent } from './data/rooms/r02_descent';
 import { r03_entrance } from './data/rooms/r03_entrance';
 import { r04_guild } from './data/rooms/r04_guild';
-import { r05_act2_stub } from './data/rooms/r05_act2_stub';
+import { r05_maze } from './data/rooms/r05_maze';
+import { r05b_maze } from './data/rooms/r05b_maze';
+import { r06_hoarder } from './data/rooms/r06_hoarder';
+import { r07_moonburger } from './data/rooms/r07_moonburger';
+import { r08_alcove } from './data/rooms/r08_alcove';
+import { r09_act2b_stub } from './data/rooms/r09_act2b_stub';
 import { skills } from './data/skills';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
@@ -45,8 +50,13 @@ const rooms: Record<string, RoomDef> = {
   [r02_descent.id]: r02_descent,
   [r03_entrance.id]: r03_entrance,
   [r04_guild.id]: r04_guild,
-  [r05_act2_stub.id]: r05_act2_stub,
-  // Engine proving ground from P1-P5; unreachable in Act I but kept
+  [r05_maze.id]: r05_maze,
+  [r05b_maze.id]: r05b_maze,
+  [r06_hoarder.id]: r06_hoarder,
+  [r07_moonburger.id]: r07_moonburger,
+  [r08_alcove.id]: r08_alcove,
+  [r09_act2b_stub.id]: r09_act2b_stub,
+  // Engine proving ground from P1-P5; unreachable in normal play but kept
   // registered so old saves and regression checks still load.
   [r00_test.id]: r00_test,
 };

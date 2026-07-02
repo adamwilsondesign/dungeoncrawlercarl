@@ -185,7 +185,8 @@ export class CombatScene implements Scene {
       let skillIds: string[];
       if (side === 'party') {
         stats = leveledStats(def.stats, state.level);
-        skillIds = knownSkills(def, state.level);
+        // Learnset skills by level, plus story-unlocked extras (P7 gap).
+        skillIds = [...knownSkills(def, state.level), ...(state.extraSkills[defId] ?? [])];
         // Equipment stat mods
         for (const itemId of Object.values(state.getEquipped(defId))) {
           const mods = deps.items[itemId]?.equip?.statMods;
