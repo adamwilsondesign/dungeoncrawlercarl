@@ -3,6 +3,8 @@
  * multipart/form-data: { id: string, file: File }
  * Stores to Blob at overrides/<id> with overwrite semantics (stable path, no
  * random suffix) and returns { id, url }.
+ *
+ * Named HTTP-method export = the Vercel Node runtime's web-handler signature.
  */
 
 import { put } from '@vercel/blob';
@@ -10,8 +12,7 @@ import { checkAdmin, isValidAssetId, json, OVERRIDE_PREFIX } from '../_lib';
 
 const MAX_BYTES = 4 * 1024 * 1024; // plenty for 320x200-era art
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
+export async function POST(request: Request): Promise<Response> {
   const denied = checkAdmin(request);
   if (denied) return denied;
 

@@ -3,12 +3,15 @@
  * The game fetches this once at boot; each url carries a ?v= cache-buster
  * derived from the upload time, because overwritten blobs keep the same URL
  * and are otherwise served with long-lived cache headers.
+ *
+ * Named HTTP-method export = the Vercel Node runtime's web-handler
+ * signature (a default export would be invoked with Node's (req, res)).
  */
 
 import { json, listOverrides } from './_lib';
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405);
+export async function GET(request: Request): Promise<Response> {
+  void request;
   try {
     const entries = await listOverrides();
     const overrides: Record<string, string> = {};

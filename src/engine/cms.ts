@@ -46,7 +46,7 @@ export class CmsScene implements Scene {
     this.root.style.cssText = [
       'position:fixed', 'inset:0', 'z-index:40', 'background:rgba(4,8,16,0.92)',
       'color:#d8ecff', 'font:13px/1.5 monospace', 'display:flex', 'flex-direction:column',
-      'padding:16px', 'gap:10px', 'box-sizing:border-box',
+      'padding:16px', 'gap:10px', 'box-sizing:border-box', 'cursor:auto',
     ].join(';');
 
     const header = document.createElement('div');
@@ -206,7 +206,9 @@ export class CmsScene implements Scene {
     const thumb = document.createElement('canvas');
     thumb.width = 96;
     thumb.height = 60;
-    thumb.style.cssText = 'background:#060a12;border:1px solid #1c2534;image-rendering:pixelated;flex:none';
+    // Explicit CSS size: the page stylesheet must never size these.
+    thumb.style.cssText =
+      'width:96px;height:60px;background:#060a12;border:1px solid #1c2534;image-rendering:pixelated;flex:none;cursor:auto';
 
     const info = document.createElement('div');
     info.style.cssText = 'flex:1;min-width:0';

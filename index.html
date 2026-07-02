@@ -13,7 +13,9 @@
         background: #000;
         overflow: hidden;
       }
-      canvas {
+      /* Scoped to the game canvas only - the CMS overlay owns its own
+         canvases (thumbnails) and needs the OS cursor. */
+      #game {
         display: block;
         width: 100vw;
         height: 100vh;
