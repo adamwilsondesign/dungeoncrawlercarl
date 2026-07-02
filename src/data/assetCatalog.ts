@@ -46,6 +46,7 @@ const PLAN_FRAMES: Record<string, [number, number]> = {
   critter: [20, 14],
   bulky: [36, 48],
   sphere: [40, 40],
+  machine: [48, 28],
 };
 
 const VERBS = ['walk', 'look', 'hand', 'talk', 'item'] as const;
@@ -76,6 +77,24 @@ export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
         draw: room.placeholderArtDraw,
       },
     });
+    // Flag-gated background variants (e.g. R01 post-collapse) are real
+    // drop-in slots of their own.
+    for (const alt of room.altBackgrounds ?? []) {
+      add({
+        id: alt.path,
+        category: 'backgrounds',
+        label: alt.label ?? `${room.label} (variant)`,
+        spec: '320x200 PNG scene',
+        expectW: 320,
+        expectH: 200,
+        placeholder: {
+          kind: 'background',
+          label: alt.label ?? room.label,
+          mood: room.backgroundMood,
+          draw: alt.draw,
+        },
+      });
+    }
     add({
       id: room.walkmaskPath,
       category: 'masks',

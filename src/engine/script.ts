@@ -68,6 +68,10 @@ export interface ScriptHost {
   /** Horizontal camera tween; no-op for single-screen rooms. */
   cameraPan(fromX: number, toX: number, ms: number): Promise<void>;
   setLetterbox(on: boolean): void;
+  /** Screen shake + dust plume; resolves when the shake ends. */
+  shake(ms: number, magnitude: number): Promise<void>;
+  /** Re-resolve the room's flag-gated background variant and swap it live. */
+  refreshBackground(): Promise<void>;
   /** Idempotent achievement award: flag + queued toast. */
   awardAchievement(id: string): void;
   /** Begin the death sequence (fade + death dialog). */
@@ -231,6 +235,12 @@ export class ScriptRunner {
         break;
       case 'sfxCue':
         audio.sfxCue(action.id);
+        break;
+      case 'shake':
+        await host.shake(action.ms, action.magnitude);
+        break;
+      case 'refreshBackground':
+        await host.refreshBackground();
         break;
       case 'playCutscene': {
         const def = host.getCutscene(action.id);

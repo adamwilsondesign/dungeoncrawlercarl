@@ -79,6 +79,19 @@ const goblinDiggers: EncounterDef = {
   backdropLabel: 'FLOOR 1 CORRIDOR',
   backdropMood: 'dungeon',
   introText: 'THE MACHINE CIRCLES, SPIKES CHEWING WALL. ITS ESCORTS WANT THE KILL FOR THEMSELVES.',
+  // P16 arrival: the steamroller drives in from the left with the whelps
+  // riding it; they hop off into position and the machine idles in the
+  // background of the composed scene (a prop, never a combatant).
+  arrival: {
+    kind: 'rollIn',
+    from: 'left',
+    props: ['steamroller'],
+    ms: 1800,
+    lines: [
+      'The machine takes the corner on spiked wheels, bellowing steam, and parks itself across your exit like a verdict.',
+      'The whelps hop down, rolling their shoulders. THE ESCORTS HAVE FILED FOR FIRST STRIKE. GRANTED.',
+    ],
+  },
   rewards: { xp: 30 },
   victoryScript: [playCutscene('act1_machine_wreck')],
 };
@@ -172,6 +185,12 @@ const hoarderLair: EncounterDef = {
   backdropLabel: 'THE LAIR',
   backdropMood: 'boss',
   noFlee: true,
+  // P16: cinematic boss transition; she ERUPTS from the trash with a shake.
+  transitionKind: 'boss',
+  arrival: {
+    kind: 'burstIn',
+    lines: ['The midden detonates outward. She was never beside the pile. She was wearing it.'],
+  },
   introText: 'NEIGHBORHOOD BOSS: THE HOARDER. SHE HAS NEVER ONCE SHARED.',
   phases: [
     {
@@ -243,6 +262,13 @@ const warChieftainLair: EncounterDef = {
   backdropLabel: 'THE BOSS FLOOR',
   backdropMood: 'boss',
   noFlee: true,
+  // P16: boss transition; he drops into frame filling the doorway.
+  transitionKind: 'boss',
+  arrival: {
+    kind: 'dropIn',
+    from: 'above',
+    lines: ['A shape fills the door silhouette, blots it out, and lands hard enough to reorganize the anvils.'],
+  },
   introText: 'NEIGHBORHOOD BOSS: THE WAR CHIEFTAIN. HE HAS BEEN LIFTING ANVILS FOR THIS.',
   phases: [
     {
@@ -326,6 +352,14 @@ const ballRing: EncounterDef = {
   backdropLabel: 'THE RING',
   backdropMood: 'boss',
   noFlee: true,
+  // P16: boss transition; it is ALREADY rolling - lean into it.
+  transitionKind: 'boss',
+  arrival: {
+    kind: 'rollIn',
+    from: 'right',
+    ms: 1400,
+    lines: ['You hear it before you see it: a landslide with table manners, taking the bend at speed.'],
+  },
   introText: 'BOROUGH BOSS: THE BALL. FORTY KNIGHTS, ONE OPINION, NO BRAKES.',
   phases: [
     {

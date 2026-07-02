@@ -523,8 +523,99 @@ function drawDesignFrame(
     case 'small':
       drawBipedFrame(ctx, ox, oy, dir, pose, d, w, h, true);
       break;
+    case 'machine':
+      drawMachineFrame(ctx, ox, oy, pose, d, w, h);
+      break;
     default:
       drawBipedFrame(ctx, ox, oy, dir, pose, d, w, h, false);
+  }
+}
+
+/**
+ * The dieselpunk digging machine: wide low hull on two spike-studded wheels,
+ * boiler stack, riveted plating. Poses rotate the wheel spikes (a 2-frame
+ * chug is enough - it is a prop, not a fighter).
+ */
+function drawMachineFrame(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  oy: number,
+  pose: number,
+  d: SpriteDesign,
+  w: number,
+  h: number,
+): void {
+  const groundY = oy + h - 1;
+  const wheelR = Math.max(5, Math.round(h * 0.3));
+  const cxL = ox + wheelR + 3;
+  const cxR = ox + w - wheelR - 3;
+  const wheelY = groundY - wheelR;
+  const plate = d.torso;
+  const hull = d.skin;
+  const iron = d.patches?.[0] ?? '#8f939c';
+  const dark = d.patches?.[1] ?? '#2c2c34';
+  const accent = d.patches?.[2] ?? '#b0623a';
+  const roll = pose * 0.55; // wheel-spike rotation per pose
+
+  // Hull: low wide box slung between the wheels
+  const hullTop = oy + Math.round(h * 0.3);
+  ctx.fillStyle = shade(hull, 0.55);
+  ctx.fillRect(ox + 2, hullTop - 1, w - 4, groundY - hullTop - wheelR + 4);
+  ctx.fillStyle = hull;
+  ctx.fillRect(ox + 3, hullTop, w - 6, groundY - hullTop - wheelR + 2);
+  // Plating band + rivets
+  ctx.fillStyle = plate;
+  ctx.fillRect(ox + 3, hullTop + 2, w - 6, 4);
+  ctx.fillStyle = shade(plate, 1.35);
+  for (let x = ox + 5; x < ox + w - 5; x += 5) ctx.fillRect(x, hullTop + 3, 1, 1);
+  // Front digging maw: a toothed wedge on the right end
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(ox + w - 3, hullTop + 1);
+  ctx.lineTo(ox + w, hullTop + Math.round((groundY - hullTop) / 2));
+  ctx.lineTo(ox + w - 3, groundY - wheelR + 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = iron;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(ox + w - 3, hullTop + 3 + i * 4, 2, 2);
+  }
+  // Boiler stack + steam puffs (pose-animated)
+  ctx.fillStyle = dark;
+  ctx.fillRect(ox + Math.round(w * 0.3), oy + 3, 4, hullTop - oy - 2);
+  ctx.fillStyle = shade(dark, 1.4);
+  ctx.fillRect(ox + Math.round(w * 0.3) - 1, oy + 2, 6, 2);
+  ctx.fillStyle = 'rgba(220,220,215,0.7)';
+  const puffX = ox + Math.round(w * 0.3) + 2 - pose * 2;
+  ctx.beginPath();
+  ctx.ellipse(puffX, oy + 2 - (pose % 2), 2 + pose, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Cab hint + glowing firebox
+  ctx.fillStyle = shade(plate, 0.75);
+  ctx.fillRect(ox + Math.round(w * 0.55), oy + Math.round(h * 0.14), Math.round(w * 0.2), hullTop - oy - Math.round(h * 0.14) + 1);
+  ctx.fillStyle = accent;
+  ctx.fillRect(ox + Math.round(w * 0.16), hullTop + 7, 3, 2);
+  // Wheels: iron discs studded with digging spikes, rotating with the pose
+  for (const cx of [cxL, cxR]) {
+    ctx.fillStyle = shade(iron, 0.5);
+    ctx.beginPath();
+    ctx.arc(cx, wheelY, wheelR + 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = iron;
+    ctx.beginPath();
+    ctx.arc(cx, wheelY, wheelR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.arc(cx, wheelY, Math.max(1, wheelR - 3), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(iron, 1.2);
+    for (let i = 0; i < 6; i++) {
+      const a = roll + (i / 6) * Math.PI * 2;
+      const sx2 = cx + Math.cos(a) * (wheelR + 1);
+      const sy2 = wheelY + Math.sin(a) * (wheelR + 1);
+      ctx.fillRect(Math.round(sx2) - 1, Math.round(sy2) - 1, 2, 2);
+    }
   }
 }
 

@@ -21,6 +21,7 @@ export const combatants: Record<string, CombatantDef> = {
   donut: {
     id: 'donut',
     name: 'PRINCESS DONUT',
+    shortName: 'DONUT',
     color: '#e3cfa8',
     sprite: 'sprites/donut.png',
     outfit: {
@@ -94,6 +95,7 @@ export const combatants: Record<string, CombatantDef> = {
   goblin_whelp: {
     id: 'goblin_whelp',
     name: 'GOBLIN WHELP',
+    shortName: 'WHELP',
     color: '#9aba62',
     sprite: 'sprites/goblin_whelp.png',
     stats: { maxHp: 7, hp: 7, str: 2, dex: 3, con: 1, int: 2, spd: 4 },
@@ -118,6 +120,8 @@ export const combatants: Record<string, CombatantDef> = {
   hoarder: {
     id: 'hoarder',
     name: 'THE HOARDER',
+    shortName: 'HOARDER',
+    level: 3,
     color: '#7a9a5a',
     sprite: 'sprites/hoarder.png',
     stats: { maxHp: 32, hp: 32, str: 5, dex: 3, con: 6, int: 2, spd: 3 },
@@ -150,6 +154,7 @@ export const combatants: Record<string, CombatantDef> = {
   goblin_scrapper: {
     id: 'goblin_scrapper',
     name: 'GOBLIN SCRAPPER',
+    shortName: 'SCRAPPER',
     color: '#8fb05a',
     sprite: 'sprites/goblin_scrapper.png',
     stats: { maxHp: 16, hp: 16, str: 5, dex: 5, con: 3, int: 3, spd: 6 },
@@ -160,6 +165,7 @@ export const combatants: Record<string, CombatantDef> = {
   goblin_stoker: {
     id: 'goblin_stoker',
     name: 'GOBLIN STOKER',
+    shortName: 'STOKER',
     color: '#c98a4a',
     sprite: 'sprites/goblin_stoker.png',
     stats: { maxHp: 14, hp: 14, str: 4, dex: 4, con: 3, int: 6, spd: 5, maxMp: 8, mp: 8 },
@@ -172,6 +178,8 @@ export const combatants: Record<string, CombatantDef> = {
   war_chieftain: {
     id: 'war_chieftain',
     name: 'THE WAR CHIEFTAIN',
+    shortName: 'CHIEFTAIN',
+    level: 6,
     color: '#b0623a',
     sprite: 'sprites/war_chieftain.png',
     stats: { maxHp: 90, hp: 90, str: 12, dex: 5, con: 10, int: 3, spd: 4 },
@@ -214,6 +222,8 @@ export const combatants: Record<string, CombatantDef> = {
   the_ball: {
     id: 'the_ball',
     name: 'THE BALL',
+    shortName: 'THE BALL',
+    level: 8,
     color: '#e8a4b0',
     sprite: 'sprites/the_ball.png',
     // Pink fused flesh studded with steel plate.

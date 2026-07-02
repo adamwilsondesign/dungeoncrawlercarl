@@ -155,8 +155,10 @@ export interface PortraitDef {
 
 export interface CharacterDef {
   id: string;
-  /** Name-plate text on dialogue boxes. */
+  /** Name-plate text on dialogue boxes (the FULL name/title). */
   name: string;
+  /** Compact name for HUD chips and combat labels; falls back to `name`. */
+  shortName?: string;
   /** Placeholder portrait/tag color. */
   color: string;
   portrait: PortraitDef;
@@ -300,6 +302,10 @@ export interface CombatUseDef {
 export interface CombatantDef {
   id: string;
   name: string;
+  /** Compact name for combat labels / turn strip; falls back to `name`. */
+  shortName?: string;
+  /** Display level for the boss title card (bosses only; cosmetic). */
+  level?: number;
   color: string;
   /** Sprite sheet path (standard 24x32, 3x3 placeholder layout). */
   sprite: string;
@@ -341,6 +347,27 @@ export interface CombatTurnCtx {
   turnIndex: number;
 }
 
+/** How enemies physically enter the combat tableau before the first menu. */
+export type ArrivalKind = 'walkIn' | 'dropIn' | 'burstIn' | 'rollIn' | 'scriptedActions';
+
+/**
+ * Data-driven enemy entrance, played at combat start with input locked
+ * (ESC skips to the end state). Omitted = a simple walkIn from the right.
+ */
+export interface ArrivalDef {
+  kind: ArrivalKind;
+  /** Which edge the entrance comes from (kind-dependent default). */
+  from?: 'left' | 'right' | 'above';
+  /** Prop sprite ids that accompany the entrance (e.g. 'steamroller'). */
+  props?: string[];
+  /** In-voice narrator lines shown during/after the entrance. */
+  lines?: string[];
+  /** Total entrance duration in ms (kind-dependent default). */
+  ms?: number;
+  /** For kind 'scriptedActions': full flexibility via the script runner. */
+  actions?: ScriptAction[];
+}
+
 export interface EncounterDef {
   id: string;
   /** Combatant def ids; duplicates allowed (labeled A/B/C...). */
@@ -360,6 +387,13 @@ export interface EncounterDef {
   phases?: EncounterPhaseDef[];
   /** Runs at each turn start; may set flags; returned text becomes a log line. */
   beforeTurn?: (ctx: CombatTurnCtx) => string | void;
+  /**
+   * Scene transition tier: 'mob' = quick flash + slice wipe (~500ms),
+   * 'boss' = cinematic shake + wipe + title card (~2s). Default 'mob'.
+   */
+  transitionKind?: 'mob' | 'boss';
+  /** Enemy entrance choreography; default = walkIn from the right. */
+  arrival?: ArrivalDef;
 }
 
 // ---------------------------------------------------------------------------
@@ -395,12 +429,27 @@ export interface ScaleBand {
   scale: number;
 }
 
+/**
+ * A flag-gated background variant (e.g. R01 pre/post collapse). The first
+ * entry whose flag is truthy wins; otherwise the room's base background is
+ * used. Each variant is a real drop-in slot (own path, own generated art)
+ * and appears in the CMS manifest alongside the base background.
+ */
+export interface AltBackgroundDef {
+  flag: string;
+  path: string;
+  label?: string;
+  draw?: (ctx: CanvasRenderingContext2D, pal: MoodPalette) => void;
+}
+
 export interface RoomDef {
   id: string;
   /** Display label printed on the generated placeholder background. */
   label: string;
   backgroundPath: string;
   backgroundMood: Mood;
+  /** Flag-gated background variants; first truthy flag wins. */
+  altBackgrounds?: AltBackgroundDef[];
   /** Optional per-room music track id; defaults to the mood's theme. */
   musicId?: string;
   /**

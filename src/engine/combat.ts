@@ -27,13 +27,18 @@
  */
 
 import type {
+  ArrivalDef,
   CombatantDef,
   CombatantStats,
   CombatUseDef,
+  CutsceneDef,
   EncounterDef,
+  Facing,
   ItemDef,
   Point,
   SkillDef,
+  SpawnPoint,
+  SpriteSheetDef,
   StatusEffect,
 } from '../data/types';
 import { drawPixelText, loadImage, outlinedPanel, pixelTextWidth, type LoadedImage } from './assets';
@@ -42,6 +47,7 @@ import type { Game, Scene } from './game';
 import { drawMenuCursor } from './menus';
 import { wrapText } from './narrator';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
+import { ScriptRunner, type ScriptHost } from './script';
 import { checkFlagCondition, type GameState } from './state';
 
 export type CombatResult = 'victory' | 'defeat' | 'fled';
@@ -71,11 +77,35 @@ interface Combatant {
   cooldowns: Record<string, number>;
   defending: boolean;
   image: LoadedImage;
-  x: number; // feet center
+  /** Frame size read from the actual sheet (width/3 x height/3) - never assumed. */
+  fw: number;
+  fh: number;
+  drawW: number;
+  drawH: number;
+  x: number; // feet center (current; animated during arrival)
   y: number;
+  tx: number; // composed-tableau slot (feet-anchored on the ground plane)
+  ty: number;
+  /** Not yet on stage (burstIn pops, staggered entrances). */
+  hidden: boolean;
   ai: CombatantDef['ai'];
   xpReward: number;
   bossSkillPtr: number;
+}
+
+/** A non-combatant stage prop accompanying an arrival (e.g. the steamroller). */
+interface StageProp {
+  id: string;
+  image: LoadedImage;
+  fw: number;
+  fh: number;
+  drawW: number;
+  drawH: number;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  hidden: boolean;
 }
 
 interface FloatText {
@@ -87,7 +117,8 @@ interface FloatText {
 }
 
 type Mode =
-  | { kind: 'intro'; t: number }
+  | { kind: 'transition'; t: number }
+  | { kind: 'arrival'; t: number }
   | { kind: 'menu' }
   | { kind: 'submenu'; menu: 'skills' | 'items'; index: number }
   | { kind: 'target'; candidates: Combatant[]; index: number; confirm: (target: Combatant) => void }
@@ -97,12 +128,42 @@ type Mode =
   | { kind: 'ending'; t: number; result: CombatResult };
 
 const ROOT_ACTIONS = ['ATTACK', 'SKILL', 'ITEM', 'DEFEND', 'FLEE'] as const;
+/** Default frame size ONLY for generating never-before-loaded sheets. */
 const SPRITE_W = 24;
 const SPRITE_H = 32;
-const DRAW_W = 36;
-const DRAW_H = 48;
-const MENU_PANEL = { x: 4, y: 132, w: 112, h: 64 };
-const INFO_PANEL = { x: 120, y: 132, w: 196, h: 64 };
+/** Sprites draw at 1.5x their native frame size, feet-anchored. */
+const DRAW_SCALE = 1.5;
+/**
+ * Layout: LEFT sidebar action menu (~25% of the width); the right ~75% is
+ * the combat tableau. Party stands stage-left facing right; enemies enter
+ * and hold stage-right facing left. All feet baselines sit on the painted
+ * ground plane (edge at GROUND_EDGE, slots from SLOT_Y down).
+ */
+const SIDEBAR = { x: 2, y: 16, w: 78, h: 182 };
+const FIELD_X = SIDEBAR.x + SIDEBAR.w + 4; // 84: tableau left edge
+const FIELD_CX = Math.round((FIELD_X + LOGICAL_W) / 2); // 202: tableau center
+const GROUND_EDGE = 132; // painted floor line y
+const SLOT_Y = 146; // first feet baseline (rows step +17, front column +6)
+const slotPos = (side: 'party' | 'enemy', index: number): { x: number; y: number } => {
+  const col = index % 2;
+  const row = Math.floor(index / 2);
+  return {
+    x: side === 'party' ? 148 - col * 36 : 246 + col * 34,
+    y: SLOT_Y + row * 17 + col * 6,
+  };
+};
+/** Transition timing (ms): mob = snappy, boss = cinematic w/ title card. */
+const WIPE_MOB = 300;
+const WIPE_BOSS = 620;
+const TITLE_BOSS = 1000;
+const ARRIVAL_DEFAULT_MS: Record<ArrivalDef['kind'], number> = {
+  walkIn: 750,
+  dropIn: 750,
+  burstIn: 950,
+  rollIn: 1300,
+  scriptedActions: 0,
+};
+const LINE_HOLD_MS = 1700;
 const BARE_WEAPON = 2;
 
 const rand = (lo: number, hi: number): number => lo + Math.random() * (hi - lo);
@@ -133,10 +194,16 @@ export function knownSkills(def: CombatantDef, level: number): string[] {
   return list;
 }
 
+/** One queued arrival line: shown as the log banner, then resolved. */
+interface ArrivalLine {
+  text: string;
+  resolve: () => void;
+}
+
 export class CombatScene implements Scene {
   onFinish: ((result: CombatResult) => void) | null = null;
 
-  private mode: Mode = { kind: 'intro', t: 0 };
+  private mode: Mode = { kind: 'transition', t: 0 };
   private round = 0;
   private order: Combatant[] = [];
   private turnIndex = -1;
@@ -149,13 +216,41 @@ export class CombatScene implements Scene {
   private lastMouse: Point = { x: -1, y: -1 };
   private finished = false;
 
+  // Arrival choreography state
+  private readonly arrival: Required<Pick<ArrivalDef, 'kind' | 'from' | 'ms'>> & {
+    lines: string[];
+    actions: ArrivalDef['actions'];
+  };
+  private props: StageProp[] = [];
+  private arrivalMoveDone = false;
+  private arrivalLinesQueued = false;
+  private arrivalScriptDone = true;
+  private lineQueue: ArrivalLine[] = [];
+  private lineT = 0;
+  private arrivalRunner: ScriptRunner | null = null;
+  private readonly arrivalTimers: Array<{ remaining: number; resolve: () => void }> = [];
+  // Scene-local shake (drop landings, bursts, boss title)
+  private shakeFx: { t: number; ms: number; amp: number } | null = null;
+
   private constructor(
     private readonly deps: CombatDeps,
     private readonly encounter: EncounterDef,
     private readonly backdrop: LoadedImage,
     private readonly party: Combatant[],
     private readonly enemies: Combatant[],
-  ) {}
+    props: StageProp[],
+  ) {
+    const a = encounter.arrival;
+    this.arrival = {
+      kind: a?.kind ?? 'walkIn',
+      from: a?.from ?? (a?.kind === 'dropIn' ? 'above' : a?.kind === 'rollIn' && a?.props?.length ? 'left' : 'right'),
+      ms: a?.ms ?? ARRIVAL_DEFAULT_MS[a?.kind ?? 'walkIn'],
+      lines: a?.lines ?? [],
+      actions: a?.actions,
+    };
+    this.props = props;
+    this.initArrivalPositions();
+  }
 
   static async create(deps: CombatDeps, encounter: EncounterDef): Promise<CombatScene> {
     const backdrop = await loadImage(encounter.backdrop, {
@@ -214,8 +309,13 @@ export class CombatScene implements Scene {
         stats = { ...def.stats, hp: def.stats.maxHp, mp: def.stats.maxMp };
         skillIds = [...def.skills];
       }
-      const col = index % 2;
-      const row = Math.floor(index / 2);
+      // Frame size from the ACTUAL sheet (3x3 grid) - the loader cache may
+      // hold this path at a different frame size than combat's default spec
+      // (the Donut-missing bug: her 20x16 room sheet sliced as 24x32 was
+      // out of bounds and drew nothing).
+      const fw = Math.max(1, Math.floor(image.width / 3));
+      const fh = Math.max(1, Math.floor(image.height / 3));
+      const slot = slotPos(side, index);
       return {
         key: `${side}:${index}`,
         defId,
@@ -228,15 +328,23 @@ export class CombatScene implements Scene {
         cooldowns: {},
         defending: false,
         image,
-        x: side === 'enemy' ? 60 + col * 28 : 260 - col * 28,
-        y: 80 + row * 26 + col * 8,
+        fw,
+        fh,
+        drawW: Math.round(fw * DRAW_SCALE),
+        drawH: Math.round(fh * DRAW_SCALE),
+        x: slot.x,
+        y: slot.y,
+        tx: slot.x,
+        ty: slot.y,
+        hidden: false,
         ai: def.ai ?? 'basic',
         xpReward: def.xpReward ?? 0,
         bossSkillPtr: 0,
       };
     };
 
-    // Stable A/B/C labels for duplicate enemies
+    // Stable A/B/C labels for duplicate enemies. Labels use the compact
+    // shortName (never truncated mid-word at render time).
     const counts: Record<string, number> = {};
     for (const id of encounter.enemies) counts[id] = (counts[id] ?? 0) + 1;
     const seen: Record<string, number> = {};
@@ -245,21 +353,286 @@ export class CombatScene implements Scene {
         const def = combatants[id];
         const nth = (seen[id] = (seen[id] ?? 0) + 1);
         const name =
-          (def?.name ?? id.toUpperCase()) +
+          (def?.shortName ?? def?.name ?? id.toUpperCase()) +
           ((counts[id] ?? 0) > 1 ? ` ${'ABCD'[nth - 1] ?? nth}` : '');
         return buildOne(id, 'enemy', i, name);
       }),
     );
     const party = await Promise.all(
-      partyIds.map((id, i) => buildOne(id, 'party', i, combatants[id]?.name ?? id.toUpperCase())),
+      partyIds.map((id, i) =>
+        buildOne(id, 'party', i, combatants[id]?.shortName ?? combatants[id]?.name ?? id.toUpperCase()),
+      ),
     );
 
-    const scene = new CombatScene(deps, encounter, backdrop, party, enemies);
-    // Boss rooms get the boss theme; everything else the combat theme. The
-    // room's music is restored when the scene finishes.
-    audio.playMusic(encounter.backdropMood === 'boss' ? 'music_boss' : 'music_combat');
+    // Arrival props (e.g. the steamroller): loaded like any actor sheet;
+    // parked in the tableau background once the entrance ends.
+    const props = await Promise.all(
+      (encounter.arrival?.props ?? []).map(async (id, i): Promise<StageProp> => {
+        const image = await loadImage(`sprites/${id}.png`, {
+          kind: 'actor',
+          label: id.toUpperCase(),
+          color: '#8f939c',
+          frameW: 48,
+          frameH: 28,
+        });
+        const fw = Math.max(1, Math.floor(image.width / 3));
+        const fh = Math.max(1, Math.floor(image.height / 3));
+        // Park slightly left of the enemy slots so the machine stays readable
+        // behind the fighters (painter's order: props draw first).
+        const park = { x: 220 - i * 44, y: GROUND_EDGE + 2 };
+        return {
+          id,
+          image,
+          fw,
+          fh,
+          drawW: Math.round(fw * DRAW_SCALE),
+          drawH: Math.round(fh * DRAW_SCALE),
+          x: park.x,
+          y: park.y,
+          tx: park.x,
+          ty: park.y,
+          hidden: false,
+        };
+      }),
+    );
+
+    const scene = new CombatScene(deps, encounter, backdrop, party, enemies, props);
+    // The theme also cues at transition start (room side); this is the
+    // fallback for combats launched without the room transition.
+    audio.playMusic(
+      encounter.transitionKind === 'boss' || encounter.backdropMood === 'boss'
+        ? 'music_boss'
+        : 'music_combat',
+    );
     scene.pushLog(encounter.introText ?? 'AN ENCOUNTER BEGINS.');
     return scene;
+  }
+
+  // --- Battle-start transition + enemy arrival -------------------------------
+
+  private transitionMs(): number {
+    return this.encounter.transitionKind === 'boss' ? WIPE_BOSS + TITLE_BOSS : WIPE_MOB;
+  }
+
+  /** Place enemies (and props) at their entrance start positions. */
+  private initArrivalPositions(): void {
+    const a = this.arrival;
+    const edgeX = (i: number): number =>
+      a.from === 'left' ? FIELD_X - 30 - i * 16 : LOGICAL_W + 24 + i * 16;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      switch (a.kind) {
+        case 'walkIn':
+        case 'rollIn':
+          if (a.from === 'above') {
+            e.y = -20 - i * 12;
+          } else {
+            e.x = edgeX(i);
+          }
+          break;
+        case 'dropIn':
+          e.y = -24 - i * 14;
+          break;
+        case 'burstIn':
+          e.hidden = true;
+          e.y = e.ty + 14;
+          break;
+        case 'scriptedActions':
+          break; // pre-placed; the script provides the drama
+      }
+    }
+    for (const p of this.props) {
+      // Props ride in with the entrance from the same edge.
+      p.x = a.from === 'left' ? FIELD_X - p.drawW - 20 : LOGICAL_W + p.drawW + 20;
+    }
+  }
+
+  /** Per-enemy movement window inside the arrival (staggered entrances). */
+  private arrivalWindow(i: number): { start: number; end: number } {
+    const a = this.arrival;
+    if (a.kind === 'burstIn') return { start: i * 170, end: i * 170 + 300 };
+    if (this.props.length > 0 && a.kind === 'rollIn') {
+      // Ride phase (60%), then hop to the slots (40%).
+      return { start: a.ms * 0.6, end: a.ms * 0.6 + a.ms * 0.4 * 0.8 + i * 90 };
+    }
+    const travel = Math.max(300, a.ms - this.enemies.length * 110);
+    return { start: i * 110, end: i * 110 + travel };
+  }
+
+  private easeOut = (k: number): number => 1 - (1 - k) * (1 - k);
+  private easeIn = (k: number): number => k * k;
+
+  /** Drive entrance positions for the current arrival time t. */
+  private tickArrival(t: number): void {
+    const a = this.arrival;
+    // Props roll in during the first 60% of the arrival.
+    for (const p of this.props) {
+      const k = Math.min(1, t / Math.max(1, a.ms * 0.6));
+      const startX = a.from === 'left' ? FIELD_X - p.drawW - 20 : LOGICAL_W + p.drawW + 20;
+      p.x = Math.round(startX + (p.tx - startX) * this.easeOut(k));
+      p.y = p.ty;
+    }
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      const w = this.arrivalWindow(i);
+      const k = Math.min(1, Math.max(0, (t - w.start) / Math.max(1, w.end - w.start)));
+      switch (a.kind) {
+        case 'walkIn': {
+          const sx = a.from === 'left' ? FIELD_X - 30 - i * 16 : LOGICAL_W + 24 + i * 16;
+          e.x = Math.round(sx + (e.tx - sx) * k);
+          e.y = e.ty;
+          break;
+        }
+        case 'dropIn': {
+          const sy = -24 - i * 14;
+          e.x = e.tx;
+          const prev = e.y;
+          e.y = Math.round(sy + (e.ty - sy) * this.easeIn(k));
+          if (prev < e.ty && e.y >= e.ty && t > 0) {
+            this.kickShake(180, 2);
+            this.floats.push({ x: e.x, y: e.ty - e.drawH - 4, text: 'WHUMP', color: '#c9a86a', age: 0 });
+          }
+          break;
+        }
+        case 'burstIn': {
+          if (t >= w.start && e.hidden) {
+            e.hidden = false;
+            this.kickShake(260, 3);
+            audio.playSfx('sfx_rumble');
+            for (let d = 0; d < 5; d++) {
+              this.floats.push({
+                x: e.tx - 12 + d * 6,
+                y: e.ty - 6 - (d % 3) * 5,
+                text: '*',
+                color: d % 2 ? '#b8a878' : '#7a6a4a',
+                age: d * 40,
+              });
+            }
+          }
+          e.x = e.tx;
+          e.y = Math.round(e.ty + 14 * (1 - this.easeOut(k)));
+          break;
+        }
+        case 'rollIn': {
+          if (this.props.length > 0) {
+            const ride = t < a.ms * 0.6;
+            const prop = this.props[0];
+            if (ride) {
+              // Riding the machine: spaced along its roof.
+              e.x = prop.x - 10 + i * 22;
+              e.y = prop.y - Math.round(prop.drawH * 0.55);
+            } else {
+              // Hop off to the slots with a little arc.
+              const fromX = prop.tx - 10 + i * 22;
+              const fromY = prop.ty - Math.round(prop.drawH * 0.55);
+              e.x = Math.round(fromX + (e.tx - fromX) * k);
+              e.y = Math.round(fromY + (e.ty - fromY) * k - Math.sin(k * Math.PI) * 10);
+            }
+          } else {
+            const sx = a.from === 'left' ? FIELD_X - 30 - i * 16 : LOGICAL_W + 24 + i * 16;
+            e.x = Math.round(sx + (e.tx - sx) * this.easeOut(k));
+            e.y = e.ty;
+          }
+          break;
+        }
+        case 'scriptedActions':
+          break;
+      }
+    }
+  }
+
+  private arrivalMoveMs(): number {
+    if (this.enemies.length === 0) return 0;
+    let end = 0;
+    for (let i = 0; i < this.enemies.length; i++) end = Math.max(end, this.arrivalWindow(i).end);
+    return Math.max(end, this.arrival.ms);
+  }
+
+  /** Queue the authored arrival lines (after movement) exactly once. */
+  private queueArrivalLines(): void {
+    if (this.arrivalLinesQueued) return;
+    this.arrivalLinesQueued = true;
+    for (const text of this.arrival.lines) {
+      this.lineQueue.push({ text, resolve: () => undefined });
+    }
+    if (this.arrival.kind === 'scriptedActions' && this.arrival.actions?.length) {
+      this.arrivalScriptDone = false;
+      const runner = new ScriptRunner(new CombatArrivalHost(this));
+      this.arrivalRunner = runner;
+      void runner
+        .runCutscene(this.arrival.actions)
+        .catch((err: unknown) => console.warn('[combat] arrival script failed:', err))
+        .then(() => {
+          this.arrivalScriptDone = true;
+        });
+    }
+    if (this.lineQueue.length > 0) this.showLine(this.lineQueue[0].text);
+  }
+
+  private showLine(text: string): void {
+    this.lineT = 0;
+    this.pushLog(text);
+  }
+
+  /** Called by the arrival script host: display a line, resolve on advance. */
+  enqueueArrivalLine(text: string): Promise<void> {
+    if (this.arrivalSkipped) {
+      this.pushLog(text);
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      this.lineQueue.push({ text, resolve });
+      if (this.lineQueue.length === 1) this.showLine(text);
+    });
+  }
+
+  /** Called by the arrival script host: game-time wait inside combat. */
+  arrivalWait(ms: number): Promise<void> {
+    if (this.arrivalSkipped) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.arrivalTimers.push({ remaining: ms, resolve });
+    });
+  }
+
+  get arrivalState(): GameState {
+    return this.deps.state;
+  }
+
+  kickShake(ms: number, amp: number): void {
+    this.shakeFx = { t: 0, ms, amp };
+  }
+
+  private advanceLine(): void {
+    const line = this.lineQueue.shift();
+    line?.resolve();
+    if (this.lineQueue.length > 0) this.showLine(this.lineQueue[0].text);
+  }
+
+  private arrivalFinished(): boolean {
+    return this.arrivalMoveDone && this.lineQueue.length === 0 && this.arrivalScriptDone;
+  }
+
+  private arrivalSkipped = false;
+
+  /** ESC: jump the transition + arrival to their end state (skip semantics). */
+  private skipToBattle(): void {
+    this.arrivalSkipped = true;
+    for (const e of this.enemies) {
+      e.x = e.tx;
+      e.y = e.ty;
+      e.hidden = false;
+    }
+    for (const p of this.props) {
+      p.x = p.tx;
+      p.y = p.ty;
+    }
+    this.arrivalMoveDone = true;
+    this.queueArrivalLines();
+    this.arrivalRunner?.requestSkip();
+    for (const t of this.arrivalTimers.splice(0)) t.resolve();
+    for (const line of this.lineQueue.splice(0)) line.resolve();
+    this.shakeFx = null;
+    if (this.mode.kind === 'transition' || this.mode.kind === 'arrival') this.startRound();
   }
 
   // --- Helpers -------------------------------------------------------------
@@ -287,7 +660,7 @@ export class CombatScene implements Scene {
   }
 
   private pushFloat(c: Combatant, text: string, color: string): void {
-    this.floats.push({ x: c.x, y: c.y - DRAW_H - 8, text, color, age: 0 });
+    this.floats.push({ x: c.x, y: c.y - c.drawH - 8, text, color, age: 0 });
   }
 
   private statusSum(c: Combatant, stat: 'attack' | 'defense'): number {
@@ -713,16 +1086,62 @@ export class CombatScene implements Scene {
       f.y -= dtMs * 0.02;
       if (f.age > 900) this.floats.splice(i, 1);
     }
+    if (this.shakeFx) {
+      this.shakeFx.t += dtMs;
+      if (this.shakeFx.t >= this.shakeFx.ms) this.shakeFx = null;
+    }
+    for (let i = this.arrivalTimers.length - 1; i >= 0; i--) {
+      const t = this.arrivalTimers[i];
+      t.remaining -= dtMs;
+      if (t.remaining <= 0) {
+        this.arrivalTimers.splice(i, 1);
+        t.resolve();
+      }
+    }
 
     const input = this.deps.game.input;
     const mode = this.mode;
 
     switch (mode.kind) {
-      case 'intro': {
+      // Input LOCKED during the transition and the arrival; ESC skips to the
+      // arrival's end state (cutscene semantics).
+      case 'transition': {
         mode.t += dtMs;
-        if (mode.t > 1400 || input.consumeClick() || input.consumePress('Enter') || input.consumePress('Space')) {
-          this.startRound();
+        if (input.consumePress('Escape')) {
+          this.skipToBattle();
+          break;
         }
+        input.clearClicks();
+        input.clearRightClicks();
+        if (mode.t >= this.transitionMs()) {
+          this.mode = { kind: 'arrival', t: 0 };
+          this.tickArrival(0);
+        }
+        break;
+      }
+      case 'arrival': {
+        mode.t += dtMs;
+        if (input.consumePress('Escape')) {
+          this.skipToBattle();
+          break;
+        }
+        this.tickArrival(mode.t);
+        if (!this.arrivalMoveDone && mode.t >= this.arrivalMoveMs()) {
+          this.arrivalMoveDone = true;
+          this.queueArrivalLines();
+        }
+        // Lines: auto-advance on a timer; click/Enter/Space advances early.
+        const advance =
+          input.consumeClick() !== null ||
+          input.consumePress('Enter') ||
+          input.consumePress('Space');
+        if (this.lineQueue.length > 0) {
+          this.lineT += dtMs;
+          if (advance || this.lineT >= LINE_HOLD_MS) this.advanceLine();
+        }
+        input.clearClicks();
+        input.clearRightClicks();
+        if (this.arrivalFinished()) this.startRound();
         break;
       }
       case 'pause': {
@@ -766,7 +1185,7 @@ export class CombatScene implements Scene {
   }
 
   private menuRowRect(i: number): { x: number; y: number; w: number; h: number } {
-    return { x: MENU_PANEL.x + 3, y: MENU_PANEL.y + 14 + i * 10, w: MENU_PANEL.w - 6, h: 10 };
+    return { x: SIDEBAR.x + 3, y: SIDEBAR.y + 26 + i * 12, w: SIDEBAR.w - 6, h: 12 };
   }
 
   private hoverRow(p: Point, count: number): number | null {
@@ -914,9 +1333,9 @@ export class CombatScene implements Scene {
     if (click) {
       const hit = mode.candidates.findIndex(
         (c) =>
-          click.x >= c.x - DRAW_W / 2 &&
-          click.x < c.x + DRAW_W / 2 &&
-          click.y >= c.y - DRAW_H &&
+          click.x >= c.x - c.drawW / 2 &&
+          click.x < c.x + c.drawW / 2 &&
+          click.y >= c.y - c.drawH &&
           click.y < c.y + 12,
       );
       if (hit >= 0) {
@@ -932,15 +1351,28 @@ export class CombatScene implements Scene {
   // --- Render ----------------------------------------------------------------
 
   render(ctx: CanvasRenderingContext2D): void {
-    ctx.drawImage(this.backdrop, 0, 0, LOGICAL_W, LOGICAL_H);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    const inTransition = this.mode.kind === 'transition';
+    const shake = this.shakeFx
+      ? {
+          x: Math.round(Math.sin(this.shakeFx.t * 0.09) * this.shakeFx.amp * (1 - this.shakeFx.t / this.shakeFx.ms)),
+          y: Math.round(Math.cos(this.shakeFx.t * 0.13) * this.shakeFx.amp * (1 - this.shakeFx.t / this.shakeFx.ms)),
+        }
+      : { x: 0, y: 0 };
 
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
+    this.renderStage(ctx);
     this.renderTurnStrip(ctx);
     this.renderLog(ctx);
+    this.renderProps(ctx);
     this.renderCombatants(ctx);
-    this.renderPanels(ctx);
     this.renderFloats(ctx);
+    ctx.restore();
+
+    if (inTransition && this.mode.kind === 'transition') {
+      this.renderTransition(ctx, this.mode.t);
+    }
+    this.renderPanels(ctx);
     if (this.mode.kind === 'victory') this.renderVictory(ctx, this.mode.lines);
     if (this.mode.kind === 'ending') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -951,31 +1383,141 @@ export class CombatScene implements Scene {
     drawMenuCursor(ctx, this.deps.game.input.mouse);
   }
 
+  /** Backdrop + the painted ground plane every combatant is anchored to. */
+  private renderStage(ctx: CanvasRenderingContext2D): void {
+    ctx.drawImage(this.backdrop, 0, 0, LOGICAL_W, LOGICAL_H);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+
+    // Floor plane: a hard edge line at GROUND_EDGE, darker footing below it,
+    // a soft light pool where the fighters stand, and receding depth bands.
+    const floor = ctx.createLinearGradient(0, GROUND_EDGE, 0, LOGICAL_H);
+    floor.addColorStop(0, 'rgba(6,8,14,0.42)');
+    floor.addColorStop(1, 'rgba(6,8,14,0.12)');
+    ctx.fillStyle = floor;
+    ctx.fillRect(0, GROUND_EDGE, LOGICAL_W, LOGICAL_H - GROUND_EDGE);
+    ctx.fillStyle = 'rgba(255,240,210,0.28)';
+    ctx.fillRect(0, GROUND_EDGE, LOGICAL_W, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, GROUND_EDGE + 1, LOGICAL_W, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    for (const y of [GROUND_EDGE + 18, GROUND_EDGE + 38, GROUND_EDGE + 58]) {
+      ctx.fillRect(0, y, LOGICAL_W, 1);
+    }
+    const pool = ctx.createRadialGradient(FIELD_CX, 168, 8, FIELD_CX, 168, 120);
+    pool.addColorStop(0, 'rgba(255,236,190,0.10)');
+    pool.addColorStop(1, 'rgba(255,236,190,0)');
+    ctx.fillStyle = pool;
+    ctx.fillRect(0, GROUND_EDGE, LOGICAL_W, LOGICAL_H - GROUND_EDGE);
+  }
+
+  /** Directional slice-wipe in from black; boss adds the title card. */
+  private renderTransition(ctx: CanvasRenderingContext2D, t: number): void {
+    const boss = this.encounter.transitionKind === 'boss';
+    const wipeMs = boss ? WIPE_BOSS : WIPE_MOB;
+    const cols = 8;
+    const colW = Math.ceil(LOGICAL_W / cols);
+    for (let i = 0; i < cols; i++) {
+      // Staggered columns, alternating top/bottom, sweeping left to right.
+      const k = Math.min(1, Math.max(0, (t / wipeMs) * 1.6 - i * 0.085));
+      const remaining = Math.round(LOGICAL_H * (1 - k));
+      if (remaining <= 0) continue;
+      ctx.fillStyle = '#000000';
+      if (i % 2 === 0) ctx.fillRect(i * colW, 0, colW, remaining);
+      else ctx.fillRect(i * colW, LOGICAL_H - remaining, colW, remaining);
+    }
+    if (boss && t >= wipeMs) {
+      // Title card: the boss's name and level, flickering over a dark press.
+      const k = (t - wipeMs) / TITLE_BOSS;
+      const alpha = k < 0.12 ? k / 0.12 : k > 0.85 ? (1 - k) / 0.15 : 1;
+      ctx.fillStyle = `rgba(10,2,6,${0.72 * alpha})`;
+      ctx.fillRect(0, 60, LOGICAL_W, 74);
+      ctx.fillStyle = `rgba(255,110,110,${alpha})`;
+      ctx.fillRect(40, 64, LOGICAL_W - 80, 1);
+      ctx.fillRect(40, 129, LOGICAL_W - 80, 1);
+      const lead = this.enemies[0];
+      const def = lead ? this.deps.combatants[lead.defId] : undefined;
+      const flicker = Math.floor(t / 90) % 5 === 0 ? 0.55 : 1;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha * flicker);
+      drawPixelText(ctx, def?.name ?? 'BOSS', LOGICAL_W / 2, 78, '#ff6e6e', 2, 'center');
+      drawPixelText(
+        ctx,
+        `LEVEL ${def?.level ?? '??'} - ${this.encounter.backdropLabel ?? 'BOSS FIGHT'}`,
+        LOGICAL_W / 2,
+        100,
+        '#ffd9d9',
+        1,
+        'center',
+      );
+      drawPixelText(ctx, 'THE ODDS BOARD IS OPEN', LOGICAL_W / 2, 114, '#8fa3c4', 1, 'center');
+      ctx.restore();
+      if (this.shakeFx === null && k < 0.2) this.kickShake(420, 2);
+    }
+  }
+
+  /** Stage props (behind the combatants; parked in the background). */
+  private renderProps(ctx: CanvasRenderingContext2D): void {
+    for (const p of this.props) {
+      if (p.hidden) continue;
+      const dx = Math.round(p.x - p.drawW / 2);
+      const dy = Math.round(p.y - p.drawH);
+      // Drop shadow, then the idle frame (col 0/1 alternating for a chug).
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 1, p.drawW * 0.4, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const col = Math.floor(this.animMs / 260) % 2;
+      const sx = (6 + col) % 3 === 0 ? 0 : ((6 + col) % 3) * p.fw;
+      const sy = Math.floor((6 + col) / 3) * p.fh;
+      ctx.drawImage(p.image, sx, sy, p.fw, p.fh, dx, dy, p.drawW, p.drawH);
+    }
+  }
+
   private renderCombatants(ctx: CanvasRenderingContext2D): void {
+    const arriving = this.mode.kind === 'arrival' || this.mode.kind === 'transition';
     for (const c of [...this.all].sort((a, b) => a.y - b.y)) {
+      if (c.hidden) continue;
       const dead = !this.alive(c);
       if (dead && c.side === 'enemy') continue;
       const isCurrent = this.current === c && !dead;
       const bob = isCurrent && Math.floor(this.animMs / 300) % 2 === 0 ? -1 : 0;
-      const dx = Math.round(c.x - DRAW_W / 2);
-      const dy = Math.round(c.y - DRAW_H + bob);
+      const dx = Math.round(c.x - c.drawW / 2);
+      const dy = Math.round(c.y - c.drawH + bob);
+      const moving = arriving && c.side === 'enemy' && (c.x !== c.tx || c.y !== c.ty);
+
+      // Feet-anchored drop shadow: the grounding cue under every fighter.
+      if (!dead) {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y - 1, Math.max(6, c.drawW * 0.32), 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       ctx.save();
       if (dead) ctx.globalAlpha = 0.3;
-      // Frame 6 = idle_right in the canonical 3x3 sheet; party mirrors to face left.
-      const sx = (6 % 3) * SPRITE_W;
-      const sy = Math.floor(6 / 3) * SPRITE_H;
-      if (c.side === 'party') {
-        ctx.translate(dx + DRAW_W, dy);
+      // Row 2 of the canonical 3x3 sheet faces right: col 0 = idle, cols 1/2
+      // walk. Party stands stage-left facing right (unmirrored); enemies
+      // stand stage-right facing left (mirrored).
+      const col = moving ? 1 + (Math.floor(this.animMs / 140) % 2) : 0;
+      const sx = col * c.fw;
+      const sy = 2 * c.fh;
+      if (c.side === 'enemy') {
+        ctx.translate(dx + c.drawW, dy);
         ctx.scale(-1, 1);
-        ctx.drawImage(c.image, sx, sy, SPRITE_W, SPRITE_H, 0, 0, DRAW_W, DRAW_H);
+        ctx.drawImage(c.image, sx, sy, c.fw, c.fh, 0, 0, c.drawW, c.drawH);
       } else {
-        ctx.drawImage(c.image, sx, sy, SPRITE_W, SPRITE_H, dx, dy, DRAW_W, DRAW_H);
+        ctx.drawImage(c.image, sx, sy, c.fw, c.fh, dx, dy, c.drawW, c.drawH);
       }
       ctx.restore();
 
-      // Name + bars
-      drawPixelText(ctx, c.name.slice(0, 12), c.x, c.y - DRAW_H - 7, isCurrent ? '#ffe9a8' : '#d8ecff', 1, 'center');
+      // Name label: shortName-based, wrapped on spaces - NEVER cut mid-word.
+      const nameLines = this.nameLines(c.name);
+      const nameColor = isCurrent ? '#ffe9a8' : '#d8ecff';
+      nameLines.forEach((line, li) => {
+        const ly = c.y - c.drawH - 7 - (nameLines.length - 1 - li) * 7;
+        drawPixelText(ctx, line, c.x, ly, nameColor, 1, 'center');
+      });
       const barX = c.x - 17;
       ctx.fillStyle = '#1a1420';
       ctx.fillRect(barX, c.y + 2, 34, 4);
@@ -1010,18 +1552,39 @@ export class CombatScene implements Scene {
       if (this.mode.kind === 'target') {
         const idx = this.mode.candidates.indexOf(c);
         if (idx >= 0 && idx === this.mode.index && Math.floor(this.animMs / 250) % 2 === 0) {
+          const topY = c.y - c.drawH - 7 * nameLines.length;
           ctx.fillStyle = '#ff6e6e';
-          ctx.fillRect(c.x - 3, c.y - DRAW_H - 15, 7, 2);
-          ctx.fillRect(c.x - 2, c.y - DRAW_H - 13, 5, 2);
-          ctx.fillRect(c.x - 1, c.y - DRAW_H - 11, 3, 2);
+          ctx.fillRect(c.x - 3, topY - 8, 7, 2);
+          ctx.fillRect(c.x - 2, topY - 6, 5, 2);
+          ctx.fillRect(c.x - 1, topY - 4, 3, 2);
         }
       }
       // Current-turn marker
       if (isCurrent && this.mode.kind !== 'target') {
         ctx.fillStyle = '#3fd9ff';
-        ctx.fillRect(c.x - 1, c.y - DRAW_H - 12, 3, 3);
+        ctx.fillRect(c.x - 1, c.y - c.drawH - 7 * nameLines.length - 5, 3, 3);
       }
     }
+  }
+
+  /** Wrap a combat name on word boundaries so labels never cut mid-word. */
+  private nameLines(name: string): string[] {
+    const MAX_W = 48;
+    if (pixelTextWidth(name) <= MAX_W) return [name];
+    const words = name.split(' ');
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      const next = cur ? `${cur} ${w}` : w;
+      if (cur && pixelTextWidth(next) > MAX_W) {
+        lines.push(cur);
+        cur = w;
+      } else {
+        cur = next;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.slice(0, 2);
   }
 
   private renderTurnStrip(ctx: CanvasRenderingContext2D): void {
@@ -1029,7 +1592,11 @@ export class CombatScene implements Scene {
     let x = 4;
     for (let i = 0; i < this.order.length; i++) {
       const c = this.order[i];
-      const label = c.name.slice(0, 7);
+      // HUD chips: the full short name when it fits, else the first word
+      // (plus any A/B duplicate suffix) - never truncated mid-word.
+      const suffix = /\s[A-D]$/.test(c.name) ? c.name.slice(-2) : '';
+      const label =
+        pixelTextWidth(c.name) <= 44 ? c.name : c.name.split(' ')[0].concat(suffix);
       const w = pixelTextWidth(label) + 6;
       const isCurrent = i === this.turnIndex;
       const dead = !this.alive(c);
@@ -1047,12 +1614,19 @@ export class CombatScene implements Scene {
   }
 
   private renderLog(ctx: CanvasRenderingContext2D): void {
-    if (!this.logLine || this.logAge > 3500) return;
-    const w = pixelTextWidth(this.logLine.slice(0, 76)) + 8;
-    const x = Math.floor((LOGICAL_W - w) / 2);
+    // Arrival lines stay up until advanced; battle log fades after 3.5s.
+    const arrivalLine = this.mode.kind === 'arrival' || this.mode.kind === 'transition';
+    if (!this.logLine || (!arrivalLine && this.logAge > 3500)) return;
+    const lines = wrapText(this.logLine, 74);
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(x, 16, w, 9);
-    drawPixelText(ctx, this.logLine.slice(0, 76), LOGICAL_W / 2, 18, '#e6eeff', 1, 'center');
+    lines.slice(0, 3).forEach((line, i) => {
+      const w = pixelTextWidth(line) + 8;
+      const x = Math.floor((LOGICAL_W - w) / 2);
+      ctx.fillRect(x, 16 + i * 9, w, 9);
+    });
+    lines.slice(0, 3).forEach((line, i) => {
+      drawPixelText(ctx, line, LOGICAL_W / 2, 18 + i * 9, '#e6eeff', 1, 'center');
+    });
   }
 
   private renderPanels(ctx: CanvasRenderingContext2D): void {
@@ -1061,8 +1635,11 @@ export class CombatScene implements Scene {
       this.mode.kind === 'menu' || this.mode.kind === 'submenu' || this.mode.kind === 'target';
     if (!c || c.side !== 'party' || !inMenu) return;
 
-    outlinedPanel(ctx, MENU_PANEL.x, MENU_PANEL.y, MENU_PANEL.w, MENU_PANEL.h, '#0e1420', '#3fd9ff');
-    drawPixelText(ctx, `${c.name} - LV ${this.deps.state.level}`, MENU_PANEL.x + 4, MENU_PANEL.y + 4, '#3fd9ff');
+    // LEFT sidebar (~25% width): current actor at top, vertical actions,
+    // wrapped context/help text at the bottom. The right 75% stays tableau.
+    outlinedPanel(ctx, SIDEBAR.x, SIDEBAR.y, SIDEBAR.w, SIDEBAR.h, '#0e1420', '#3fd9ff');
+    drawPixelText(ctx, c.name, SIDEBAR.x + 4, SIDEBAR.y + 4, '#3fd9ff');
+    drawPixelText(ctx, `LV ${this.deps.state.level}`, SIDEBAR.x + 4, SIDEBAR.y + 12, '#8fa3c4');
 
     let rows: Array<{ label: string; dim: boolean }> = [];
     let selected = -1;
@@ -1080,7 +1657,7 @@ export class CombatScene implements Scene {
           : 'ARROWS + ENTER, OR CLICK.';
     } else if (this.mode.kind === 'submenu' && this.mode.menu === 'skills') {
       const list = this.skillEntries(c);
-      rows = list.map((s) => ({ label: s.name.slice(0, 16), dim: !this.canUseSkill(c, s) }));
+      rows = list.map((s) => ({ label: s.name.slice(0, 17), dim: !this.canUseSkill(c, s) }));
       selected = this.mode.index;
       const s = list[this.mode.index];
       if (s) {
@@ -1090,7 +1667,7 @@ export class CombatScene implements Scene {
       } else info = 'NO SKILLS KNOWN.';
     } else if (this.mode.kind === 'submenu') {
       const list = this.itemEntries();
-      rows = list.map((e) => ({ label: `${e.def.name.slice(0, 13)} X${e.count}`, dim: false }));
+      rows = list.map((e) => ({ label: `${e.def.name.slice(0, 14)} X${e.count}`, dim: false }));
       selected = this.mode.index;
       const e = list[this.mode.index];
       info = e ? e.def.description : 'NO USABLE ITEMS. THE AUDIENCE WINCES.';
@@ -1102,15 +1679,18 @@ export class CombatScene implements Scene {
       if (isSel) {
         ctx.fillStyle = 'rgba(255,233,168,0.12)';
         ctx.fillRect(r.x, r.y, r.w, r.h);
-        drawPixelText(ctx, '>', r.x + 2, r.y + 2, '#ffe9a8');
+        drawPixelText(ctx, '>', r.x + 2, r.y + 3, '#ffe9a8');
       }
-      drawPixelText(ctx, row.label, r.x + 9, r.y + 2, row.dim ? '#4a586f' : isSel ? '#ffe9a8' : '#b8c8e0');
+      drawPixelText(ctx, row.label, r.x + 9, r.y + 3, row.dim ? '#4a586f' : isSel ? '#ffe9a8' : '#b8c8e0');
     });
 
-    outlinedPanel(ctx, INFO_PANEL.x, INFO_PANEL.y, INFO_PANEL.w, INFO_PANEL.h, '#0e1420', '#39465e');
-    const lines = wrapText(info, Math.floor((INFO_PANEL.w - 10) / 4));
-    lines.slice(0, 7).forEach((line, i) => {
-      drawPixelText(ctx, line, INFO_PANEL.x + 5, INFO_PANEL.y + 5 + i * 8, '#8fa3c4');
+    // Info block at the sidebar's bottom, wrapped to the narrow column.
+    const infoY = SIDEBAR.y + 92;
+    ctx.fillStyle = '#39465e';
+    ctx.fillRect(SIDEBAR.x + 3, infoY - 4, SIDEBAR.w - 6, 1);
+    const lines = wrapText(info, Math.floor((SIDEBAR.w - 8) / 4));
+    lines.slice(0, 10).forEach((line, i) => {
+      drawPixelText(ctx, line, SIDEBAR.x + 4, infoY + i * 8, '#8fa3c4');
     });
   }
 
@@ -1146,5 +1726,104 @@ export class CombatScene implements Scene {
       );
     });
     drawPixelText(ctx, 'CLICK OR ENTER', LOGICAL_W / 2, y + h - 9, '#8fa3c4', 1, 'center');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Arrival script host: lets `arrival.kind === 'scriptedActions'` run real
+// ScriptAction[] through the shared runner inside the combat tableau.
+// Narration/say become awaitable combat banner lines; waits and cues work;
+// world-only actions (rooms, actors, camera) are safe no-ops with a warning.
+// ---------------------------------------------------------------------------
+
+class CombatArrivalHost implements ScriptHost {
+  constructor(private readonly scene: CombatScene) {}
+
+  get state(): GameState {
+    return this.scene.arrivalState;
+  }
+
+  private noop(what: string): void {
+    console.warn(`[combat] arrival script: "${what}" is a no-op inside combat`);
+  }
+
+  currentRoomId(): string {
+    return this.state.currentRoom;
+  }
+  narrate(text: string): Promise<void> {
+    return this.scene.enqueueArrivalLine(text);
+  }
+  sayLine(actorId: string, text: string): Promise<void> {
+    return this.scene.enqueueArrivalLine(`${actorId.toUpperCase()}: ${text}`);
+  }
+  runDialogue(): Promise<void> {
+    this.noop('startDialogue');
+    return Promise.resolve();
+  }
+  getItemDef(): ItemDef | undefined {
+    return undefined;
+  }
+  getCutscene(): CutsceneDef | undefined {
+    return undefined;
+  }
+  walkPlayerTo(): Promise<void> {
+    this.noop('walkPlayerTo');
+    return Promise.resolve();
+  }
+  moveActor(): Promise<void> {
+    this.noop('moveActor');
+    return Promise.resolve();
+  }
+  spawnActor(spec: { actorId: string; sheet: SpriteSheetDef; x: number; y: number; anim?: string; facing?: Facing }): Promise<void> {
+    this.noop(`spawnActor(${spec.actorId})`);
+    return Promise.resolve();
+  }
+  despawnActor(): void {
+    this.noop('despawnActor');
+  }
+  facePlayer(): void {
+    this.noop('facePlayer');
+  }
+  playAnim(): void {
+    this.noop('playAnim');
+  }
+  wait(ms: number): Promise<void> {
+    return this.scene.arrivalWait(ms);
+  }
+  gotoRoom(roomId: string, _spawn?: SpawnPoint): Promise<void> {
+    this.noop(`gotoRoom(${roomId})`);
+    return Promise.resolve();
+  }
+  scriptFade(): Promise<void> {
+    return Promise.resolve();
+  }
+  cameraPan(): Promise<void> {
+    return Promise.resolve();
+  }
+  setLetterbox(): void {
+    // The transition/arrival already locks input; letterbox is a no-op here.
+  }
+  shake(ms: number, magnitude: number): Promise<void> {
+    this.scene.kickShake(ms, magnitude);
+    return this.scene.arrivalWait(ms);
+  }
+  refreshBackground(): Promise<void> {
+    return Promise.resolve();
+  }
+  awardAchievement(id: string): void {
+    this.noop(`awardAchievement(${id})`);
+  }
+  killPlayer(): void {
+    this.noop('killPlayer');
+  }
+  quitToTitle(): void {
+    this.noop('quitToTitle');
+  }
+  runEncounter(): Promise<'victory' | 'defeat' | 'fled' | null> {
+    this.noop('startCombat');
+    return Promise.resolve(null);
+  }
+  getEncounter(): EncounterDef | undefined {
+    return undefined;
   }
 }

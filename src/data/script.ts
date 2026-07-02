@@ -48,6 +48,10 @@ export type ScriptAction =
   /** Logged no-op until the audio system lands; keep cue ids stable. */
   | { type: 'musicCue'; id: string }
   | { type: 'sfxCue'; id: string }
+  /** Screen shake + dust plume for `ms` at `magnitude` px; awaits the end. */
+  | { type: 'shake'; ms: number; magnitude: number }
+  /** Re-resolve the room background (flag-gated variants) and swap it live. */
+  | { type: 'refreshBackground' }
   /** Play a registered cutscene (once per scene:<id>:played unless repeatable). */
   | { type: 'playCutscene'; id: string }
   /** Kill the player: aborts the running script and opens the death dialog. */
@@ -162,6 +166,10 @@ export const setLetterbox = (on: boolean): ScriptAction => ({ type: 'setLetterbo
 export const musicCue = (id: string): ScriptAction => ({ type: 'musicCue', id });
 
 export const sfxCue = (id: string): ScriptAction => ({ type: 'sfxCue', id });
+
+export const shake = (ms: number, magnitude = 2): ScriptAction => ({ type: 'shake', ms, magnitude });
+
+export const refreshBackground = (): ScriptAction => ({ type: 'refreshBackground' });
 
 export const playCutscene = (id: string): ScriptAction => ({ type: 'playCutscene', id });
 

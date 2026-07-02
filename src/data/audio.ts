@@ -300,6 +300,8 @@ export const MOOD_MUSIC: Record<Mood, string> = {
 export const CUE_MUSIC: Record<string, string> = {
   silence: 'stop',
   act1_collapse_theme: 'music_cold',
+  collapse_hit: 'music_boss',
+  act1_aftermath: 'music_cold',
   system_sting: 'music_boss',
   descent_drone: 'music_dungeon',
   interface_boot: 'music_safe',

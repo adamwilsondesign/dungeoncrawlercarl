@@ -21,7 +21,10 @@ export const characters: Record<string, CharacterDef> = {
   },
   donut: {
     id: 'donut',
+    // Dialogue plates carry the full title; HUD chips and combat labels use
+    // the shortName (never truncated mid-word).
     name: 'PRINCESS DONUT',
+    shortName: 'DONUT',
     // Purple: her color of choice (accessories, name plate) - fur is tortie.
     color: '#b08ad8',
     portrait: { characterId: 'donut', expressions: ['neutral', 'smug'] },

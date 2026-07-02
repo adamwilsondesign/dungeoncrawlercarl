@@ -92,7 +92,7 @@ export class Room {
   /** Full background width; wider than 320 enables cameraPan. */
   readonly width: number;
 
-  private readonly background: LoadedImage;
+  private background: LoadedImage;
   private readonly bands: RoomDef['scaleBands'];
 
   private constructor(def: RoomDef, background: LoadedImage, grid: WalkGrid, actors: Actor[]) {
@@ -104,13 +104,20 @@ export class Room {
     this.width = Math.max(LOGICAL_W, def.backgroundWidth ?? LOGICAL_W);
   }
 
-  /** Load background, walkmask and actor sheets (placeholders where missing). */
-  static async load(def: RoomDef): Promise<Room> {
-    const background = await loadImage(def.backgroundPath, {
+  /**
+   * Load background, walkmask and actor sheets (placeholders where missing).
+   * `bg` overrides the base background (flag-gated variants, resolved by the
+   * caller who has GameState access).
+   */
+  static async load(
+    def: RoomDef,
+    bg?: { path: string; label: string; draw?: RoomDef['placeholderArtDraw'] },
+  ): Promise<Room> {
+    const background = await loadImage(bg?.path ?? def.backgroundPath, {
       kind: 'background',
-      label: def.label,
+      label: bg?.label ?? def.label,
       mood: def.backgroundMood,
-      draw: def.placeholderArtDraw,
+      draw: bg ? bg.draw : def.placeholderArtDraw,
     });
 
     let grid: WalkGrid;
@@ -154,6 +161,11 @@ export class Room {
 
   addActor(actor: Actor): void {
     this.actors.push(actor);
+  }
+
+  /** Swap the background live (flag-gated variants, e.g. the R01 collapse). */
+  setBackground(image: LoadedImage): void {
+    this.background = image;
   }
 
   removeActor(id: string): boolean {
@@ -304,6 +316,11 @@ export class RoomScene implements Scene, ScriptHost {
   private fadeTween: Tween | null = null;
   private letterboxOn = false;
   private letterboxT = 0;
+  // Screen shake + dust plume (the shake script action / combat intros)
+  private shakeFx: { t: number; ms: number; amp: number } | null = null;
+  private readonly dust: Array<{ x: number; y: number; vx: number; vy: number; age: number; ttl: number; c: string }> = [];
+  // Pre-combat flash (mob = quick pop, boss = heavier strobes)
+  private combatFlash: { t: number; ms: number; boss: boolean } | null = null;
 
   private dying = false;
   private pendingRoomEnter = false;
@@ -426,7 +443,7 @@ export class RoomScene implements Scene, ScriptHost {
     this.finishScriptWalk(true);
     for (const move of this.sceneMovers.splice(0)) move.resolve();
 
-    const room = await Room.load(def);
+    const room = await Room.load(def, this.resolveBackgroundSpec(def));
     const sheet = this.content.player.sheet;
     const image = await loadImage(sheet.path, {
       kind: 'actor',
@@ -660,6 +677,51 @@ export class RoomScene implements Scene, ScriptHost {
     if (this.runner.skipping) this.letterboxT = on ? 1 : 0;
   }
 
+  shake(ms: number, magnitude: number): Promise<void> {
+    if (this.runner.skipping) return Promise.resolve();
+    this.shakeFx = { t: 0, ms, amp: magnitude };
+    // Dust plume: debris motes kicked up from the floor line, drifting up.
+    for (let i = 0; i < 26; i++) {
+      this.dust.push({
+        x: Math.random() * LOGICAL_W,
+        y: 104 + Math.random() * 60,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -8 - Math.random() * 18,
+        age: 0,
+        ttl: 900 + Math.random() * 900,
+        c: Math.random() < 0.5 ? 'rgba(180,170,150,0.6)' : 'rgba(120,115,105,0.5)',
+      });
+    }
+    return this.wait(ms);
+  }
+
+  /** The active flag-gated background variant for a room, if any. */
+  private resolveBackgroundSpec(def: RoomDef): {
+    path: string;
+    label: string;
+    draw?: RoomDef['placeholderArtDraw'];
+  } {
+    for (const alt of def.altBackgrounds ?? []) {
+      if (this.state.getFlag(alt.flag)) {
+        return { path: alt.path, label: alt.label ?? def.label, draw: alt.draw };
+      }
+    }
+    return { path: def.backgroundPath, label: def.label, draw: def.placeholderArtDraw };
+  }
+
+  async refreshBackground(): Promise<void> {
+    const room = this.room;
+    if (!room) return;
+    const bg = this.resolveBackgroundSpec(room.def);
+    const image = await loadImage(bg.path, {
+      kind: 'background',
+      label: bg.label,
+      mood: room.def.backgroundMood,
+      draw: bg.draw,
+    });
+    room.setBackground(image);
+  }
+
   awardAchievement(id: string): void {
     const key = `ach:${id}`;
     if (this.state.getFlag(key)) return; // idempotent
@@ -693,6 +755,15 @@ export class RoomScene implements Scene, ScriptHost {
       console.warn(`[combat] unknown encounter "${encounterId}"`);
       return null;
     }
+    // Scene-level battle transition, world side: the theme cues at transition
+    // start, then a flash (mob) or flash + shake (boss) plays over the room
+    // before the combat scene wipes in on top.
+    const boss = encounter.transitionKind === 'boss';
+    audio.playMusic(boss || encounter.backdropMood === 'boss' ? 'music_boss' : 'music_combat');
+    console.info(`[combat] transition: ${boss ? 'boss' : 'mob'} (${encounterId})`);
+    this.combatFlash = { t: 0, ms: boss ? 650 : 300, boss };
+    if (boss) void this.shake(650, 3);
+    await this.wait(boss ? 650 : 300);
     const scene = await CombatScene.create(
       {
         game: this.game,
@@ -959,6 +1030,35 @@ export class RoomScene implements Scene, ScriptHost {
       this.letterboxT < target
         ? Math.min(target, this.letterboxT + step)
         : Math.max(target, this.letterboxT - step);
+
+    if (this.shakeFx) {
+      this.shakeFx.t += dtMs;
+      if (this.shakeFx.t >= this.shakeFx.ms) this.shakeFx = null;
+    }
+    for (let i = this.dust.length - 1; i >= 0; i--) {
+      const p = this.dust[i];
+      p.age += dtMs;
+      p.x += (p.vx * dtMs) / 1000;
+      p.y += (p.vy * dtMs) / 1000;
+      p.vy += (6 * dtMs) / 1000; // drift slows as it rises
+      if (p.age > p.ttl) this.dust.splice(i, 1);
+    }
+    if (this.combatFlash) {
+      this.combatFlash.t += dtMs;
+      if (this.combatFlash.t >= this.combatFlash.ms) this.combatFlash = null;
+    }
+  }
+
+  /** Current shake pixel offset (0,0 when idle). */
+  private shakeOffset(): Point {
+    const fx = this.shakeFx;
+    if (!fx) return { x: 0, y: 0 };
+    const decay = 1 - fx.t / fx.ms;
+    const a = fx.amp * decay;
+    return {
+      x: Math.round(Math.sin(fx.t * 0.09) * a),
+      y: Math.round(Math.cos(fx.t * 0.13) * a),
+    };
   }
 
   private updateLive(dtMs: number): void {
@@ -1324,9 +1424,18 @@ export class RoomScene implements Scene, ScriptHost {
     const isTop = this.game.isTop(this);
 
     if (room) {
+      const shake = this.shakeOffset();
       ctx.save();
-      ctx.translate(-Math.round(this.cameraX), 0);
+      ctx.translate(-Math.round(this.cameraX) + shake.x, shake.y);
       room.draw(ctx);
+      // Dust plume motes (shake action / collapse beat)
+      for (const p of this.dust) {
+        const fade = p.age > p.ttl * 0.6 ? 1 - (p.age - p.ttl * 0.6) / (p.ttl * 0.4) : 1;
+        ctx.globalAlpha = Math.max(0, fade);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), p.age % 400 < 200 ? 2 : 1, 1);
+      }
+      ctx.globalAlpha = 1;
       this.debug.render(ctx, {
         grid: room.grid,
         path:
@@ -1416,6 +1525,20 @@ export class RoomScene implements Scene, ScriptHost {
     alpha = Math.max(alpha, this.scriptFadeAlpha);
     if (alpha > 0) {
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    }
+
+    // Pre-combat flash: mob = one hard white pop; boss = heavier strobes
+    // trending red. Renders over everything (the combat scene wipes in next).
+    if (this.combatFlash) {
+      const f = this.combatFlash;
+      const k = f.t / f.ms;
+      const pulses = f.boss ? 3 : 2;
+      const wave = Math.abs(Math.sin(k * Math.PI * pulses));
+      const strength = wave * (f.boss ? 0.85 : 0.7) * (1 - k * 0.25);
+      ctx.fillStyle = f.boss
+        ? `rgba(255,${Math.round(200 - 140 * k)},${Math.round(190 - 160 * k)},${strength})`
+        : `rgba(255,255,255,${strength})`;
       ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
     }
 

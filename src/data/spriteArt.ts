@@ -8,7 +8,7 @@
  * small set of body plans; PortraitDesign drives the drawn dialogue faces.
  */
 
-export type BodyPlan = 'human' | 'cat' | 'small' | 'bulky' | 'critter' | 'sphere';
+export type BodyPlan = 'human' | 'cat' | 'small' | 'bulky' | 'critter' | 'sphere' | 'machine';
 
 export interface SpriteDesign {
   plan: BodyPlan;
@@ -291,6 +291,16 @@ export const spriteDesigns: Record<string, SpriteDesign> = {
     torso: '#e8a4b0',
     patches: ['#8f939c', '#d8dbe0', '#c87884'],
     tusks: true,
+  },
+  // --- Props ---
+  // The goblin digging machine: a crude spike-wheeled dieselpunk steamroller,
+  // wide and low. Used as an encounter arrival prop (and available as a scene
+  // element); overridable with painted art at sprites/steamroller.png.
+  'sprites/steamroller.png': {
+    plan: 'machine',
+    skin: '#6b5a45', // rusted hull
+    torso: '#4a4a52', // iron plating
+    patches: ['#8f939c', '#2c2c34', '#b0623a'],
   },
 };
 
