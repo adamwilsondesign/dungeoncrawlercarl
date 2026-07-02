@@ -21,7 +21,7 @@ import type {
   SpriteSheetDef,
 } from '../data/types';
 import type { GameState } from './state';
-import { acquiredLine, goldLine } from './verbs';
+import { acquiredLine, goldLine, xpLine } from './verbs';
 
 /** Thrown by killPlayer to unwind the running script cleanly. */
 export class ScriptAbort extends Error {
@@ -270,6 +270,15 @@ export class ScriptRunner {
       case 'learnSkill':
         state.learnSkill(action.memberId, action.skillId);
         break;
+      case 'giveXp': {
+        const before = state.level;
+        state.addXp(action.amount);
+        await host.narrate(xpLine(action.amount));
+        if (state.level > before) {
+          await host.narrate(`LEVEL UP! PARTY REACHES LEVEL ${state.level}. Try to act like this was the plan.`);
+        }
+        break;
+      }
       case 'startCombat': {
         const encounter = host.getEncounter(action.encounterId);
         if (!encounter) {

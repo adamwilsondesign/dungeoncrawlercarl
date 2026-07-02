@@ -89,6 +89,39 @@ export const combatants: Record<string, CombatantDef> = {
     xpReward: 40,
     ai: 'caster',
   },
+  // --- Act II part 2: the workshop clan ---
+  goblin_scrapper: {
+    id: 'goblin_scrapper',
+    name: 'GOBLIN SCRAPPER',
+    color: '#8fb05a',
+    sprite: 'sprites/goblin_scrapper.png',
+    stats: { maxHp: 16, hp: 16, str: 5, dex: 5, con: 3, int: 3, spd: 6 },
+    skills: [],
+    xpReward: 30,
+    ai: 'basic',
+  },
+  goblin_stoker: {
+    id: 'goblin_stoker',
+    name: 'GOBLIN STOKER',
+    color: '#c98a4a',
+    sprite: 'sprites/goblin_stoker.png',
+    stats: { maxHp: 14, hp: 14, str: 4, dex: 4, con: 3, int: 6, spd: 5, maxMp: 8, mp: 8 },
+    skills: ['ember_spit'],
+    xpReward: 30,
+    ai: 'caster',
+  },
+  // Neighborhood boss #2. Not meant to be fought: the workshop IS the weapon
+  // (phase table on the encounter keeps head-on attempts hopeless).
+  war_chieftain: {
+    id: 'war_chieftain',
+    name: 'THE WAR CHIEFTAIN',
+    color: '#b0623a',
+    sprite: 'sprites/war_chieftain.png',
+    stats: { maxHp: 90, hp: 90, str: 12, dex: 5, con: 10, int: 3, spd: 4 },
+    skills: ['skullsplitter', 'dread_bellow'],
+    xpReward: 300,
+    ai: 'boss',
+  },
   junk_golem: {
     id: 'junk_golem',
     name: 'JUNK GOLEM',

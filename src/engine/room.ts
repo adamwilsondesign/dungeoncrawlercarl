@@ -7,7 +7,8 @@
  * transitions. It implements ScriptHost for the shared runner.
  */
 
-import type { ScriptAction } from '../data/script';
+import { combineKey, type CombineDef } from '../data/combines';
+import { giveItem, takeItem, type ScriptAction } from '../data/script';
 import type {
   CharacterDef,
   CombatantDef,
@@ -59,6 +60,7 @@ import { ScriptAbort, ScriptRunner, type ScriptHost } from './script';
 import type { GameState } from './state';
 import { ToastManager } from './toasts';
 import {
+  cantCombineLine,
   emptyClickLine,
   itemOnNothingLine,
   loadCursors,
@@ -226,6 +228,8 @@ export interface GameContent {
   skills: Record<string, SkillDef>;
   combatants: Record<string, CombatantDef>;
   encounters: Record<string, EncounterDef>;
+  /** Item-combining recipes (P8), keyed by combineKey(a, b). */
+  combines: Record<string, CombineDef>;
   startRoom: string;
 }
 
@@ -1004,12 +1008,15 @@ export class RoomScene implements Scene, ScriptHost {
           this.activeVerb,
           this.state.inventory,
           this.content.items,
+          this.state.heldItem,
         );
         if (action?.kind === 'close') this.invScreen.close();
         else if (action?.kind === 'select') {
           this.state.heldItem = action.id;
           this.activeVerb = 'item';
           this.invScreen.close();
+        } else if (action?.kind === 'combine') {
+          this.resolveCombine(action.a, action.b);
         } else if (action?.kind === 'equip') {
           this.startEquipFlow(action.id);
         } else if (action?.kind === 'look') {
@@ -1201,6 +1208,26 @@ export class RoomScene implements Scene, ScriptHost {
     const actions = handler[held] ?? handler['default'];
     if (actions) this.runScript(actions);
     else this.runLine(wrongItemLine(heldName, hotspot.name));
+  }
+
+  /**
+   * P8 combine resolution: close the inventory, drop the held item, then
+   * either run the recipe's script, the default consume-both-produce-result
+   * script, or the in-voice refusal line.
+   */
+  private resolveCombine(a: string, b: string): void {
+    this.invScreen.close();
+    this.state.heldItem = null;
+    this.activeVerb = 'walk';
+    const recipe = this.content.combines[combineKey(a, b)];
+    const nameOf = (id: string): string => this.content.items[id]?.name ?? id.toUpperCase();
+    if (!recipe) {
+      this.runLine(cantCombineLine(nameOf(a), nameOf(b)));
+    } else if (recipe.script) {
+      this.runScript(recipe.script);
+    } else if (recipe.result) {
+      this.runScript([takeItem(a), takeItem(b), giveItem(recipe.result)]);
+    }
   }
 
   private runScript(actions: readonly ScriptAction[]): void {

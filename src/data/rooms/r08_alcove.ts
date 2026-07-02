@@ -27,8 +27,8 @@ export const r08_alcove: RoomDef = {
     {
       id: 'east',
       rect: { x: 312, y: 128, w: 8, h: 64 },
-      targetRoom: 'r09_act2b_stub',
-      targetSpawn: { x: 36, y: 160 },
+      targetRoom: 'r09_approach',
+      targetSpawn: { x: 30, y: 162 },
       facing: 'right',
     },
   ],

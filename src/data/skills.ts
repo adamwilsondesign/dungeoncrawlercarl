@@ -78,6 +78,16 @@ export const skills: Record<string, SkillDef> = {
     scaling: 'str',
     description: 'Eighteen razors, royal provenance, no mana required.',
   },
+  // --- The War Chieftain ---
+  skullsplitter: {
+    id: 'skullsplitter',
+    name: 'SKULLSPLITTER',
+    cooldown: 2,
+    target: 'enemy',
+    power: 10,
+    scaling: 'str',
+    description: 'A hammer the size of a door, applied like a stamp.',
+  },
   // --- The Hoarder ---
   trash_slam: {
     id: 'trash_slam',

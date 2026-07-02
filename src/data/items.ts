@@ -86,6 +86,62 @@ export const items: Record<string, ItemDef> = {
     description: 'Somebody upstairs came prepared. It was not enough. It might be for you. DEFENSE +3.',
     equip: { slot: 'armor', defense: 3 },
   },
+  // --- Act II part 2: the chain-reaction puzzle ---
+  fuse_wick: {
+    id: 'fuse_wick',
+    name: 'FUSE WICK',
+    description:
+      'Waxed starter cord off a copper chopper. Goblins use it to wake engines. It would wake other things too.',
+  },
+  chopper_grease: {
+    id: 'chopper_grease',
+    name: 'CHOPPER GREASE',
+    description:
+      'A tin of engine grease, thick as regret. Burns slow and mean. The label is a goblin skull winking.',
+  },
+  black_powder: {
+    id: 'black_powder',
+    name: 'POWDER KEG',
+    description:
+      'A carry-size keg of blasting powder. The stenciling says NO SPARK, NO FLAME, NO EXCEPTIONS. It means it.',
+  },
+  powder_charge: {
+    id: 'powder_charge',
+    name: 'POWDER CHARGE',
+    description:
+      'Keg plus wick: a question with exactly one answer. Bare powder burns fast and rude - it wants something to slow it down.',
+  },
+  primed_charge: {
+    id: 'primed_charge',
+    name: 'PRIMED CHARGE',
+    description:
+      'Grease-slicked and wick-fitted. Slow, hot, reliable. It needs a delivery vehicle and a very good reason.',
+  },
+  flint_striker: {
+    id: 'flint_striker',
+    name: 'FLINT STRIKER',
+    description:
+      "Kivvi's spark tool. One squeeze, one spark. Point it away from everything you love, which around here is a short list.",
+  },
+  chrome_talons: {
+    id: 'chrome_talons',
+    name: 'FITTED TALONS',
+    description:
+      'Goblin-machined claw caps, sized for a very particular customer. Somebody in that workshop understood royalty. ATTACK +4.',
+    equip: { slot: 'weapon', attack: 4 },
+  },
+  goblin_wrench: {
+    id: 'goblin_wrench',
+    name: 'TORQUE WRENCH',
+    description: 'A goblin wrench with a grip worn smooth by better hands. STR +1.',
+    equip: { slot: 'trinket', statMods: { str: 1 } },
+  },
+  coal_chunk: {
+    id: 'coal_chunk',
+    name: 'COAL CHUNK',
+    description: 'Souvenir-grade coal. The dungeon assures you it will one day be a diamond. It is lying.',
+    stackable: true,
+  },
   // --- Combat consumables ---
   goblin_bomb: {
     id: 'goblin_bomb',

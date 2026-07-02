@@ -44,4 +44,16 @@ export const characters: Record<string, CharacterDef> = {
     color: '#8fd4a8',
     portrait: { characterId: 'tally', expressions: ['neutral', 'smug'] },
   },
+  kivvi: {
+    id: 'kivvi',
+    name: 'KIVVI',
+    color: '#9ec46a',
+    portrait: { characterId: 'kivvi', expressions: ['neutral', 'smug'] },
+  },
+  war_chieftain: {
+    id: 'war_chieftain',
+    name: 'THE WAR CHIEFTAIN',
+    color: '#b0623a',
+    portrait: { characterId: 'war_chieftain', expressions: ['neutral', 'angry'] },
+  },
 };

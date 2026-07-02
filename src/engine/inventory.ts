@@ -14,7 +14,9 @@ export type InventoryAction =
   | { kind: 'close' }
   | { kind: 'select'; id: string }
   | { kind: 'look'; id: string }
-  | { kind: 'equip'; id: string };
+  | { kind: 'equip'; id: string }
+  /** Held item + clicked slot: try the combines registry (P8). */
+  | { kind: 'combine'; a: string; b: string };
 
 const PANEL: Rect = { x: 8, y: 12, w: LOGICAL_W - 16, h: LOGICAL_H - 24 };
 const CLOSE: Rect = { x: PANEL.x + PANEL.w - 16, y: PANEL.y + 3, w: 12, h: 10 };
@@ -59,20 +61,23 @@ export class InventoryScreen {
   }
 
   /**
-   * Resolve a click into an action: LOOK verb examines; equipment items
-   * EQUIP; anything else selects as the held ITEM.
+   * Resolve a click into an action: LOOK verb examines; with an item already
+   * held, clicking a DIFFERENT slot is a combine intent (P8); equipment
+   * items EQUIP; anything else selects as the held ITEM.
    */
   actionAt(
     p: Point,
     verb: Verb,
     entries: readonly InventoryEntry[],
     defs: Record<string, ItemDef>,
+    heldItem: string | null = null,
   ): InventoryAction | null {
     if (inRect(p, CLOSE)) return { kind: 'close' };
     for (let i = 0; i < Math.min(entries.length, COLS * ROWS); i++) {
       if (inRect(p, slotRect(i))) {
         const id = entries[i].id;
         if (verb === 'look') return { kind: 'look', id };
+        if (heldItem && heldItem !== id) return { kind: 'combine', a: heldItem, b: id };
         if (defs[id]?.equip) return { kind: 'equip', id };
         return { kind: 'select', id };
       }

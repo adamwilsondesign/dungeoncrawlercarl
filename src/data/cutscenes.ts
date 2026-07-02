@@ -11,12 +11,15 @@ import {
   awardAchievement,
   despawnActor,
   disableHotspot,
+  enableExit,
   enableHotspot,
   equipItem,
   facePlayer,
   fadeIn,
   fadeOut,
+  giveGold,
   giveItem,
+  giveXp,
   gotoRoom,
   joinParty,
   learnSkill,
@@ -218,6 +221,76 @@ const act2DonutClaws: CutsceneDef = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// R10 — THE DETONATION (Act II's showpiece; also the War Chieftain's death.
+// Puzzle-as-kill, option (a): no cleanup fight — rewards granted here.)
+// ---------------------------------------------------------------------------
+
+const act2Detonation: CutsceneDef = {
+  id: 'act2_detonation',
+  actions: [
+    setLetterbox(true),
+    musicCue('silence'),
+    sfxCue('fuse_hiss'),
+    narrate('The fuse takes the spark and runs with it, hissing down the rail like a rumor. Somewhere behind the iron door, a very large fist knocks twice.'),
+    say('carl', 'Delivery.'),
+    wait(500),
+    sfxCue('detonation_1'),
+    fadeOut(80),
+    fadeIn(120),
+    narrate('The cart goes first. Then the doorway. Then the concept of the doorway.'),
+    sfxCue('detonation_2'),
+    fadeOut(60),
+    fadeIn(100),
+    narrate('The kegs answer each other across the shop, call and response, a choir with one hymn. The forge line catches last and sings the high note.'),
+    sfxCue('detonation_3'),
+    fadeOut(120),
+    wait(400),
+    fadeIn(300),
+    narrate('Silence. Real silence, the kind this floor does not stock. The workshop is a room-shaped memory. The boss floor is a skylight.'),
+    setFlag('chieftain:detonated', true),
+    narrate('NEIGHBORHOOD BOSS ELIMINATED: THE WAR CHIEFTAIN. METHOD: LOGISTICS. THE KILL IS CREDITED, REVIEWED, AND - OH, THE NUMBERS. LOOK AT THE NUMBERS.'),
+    addViews(31207),
+    giveXp(300),
+    giveGold(120),
+    awardAchievement('regime_change'),
+    say('donut', 'Carl. You detonated a POSTCODE. I have never been prouder or further from wanting to be held.'),
+    say('carl', 'The rail did the work. I just signed the manifest.'),
+    disableHotspot('boss_door'),
+    disableHotspot('cart_door'),
+    disableHotspot('kegs'),
+    enableHotspot('strongbox'),
+    enableExit('east'),
+    setLetterbox(false),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// R11 — the aftermath (tonal beat: the System gloats, the room does not)
+// ---------------------------------------------------------------------------
+
+const act2Aftermath: CutsceneDef = {
+  id: 'act2_aftermath',
+  actions: [
+    setLetterbox(true),
+    musicCue('silence'),
+    narrate('Smoke stands in the yard like it is waiting for someone. The choppers are on their sides. Nothing chitters.'),
+    moveActor('player', 140, 160, { speed: 30 }),
+    narrate('ACHIEVEMENT UNLOCKED: WHOLESALE! Retail violence is for lesser crawlers - you went WHOLESALE! Confetti is en route from a neighboring system!'),
+    awardAchievement('wholesale'),
+    addViews(2213),
+    narrate('The counter climbs anyway. It always climbs.'),
+    wait(600),
+    narrate("Kivvi's bench is empty. Her wrench is where wrenches go. Nothing else is where it goes."),
+    say('carl', 'She said one spark. She told me exactly what would happen. I did it anyway.'),
+    say('donut', '...You will carry this one, Carl. Set it down somewhere it can not reach the others.'),
+    wait(600),
+    narrate('THE AUDIENCE IS QUIET TOO, CRAWLER. DO NOT MISTAKE IT FOR MERCY. THEY ARE MEMORIZING YOU.'),
+    setFlag('act2:aftermath_seen', true),
+    setLetterbox(false),
+  ],
+};
+
 export const cutscenes: Record<string, CutsceneDef> = {
   [act1Intro.id]: act1Intro,
   [act1Descent.id]: act1Descent,
@@ -225,4 +298,6 @@ export const cutscenes: Record<string, CutsceneDef> = {
   [act1DonutTransformation.id]: act1DonutTransformation,
   [act2Premiere.id]: act2Premiere,
   [act2DonutClaws.id]: act2DonutClaws,
+  [act2Detonation.id]: act2Detonation,
+  [act2Aftermath.id]: act2Aftermath,
 };

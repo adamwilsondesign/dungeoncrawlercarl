@@ -70,7 +70,9 @@ export type ScriptAction =
   /** Bump the broadcast Views counter (the diegetic score; P7 gap). */
   | { type: 'addViews'; amount: number }
   /** Story skill unlock for a party member (P7 gap; e.g. Donut's claws). */
-  | { type: 'learnSkill'; memberId: string; skillId: string };
+  | { type: 'learnSkill'; memberId: string; skillId: string }
+  /** Scripted XP grant with level-ups (P8 gap: puzzle-as-kill rewards). */
+  | { type: 'giveXp'; amount: number };
 
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
@@ -187,3 +189,5 @@ export const learnSkill = (memberId: string, skillId: string): ScriptAction => (
   memberId,
   skillId,
 });
+
+export const giveXp = (amount: number): ScriptAction => ({ type: 'giveXp', amount });

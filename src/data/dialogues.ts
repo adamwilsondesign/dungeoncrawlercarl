@@ -6,7 +6,7 @@
  * All lines are original writing in the demo's house voice.
  */
 
-import { enableExit, playCutscene, setFlag } from './script';
+import { disableHotspot, enableExit, giveItem, playCutscene, setFlag } from './script';
 import type { DialogueTree } from './types';
 
 // ---------------------------------------------------------------------------
@@ -214,8 +214,78 @@ const tally: DialogueTree = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Kivvi — the pierced goblin engineer (Act II part 2 parley)
+// ---------------------------------------------------------------------------
+
+const kivvi: DialogueTree = {
+  id: 'kivvi',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'kivvi', text: 'Tk-tk. A human, walking INTO the yard. Either brave or lost. I am Kivvi. Do not touch my bike.' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'What is this place?', goto: 'yard' },
+        { text: 'Tell me about the kegs.', goto: 'kegs' },
+        { text: 'The patrol looks jumpy.', goto: 'patrol', showIf: { flag: 'goblin:covered', not: true }, once: true },
+        { text: 'Why talk to me at all?', goto: 'why', once: true },
+        { text: 'Got a spark on you?', goto: 'spark', showIf: { flag: 'goblin:striker_given', not: true } },
+        { text: "I'll be going.", goto: 'bye' },
+      ],
+    },
+    yard: {
+      lines: [
+        { speakerId: 'kivvi', text: 'Clan workshop. We build the copper choppers. Fast, loud, occasionally on fire. The good kind of occasionally.' },
+        { speakerId: 'kivvi', text: 'The big door at the back? The War Chieftain. He signs for every delivery personally. Very hands-on. Very stampy.' },
+      ],
+      goto: 'hub',
+    },
+    kegs: {
+      lines: [
+        { speakerId: 'kivvi', text: 'Blasting powder, floor to roof, plus the fuel line feeding the forge. One spark indoors and the whole shop becomes weather.', expression: 'smug' },
+        { speakerId: 'kivvi', text: 'So: no sparks. The coal cart rail runs straight past his door, so mind it. He hates waiting for coal.' },
+      ],
+      goto: 'hub',
+    },
+    patrol: {
+      onEnter: [setFlag('goblin:covered', true), disableHotspot('patrol')],
+      lines: [
+        { speakerId: 'kivvi', text: 'Them? Bored, not brave. I will whistle them down the line. You were never here, tall thing. You owe me a favor and a story.' },
+      ],
+      goto: 'hub',
+    },
+    why: {
+      lines: [
+        { speakerId: 'kivvi', text: 'The clan likes war. I like machines. Machines do not bite each other over rank. You seem machine-adjacent. Your cat is clearly management.' },
+        { speakerId: 'donut', text: 'The goblin has excellent instincts. Continue, goblin.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    spark: {
+      onEnter: [giveItem('flint_striker'), setFlag('goblin:striker_given', true)],
+      lines: [
+        { speakerId: 'kivvi', text: 'Take my striker. One squeeze, one spark. Point it away from the yard, the shop, my bike, and me. In that order, reversed.' },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'kivvi', text: 'Tk. Walk soft, tall thing. And if you hear a big voice yelling about deliveries, that is not a voice you answer.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
 export const dialogues: Record<string, DialogueTree> = {
   [mordecai.id]: mordecai,
   [donutCourt.id]: donutCourt,
   [tally.id]: tally,
+  [kivvi.id]: kivvi,
 };

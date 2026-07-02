@@ -179,6 +179,73 @@ const hoarderLair: EncounterDef = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Act II part 2 — the goblin workshop
+// ---------------------------------------------------------------------------
+
+// Optional yard skirmish. Skippable entirely by asking Kivvi to wave the
+// patrol off (flag goblin:covered disables the hotspot).
+const goblinPatrol: EncounterDef = {
+  id: 'goblin_patrol',
+  enemies: ['goblin_scrapper', 'goblin_scrapper', 'goblin_stoker'],
+  backdrop: 'backgrounds/combat_yard.png',
+  backdropLabel: 'CHOPPER YARD',
+  backdropMood: 'workshop',
+  introText: 'THE PATROL OBJECTS TO YOUR EXISTENCE. STANDARD GOBLIN ONBOARDING.',
+  rewards: { xp: 60, gold: 15 },
+  victoryScript: [
+    disableHotspot('patrol'),
+    // 'covered' doubles as 'patrol resolved' so Kivvi's offer topic hides.
+    setFlag('goblin:covered', true),
+    narrate('The survivors bolt for the workshop, chittering your description. It is not flattering. It is not wrong.'),
+  ],
+};
+
+/**
+ * THE WAR CHIEFTAIN — puzzle-as-kill, authored as option (a): the DETONATION
+ * cutscene kills him outright and grants all rewards by script; there is no
+ * cleanup fight. This encounter exists ONLY as the head-on deterrent - the
+ * phase table (Hoarder template) keeps him at 10% damage taken with the
+ * System AI mocking the attempt, steering the player back to the puzzle.
+ * Defeat is the normal recoverable death flow. (A 'chieftain:detonated'
+ * phase is included for safety, but the door is gone after the blast, so
+ * the fight is unreachable once the puzzle is solved.)
+ */
+const warChieftainLair: EncounterDef = {
+  id: 'war_chieftain_lair',
+  enemies: ['war_chieftain'],
+  backdrop: 'backgrounds/combat_chieftain.png',
+  backdropLabel: 'THE BOSS FLOOR',
+  backdropMood: 'boss',
+  noFlee: true,
+  introText: 'NEIGHBORHOOD BOSS: THE WAR CHIEFTAIN. HE HAS BEEN LIFTING ANVILS FOR THIS.',
+  phases: [
+    {
+      when: { flag: 'chieftain:detonated' },
+      enemyDamageTakenMult: 1,
+      announce: 'WHAT IS LEFT OF HIM DISAGREES WITH GRAVITY. FINISH IT.',
+    },
+    {
+      enemyDamageTakenMult: 0.1,
+      announce: 'YOUR WEAPONS BOUNCE. HE SMILES. THE ODDS BOARD STOPS TAKING BETS.',
+    },
+  ],
+  beforeTurn: (ctx) => {
+    if (ctx.round === 2 && !ctx.state.getFlag('chieftain:detonated')) {
+      return 'THE AUDIENCE SUGGESTS: THIS IS A WORKSHOP FULL OF POWDER, CRAWLER. THINK LIKE A COOK.';
+    }
+    if (ctx.round >= 4 && !ctx.state.getFlag('chieftain:detonated')) {
+      return 'DONUT: CARL. WE ARE LEAVING THE MOMENT YOU FINISH DYING.';
+    }
+  },
+  rewards: { xp: 300, gold: 120 },
+  victoryScript: [
+    narrate('IMPOSSIBLE ODDS OVERCOME. THE DUNGEON DEMANDS A STEWARDS INQUIRY. THE AUDIENCE DEMANDS A REPLAY.'),
+    awardAchievement('regime_change'),
+    setFlag('chieftain:detonated', true),
+  ],
+};
+
 export const encounters: Record<string, EncounterDef> = {
   [scrapPit.id]: scrapPit,
   [junkGolemLair.id]: junkGolemLair,
@@ -187,4 +254,6 @@ export const encounters: Record<string, EncounterDef> = {
   [mazePack.id]: mazePack,
   [mazeNest.id]: mazeNest,
   [hoarderLair.id]: hoarderLair,
+  [goblinPatrol.id]: goblinPatrol,
+  [warChieftainLair.id]: warChieftainLair,
 };

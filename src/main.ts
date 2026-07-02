@@ -1,6 +1,7 @@
 import { achievements } from './data/achievements';
 import { characters } from './data/characters';
 import { combatants } from './data/combatants';
+import { combines } from './data/combines';
 import { cutscenes } from './data/cutscenes';
 import { dialogues } from './data/dialogues';
 import { encounters } from './data/encounters';
@@ -15,7 +16,10 @@ import { r05b_maze } from './data/rooms/r05b_maze';
 import { r06_hoarder } from './data/rooms/r06_hoarder';
 import { r07_moonburger } from './data/rooms/r07_moonburger';
 import { r08_alcove } from './data/rooms/r08_alcove';
-import { r09_act2b_stub } from './data/rooms/r09_act2b_stub';
+import { r09_approach } from './data/rooms/r09_approach';
+import { r10_workshop } from './data/rooms/r10_workshop';
+import { r11_aftermath } from './data/rooms/r11_aftermath';
+import { r12_act3_stub } from './data/rooms/r12_act3_stub';
 import { skills } from './data/skills';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
@@ -55,7 +59,10 @@ const rooms: Record<string, RoomDef> = {
   [r06_hoarder.id]: r06_hoarder,
   [r07_moonburger.id]: r07_moonburger,
   [r08_alcove.id]: r08_alcove,
-  [r09_act2b_stub.id]: r09_act2b_stub,
+  [r09_approach.id]: r09_approach,
+  [r10_workshop.id]: r10_workshop,
+  [r11_aftermath.id]: r11_aftermath,
+  [r12_act3_stub.id]: r12_act3_stub,
   // Engine proving ground from P1-P5; unreachable in normal play but kept
   // registered so old saves and regression checks still load.
   [r00_test.id]: r00_test,
@@ -83,6 +90,7 @@ function boot(): void {
       skills,
       combatants,
       encounters,
+      combines,
       startRoom: r01_street.id,
     },
     state,

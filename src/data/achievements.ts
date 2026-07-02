@@ -42,6 +42,21 @@ export const achievements: Record<string, AchievementDef> = {
     name: 'PRIME TIME',
     description: 'You premiered. The galaxy is watching. Wave, or do not. They love both.',
   },
+  chemist: {
+    id: 'chemist',
+    name: 'APPLIED CHEMISTRY',
+    description: 'Assembled a charge from yard scraps. Your teachers would be proud, then arrested.',
+  },
+  regime_change: {
+    id: 'regime_change',
+    name: 'REGIME CHANGE',
+    description: 'The War Chieftain signed for one delivery. Management thanks you for the vacancy.',
+  },
+  wholesale: {
+    id: 'wholesale',
+    name: 'WHOLESALE',
+    description: 'Retail violence is for lesser crawlers. You went wholesale. The audience is still cheering.',
+  },
   first_death: {
     id: 'first_death',
     name: 'FRESH MEAT',

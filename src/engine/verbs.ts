@@ -131,3 +131,16 @@ export function itemOnNothingLine(itemName: string): string {
     `The ${itemName} is not a wand, Crawler. Aim it at something.`,
   ]);
 }
+
+/** Two inventory items with no combine recipe (P8). */
+export function cantCombineLine(nameA: string, nameB: string): string {
+  return cycleLine('cantcombine', [
+    `The ${nameA} and the ${nameB} refuse to cooperate. Chemistry cannot be forced, Crawler.`,
+    `You press the ${nameA} against the ${nameB}. Nothing fuses. The audience files this under FILLER.`,
+  ]);
+}
+
+/** giveXp confirmation (P8 gap: scripted rewards outside combat). */
+export function xpLine(amount: number): string {
+  return `EXPERIENCE AWARDED: ${amount}. The dungeon acknowledges results, not methods.`;
+}
