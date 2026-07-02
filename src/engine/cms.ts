@@ -211,17 +211,27 @@ export class CmsScene implements Scene {
     const info = document.createElement('div');
     info.style.cssText = 'flex:1;min-width:0';
     const idLine = document.createElement('div');
-    idLine.innerHTML = `<b style="color:#ffe9a8">${entry.id}</b> <span style="color:#8fa3c4">- ${entry.label}</span>`;
+    idLine.innerHTML = `<b style="color:#ffe9a8">${entry.label}</b> <span style="color:#5c7090">[${entry.category}]</span>`;
+    const fileLine = document.createElement('div');
+    const basename = entry.id.split('/').pop() ?? entry.id;
+    fileLine.innerHTML =
+      `<span style="color:#5c7090">file:</span> <b style="color:#d8ecff">${basename}</b> ` +
+      `<span style="color:#5c7090">(drop-in path: src/assets/${entry.id})</span>`;
+    const sizeLine = document.createElement('div');
+    sizeLine.className = 'cms-size';
+    sizeLine.innerHTML = `<span style="color:#5c7090">size:</span> ${
+      entry.expectW ? `${entry.expectW}x${entry.expectH} px` : 'measuring...'
+    }`;
     const specLine = document.createElement('div');
     specLine.style.color = '#7d90b0';
     specLine.textContent = entry.spec;
     const srcLine = document.createElement('div');
     srcLine.className = 'cms-src';
-    info.append(idLine, specLine, srcLine);
+    info.append(idLine, fileLine, sizeLine, specLine, srcLine);
 
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:6px;flex:none';
-    const uploadBtn = this.button('UPLOAD', () => {
+    const uploadBtn = this.button('UPLOAD REPLACEMENT', () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -273,11 +283,26 @@ export class CmsScene implements Scene {
       srcLine.innerHTML = `source: ${badge}`;
     }
     const canUpload = this.apiState === 'ok';
+    const reason =
+      this.apiState === 'offline'
+        ? 'API unreachable - run on the Vercel deploy (or vercel dev)'
+        : this.apiState === 'unauthorized'
+          ? 'admin token rejected - use SET TOKEN'
+          : this.apiState === 'unconfigured'
+            ? 'server missing ADMIN_TOKEN / Blob store'
+            : '';
     for (const sel of ['.cms-upload', '.cms-revert'] as const) {
       const btn = row.querySelector(sel);
       if (btn instanceof HTMLButtonElement) {
         btn.disabled = sel === '.cms-revert' ? !(canUpload && source === 'override') : !canUpload;
-        btn.style.opacity = btn.disabled ? '0.35' : '1';
+        btn.style.opacity = btn.disabled ? '0.45' : '1';
+        btn.title = btn.disabled
+          ? sel === '.cms-revert' && canUpload
+            ? 'nothing to revert (no Blob override active)'
+            : reason
+          : sel === '.cms-revert'
+            ? 'delete the Blob override; the bundled/procedural art returns'
+            : `replace ${entry.id} for all visitors`;
       }
     }
     void this.drawThumb(entry, row);
@@ -291,15 +316,27 @@ export class CmsScene implements Scene {
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, thumb.width, thumb.height);
+    const sizeLine = row.querySelector('.cms-size');
+    const setSize = (w: number, h: number): void => {
+      if (!(sizeLine instanceof HTMLElement)) return;
+      const mismatch = entry.expectW && (w !== entry.expectW || h !== entry.expectH);
+      sizeLine.innerHTML =
+        `<span style="color:#5c7090">size:</span> <b style="color:#d8ecff">${w}x${h} px</b>` +
+        (mismatch
+          ? ` <span style="color:#ffb46a">(expected ${entry.expectW}x${entry.expectH})</span>`
+          : '');
+    };
     if (entry.category === 'masks' && assetSource(entry.id) === 'procedural') {
       ctx.fillStyle = '#7d90b0';
       ctx.font = '10px monospace';
       ctx.fillText('generated from', 6, 26);
       ctx.fillText('room blockers', 6, 38);
+      setSize(entry.expectW ?? 320, entry.expectH ?? 200);
       return;
     }
     invalidateAsset(entry.id); // always show the CURRENT resolution
     const img = await loadImage(entry.id, entry.placeholder);
+    setSize(img.width, img.height);
     const scale = Math.min(thumb.width / img.width, thumb.height / img.height, 3);
     const w = Math.max(1, Math.floor(img.width * scale));
     const h = Math.max(1, Math.floor(img.height * scale));
