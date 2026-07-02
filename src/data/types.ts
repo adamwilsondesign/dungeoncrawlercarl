@@ -184,11 +184,155 @@ export interface ItemDef {
   description: string;
   /** Stackable items merge into one slot with a count. */
   stackable?: boolean;
+  /** Present = this item is equipment (EQUIP action in the inventory). */
+  equip?: EquipDef;
+  /** Present = usable in combat via the ITEM action (consumed on use). */
+  use?: CombatUseDef;
 }
 
 export interface InventoryEntry {
   id: string;
   count: number;
+}
+
+// ---------------------------------------------------------------------------
+// Combat
+// ---------------------------------------------------------------------------
+
+export type CoreStat = 'str' | 'dex' | 'con' | 'int' | 'spd';
+
+export interface CombatantStats {
+  maxHp: number;
+  hp: number;
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  spd: number;
+  maxMp?: number;
+  mp?: number;
+}
+
+export type StatusKind = 'buff' | 'debuff' | 'dot' | 'stun' | 'fear' | 'bleed' | 'burn';
+
+/**
+ * A status instance template. DOT kinds (burn/bleed/dot) deal `magnitude`
+ * damage at the afflicted's turn start; buff/debuff modify the composite
+ * `stat` ('attack' adds to outgoing damage base, 'defense' to damage
+ * reduction) by ±magnitude; stun skips the turn; fear gives a 50% chance to
+ * cower. Durations decrement at the afflicted's turn end.
+ */
+export interface StatusEffect {
+  id: string;
+  name: string;
+  kind: StatusKind;
+  duration: number;
+  magnitude: number;
+  stat?: 'attack' | 'defense';
+}
+
+export type SkillTarget = 'enemy' | 'allEnemies' | 'ally' | 'self' | 'allAllies';
+
+/**
+ * Skills always hit. Damage = (power + scaling stat) ± 10% − defense.
+ * Ally/self/allAllies targets with power HEAL for power + int/2 instead.
+ */
+export interface SkillDef {
+  id: string;
+  name: string;
+  mpCost?: number;
+  /** Turns between uses (per combatant). */
+  cooldown?: number;
+  target: SkillTarget;
+  power?: number;
+  /** Damage scaling stat; default 'int'. */
+  scaling?: 'str' | 'int';
+  effect?: StatusEffect;
+  description: string;
+}
+
+export type EquipSlot = 'weapon' | 'armor' | 'trinket';
+
+/** Equipment data nested on an ItemDef (the item id is the equip id). */
+export interface EquipDef {
+  slot: EquipSlot;
+  /** Weapon: added to ATTACK damage base. */
+  attack?: number;
+  /** Armor: added to damage reduction. */
+  defense?: number;
+  statMods?: Partial<Record<CoreStat | 'maxHp' | 'maxMp', number>>;
+}
+
+/** Consumable combat use (item is consumed from the shared inventory). */
+export interface CombatUseDef {
+  target: SkillTarget;
+  power?: number;
+  heal?: boolean;
+  effect?: StatusEffect;
+}
+
+/** One registry for party members and enemies alike. */
+export interface CombatantDef {
+  id: string;
+  name: string;
+  color: string;
+  /** Sprite sheet path (standard 24x32, 3x3 placeholder layout). */
+  sprite: string;
+  /** Base stats at level 1 (party) or fixed (enemies). */
+  stats: CombatantStats;
+  skills: string[];
+  /** Party members: level -> skill ids unlocked on reaching it. */
+  learnset?: Record<number, string[]>;
+  /** Enemies: XP granted when defeated. */
+  xpReward?: number;
+  /** Enemy AI: 'basic' attacks (50% skill), 'caster' prefers skills, 'boss' cycles skills then attacks. */
+  ai?: 'basic' | 'caster' | 'boss';
+}
+
+/**
+ * Boss-phase table entry. Phases are evaluated top-down each turn; the first
+ * entry whose `when` passes (no `when` = always) is active. `announce` shows
+ * once whenever the active phase changes.
+ */
+export interface EncounterPhaseDef {
+  when?: FlagCondition;
+  /** Multiplier on all damage ENEMIES take while this phase is active. */
+  enemyDamageTakenMult?: number;
+  announce?: string;
+}
+
+/** Minimal flag access handed to encounter hooks (structurally = GameState). */
+export interface CombatFlagAccess {
+  getFlag(key: string): FlagValue | undefined;
+  setFlag(key: string, value: FlagValue): void;
+}
+
+export interface CombatTurnCtx {
+  state: CombatFlagAccess;
+  round: number;
+  /** Index within the current round's turn order. */
+  turnIndex: number;
+}
+
+export interface EncounterDef {
+  id: string;
+  /** Combatant def ids; duplicates allowed (labeled A/B/C...). */
+  enemies: string[];
+  /** Party member ids for this fight; default GameState.party. Max 4. */
+  partyOverride?: string[];
+  /** Combat backdrop path (backgrounds/ filename convention). */
+  backdrop: string;
+  backdropLabel?: string;
+  backdropMood?: Mood;
+  noFlee?: boolean;
+  introText?: string;
+  victoryScript?: ScriptAction[];
+  /** Default when absent: killPlayer with an in-voice defeat reason. */
+  defeatScript?: ScriptAction[];
+  rewards?: { xp?: number; gold?: number; items?: string[] };
+  phases?: EncounterPhaseDef[];
+  /** Runs at each turn start; may set flags; returned text becomes a log line. */
+  beforeTurn?: (ctx: CombatTurnCtx) => string | void;
 }
 
 // ---------------------------------------------------------------------------

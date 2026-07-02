@@ -13,7 +13,8 @@ import type { Verb } from './verbs';
 export type InventoryAction =
   | { kind: 'close' }
   | { kind: 'select'; id: string }
-  | { kind: 'look'; id: string };
+  | { kind: 'look'; id: string }
+  | { kind: 'equip'; id: string };
 
 const PANEL: Rect = { x: 8, y: 12, w: LOGICAL_W - 16, h: LOGICAL_H - 24 };
 const CLOSE: Rect = { x: PANEL.x + PANEL.w - 16, y: PANEL.y + 3, w: 12, h: 10 };
@@ -57,13 +58,23 @@ export class InventoryScreen {
     this.visible = false;
   }
 
-  /** Resolve a click into an action (LOOK verb examines; anything else selects). */
-  actionAt(p: Point, verb: Verb, entries: readonly InventoryEntry[]): InventoryAction | null {
+  /**
+   * Resolve a click into an action: LOOK verb examines; equipment items
+   * EQUIP; anything else selects as the held ITEM.
+   */
+  actionAt(
+    p: Point,
+    verb: Verb,
+    entries: readonly InventoryEntry[],
+    defs: Record<string, ItemDef>,
+  ): InventoryAction | null {
     if (inRect(p, CLOSE)) return { kind: 'close' };
     for (let i = 0; i < Math.min(entries.length, COLS * ROWS); i++) {
       if (inRect(p, slotRect(i))) {
         const id = entries[i].id;
-        return verb === 'look' ? { kind: 'look', id } : { kind: 'select', id };
+        if (verb === 'look') return { kind: 'look', id };
+        if (defs[id]?.equip) return { kind: 'equip', id };
+        return { kind: 'select', id };
       }
     }
     return null;
@@ -75,6 +86,8 @@ export class InventoryScreen {
     defs: Record<string, ItemDef>,
     icons: ReadonlyMap<string, LoadedImage>,
     heldItem: string | null,
+    equipSummary: readonly string[] = [],
+    gold = 0,
   ): void {
     if (!this.visible) return;
 
@@ -84,6 +97,10 @@ export class InventoryScreen {
     outlinedPanel(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, '#0e1420', ACCENT);
 
     drawPixelText(ctx, 'INVENTORY', LOGICAL_W / 2, PANEL.y + 5, ACCENT, 2, 'center');
+    drawPixelText(ctx, `GOLD: ${gold}`, PANEL.x + 8, PANEL.y + 7, '#ffd166');
+    equipSummary.slice(0, 2).forEach((line, i) => {
+      drawPixelText(ctx, line.slice(0, 72), PANEL.x + 8, PANEL.y + 15 + i * 7, '#7d90b0');
+    });
 
     // Close button
     ctx.fillStyle = '#1b2432';
@@ -116,8 +133,10 @@ export class InventoryScreen {
       if (icon) {
         ctx.drawImage(icon, r.x + Math.floor((r.w - ITEM_ICON_SIZE) / 2), r.y + 3);
       }
-      const name = defs[entry.id]?.name ?? entry.id.toUpperCase();
+      const def = defs[entry.id];
+      const name = def?.name ?? entry.id.toUpperCase();
       drawPixelText(ctx, name.slice(0, 11), r.x + r.w / 2, r.y + r.h - 8, '#d8ecff', 1, 'center');
+      if (def?.equip) drawPixelText(ctx, 'E', r.x + 3, r.y + 3, ACCENT);
       if (entry.count > 1) {
         drawPixelText(ctx, `X${entry.count}`, r.x + r.w - 3 - (String(entry.count).length + 1) * 4 + 1, r.y + 3, ACCENT);
       }
@@ -125,7 +144,7 @@ export class InventoryScreen {
 
     drawPixelText(
       ctx,
-      'CLICK: TAKE - LOOK VERB: EXAMINE - ESC: CLOSE',
+      'CLICK: TAKE/EQUIP - LOOK VERB: EXAMINE - ESC: CLOSE',
       LOGICAL_W / 2,
       PANEL.y + PANEL.h - 10,
       '#8fa3c4',

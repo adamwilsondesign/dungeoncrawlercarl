@@ -1,9 +1,12 @@
 import { achievements } from './data/achievements';
 import { characters } from './data/characters';
+import { combatants } from './data/combatants';
 import { cutscenes } from './data/cutscenes';
 import { dialogues } from './data/dialogues';
+import { encounters } from './data/encounters';
 import { items } from './data/items';
 import { r00_test } from './data/rooms/r00_test';
+import { skills } from './data/skills';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
 import { AchievementsScene, ListMenuScene, TitleScene } from './engine/menus';
@@ -55,6 +58,9 @@ function boot(): void {
       items,
       cutscenes,
       achievements,
+      skills,
+      combatants,
+      encounters,
       startRoom: r00_test.id,
     },
     state,

@@ -6,13 +6,7 @@
  */
 
 import type { ScriptAction } from '../data/script';
-import type {
-  CharacterDef,
-  DialogueChoice,
-  DialogueTree,
-  FlagCondition,
-  Point,
-} from '../data/types';
+import type { CharacterDef, DialogueChoice, DialogueTree, Point } from '../data/types';
 import {
   drawPixelText,
   loadImage,
@@ -21,7 +15,7 @@ import {
   type LoadedImage,
 } from './assets';
 import { Typewriter } from './narrator';
-import type { GameState } from './state';
+import { checkFlagCondition, type GameState } from './state';
 
 // ---------------------------------------------------------------------------
 // DialogueBox
@@ -233,12 +227,6 @@ export class DialogueBox {
 // DialoguePlayer
 // ---------------------------------------------------------------------------
 
-function checkCondition(state: GameState, cond: FlagCondition): boolean {
-  const value = state.getFlag(cond.flag);
-  const base = cond.equals !== undefined ? value === cond.equals : Boolean(value);
-  return cond.not ? !base : base;
-}
-
 function onceKey(treeId: string, nodeId: string, choiceIndex: number): string {
   return `dlg:${treeId}:${nodeId}:choice${choiceIndex}`;
 }
@@ -320,7 +308,7 @@ export class DialoguePlayer {
     index: number,
   ): boolean {
     const { state } = this.deps;
-    if (choice.showIf && !checkCondition(state, choice.showIf)) return false;
+    if (choice.showIf && !checkFlagCondition(state, choice.showIf)) return false;
     if (choice.once && state.getFlag(onceKey(treeId, nodeId, index))) return false;
     return true;
   }

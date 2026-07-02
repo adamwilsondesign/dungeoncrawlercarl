@@ -20,7 +20,7 @@ export interface SaveFile {
   data: GameStateData;
 }
 
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2; // v2: party/gold/xp/level/equipment added in P5
 
 function storageKey(slot: SaveSlot): string {
   return `dcc_save_${slot}`;

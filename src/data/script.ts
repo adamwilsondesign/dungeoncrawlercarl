@@ -53,7 +53,14 @@ export type ScriptAction =
   /** Kill the player: aborts the running script and opens the death dialog. */
   | { type: 'killPlayer'; reason: string }
   /** Write the autosave slot (content checkpoints). */
-  | { type: 'autosave' };
+  | { type: 'autosave' }
+  /**
+   * Run a registered encounter. Victory: rewards land in GameState, then
+   * victoryScript runs and control returns. Defeat: defeatScript runs (or a
+   * default killPlayer). The result is stored in flag combat:<id>:result
+   * ('victory' | 'defeat' | 'fled').
+   */
+  | { type: 'startCombat'; encounterId: string };
 
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
@@ -147,3 +154,8 @@ export const playCutscene = (id: string): ScriptAction => ({ type: 'playCutscene
 export const killPlayer = (reason: string): ScriptAction => ({ type: 'killPlayer', reason });
 
 export const autosave = (): ScriptAction => ({ type: 'autosave' });
+
+export const startCombat = (encounterId: string): ScriptAction => ({
+  type: 'startCombat',
+  encounterId,
+});

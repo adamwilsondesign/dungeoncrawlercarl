@@ -19,6 +19,7 @@ import {
   say,
   setFlag,
   sfxCue,
+  startCombat,
   startDialogue,
   takeItem,
   wait,
@@ -180,6 +181,63 @@ export const r00_test: RoomDef = {
             'You touch the obelisk. It is exactly as warm as a sleeping animal. You stop touching the obelisk.',
           ),
           say('donut', 'Carl. Stop petting the ominous monolith. You do not know where it has been.'),
+        ],
+      },
+    },
+    // Combat kit: a one-time supply cache (weapon, armor, bombs, salves)
+    {
+      id: 'crate',
+      name: 'SUPPLY CACHE',
+      rect: { x: 196, y: 150, w: 26, h: 16 },
+      verbs: {
+        look: [
+          narrate('A crate stamped COMPLIMENTARY. In this dungeon that word does a lot of ominous lifting.'),
+        ],
+        hand: [
+          ifFlag(
+            'r00.crate_looted',
+            [narrate('The crate is empty. The generosity was a one-time promotional event.')],
+            [
+              walkPlayerTo(209, 172),
+              setFlag('r00.crate_looted', true),
+              narrate('The crate pops open. The dungeon has provided a starter kit and, implicitly, a threat.'),
+              giveItem('rusty_cudgel'),
+              giveItem('scrap_plate'),
+              giveItem('goblin_bomb'),
+              giveItem('goblin_bomb'),
+              giveItem('healing_salve'),
+            ],
+          ),
+        ],
+      },
+    },
+    // Mob encounter trigger (proves startCombat from a hotspot)
+    {
+      id: 'nest',
+      name: 'SKITTERING NEST',
+      rect: { x: 100, y: 56, w: 40, h: 34 },
+      verbs: {
+        look: [
+          narrate('A hole in the wall, rustling with intent. Poking it would be a commitment.'),
+        ],
+        hand: [
+          narrate('You poke the nest. The rustling stops. That is worse.'),
+          startCombat('scrap_pit'),
+        ],
+      },
+    },
+    // Boss encounter trigger (proves the phase hook)
+    {
+      id: 'junk_heap',
+      name: 'JUNK HEAP',
+      rect: { x: 272, y: 150, w: 30, h: 16 },
+      verbs: {
+        look: [
+          narrate('A pile of scrap arranged with suspicious anatomical ambition.'),
+        ],
+        hand: [
+          narrate('You pat the junk heap. The junk heap pats back.'),
+          startCombat('junk_golem_lair'),
         ],
       },
     },

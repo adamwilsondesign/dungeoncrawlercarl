@@ -12,7 +12,14 @@
  */
 
 import type { ScriptAction } from '../data/script';
-import type { CutsceneDef, Facing, ItemDef, SpawnPoint, SpriteSheetDef } from '../data/types';
+import type {
+  CutsceneDef,
+  EncounterDef,
+  Facing,
+  ItemDef,
+  SpawnPoint,
+  SpriteSheetDef,
+} from '../data/types';
 import type { GameState } from './state';
 import { acquiredLine } from './verbs';
 
@@ -64,6 +71,13 @@ export interface ScriptHost {
   awardAchievement(id: string): void;
   /** Begin the death sequence (fade + death dialog). */
   killPlayer(reason: string): void;
+  /**
+   * Run an encounter to completion. Applies rewards on victory (before
+   * resolving); returns the result, or null if the encounter is unknown.
+   * The runner handles victory/defeat scripts.
+   */
+  runEncounter(encounterId: string): Promise<'victory' | 'defeat' | 'fled' | null>;
+  getEncounter(id: string): EncounterDef | undefined;
 }
 
 export class ScriptRunner {
@@ -232,6 +246,29 @@ export class ScriptRunner {
       case 'autosave':
         state.autosave();
         break;
+      case 'startCombat': {
+        const encounter = host.getEncounter(action.encounterId);
+        if (!encounter) {
+          console.warn(`[script] startCombat: unknown encounter "${action.encounterId}"`);
+          break;
+        }
+        const result = await host.runEncounter(action.encounterId);
+        if (!result) break;
+        state.setFlag(`combat:${action.encounterId}:result`, result);
+        if (result === 'victory') {
+          if (encounter.victoryScript) await this.run(encounter.victoryScript);
+        } else if (result === 'defeat') {
+          if (encounter.defeatScript) {
+            await this.run(encounter.defeatScript);
+          } else {
+            host.killPlayer(
+              'Your party lost the fight. Decisively. The instant replay is already trending.',
+            );
+            throw new ScriptAbort();
+          }
+        }
+        break;
+      }
     }
   }
 }

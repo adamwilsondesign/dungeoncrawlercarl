@@ -10,18 +10,22 @@
 import type { ScriptAction } from '../data/script';
 import type {
   CharacterDef,
+  CombatantDef,
   CutsceneDef,
   AchievementDef,
   DialogueTree,
+  EncounterDef,
   ExitDef,
   Facing,
   HotspotDef,
   ItemDef,
   Point,
   RoomDef,
+  SkillDef,
   SpawnPoint,
   SpriteSheetDef,
 } from '../data/types';
+import { CombatScene, type CombatResult } from './combat';
 import { Actor } from './actor';
 import {
   drawPixelText,
@@ -219,6 +223,9 @@ export interface GameContent {
   items: Record<string, ItemDef>;
   cutscenes: Record<string, CutsceneDef>;
   achievements: Record<string, AchievementDef>;
+  skills: Record<string, SkillDef>;
+  combatants: Record<string, CombatantDef>;
+  encounters: Record<string, EncounterDef>;
   startRoom: string;
 }
 
@@ -654,6 +661,32 @@ export class RoomScene implements Scene, ScriptHost {
     void this.scriptFadeForDeath().then(() => this.openDeathDialog(reason));
   }
 
+  getEncounter(id: string): EncounterDef | undefined {
+    return this.content.encounters[id];
+  }
+
+  async runEncounter(encounterId: string): Promise<CombatResult | null> {
+    const encounter = this.content.encounters[encounterId];
+    if (!encounter) {
+      console.warn(`[combat] unknown encounter "${encounterId}"`);
+      return null;
+    }
+    const scene = await CombatScene.create(
+      {
+        game: this.game,
+        state: this.state,
+        items: this.content.items,
+        skills: this.content.skills,
+        combatants: this.content.combatants,
+      },
+      encounter,
+    );
+    return new Promise((resolve) => {
+      scene.onFinish = resolve;
+      this.game.pushScene(scene);
+    });
+  }
+
   private scriptFadeForDeath(): Promise<void> {
     return new Promise((resolve) => {
       this.fadeTween = { from: this.scriptFadeAlpha, to: 1, ms: 600, t: 0, resolve };
@@ -735,6 +768,51 @@ export class RoomScene implements Scene, ScriptHost {
         onCancel: () => this.game.popScene(),
       }),
     );
+  }
+
+  /** Equip an equipment item: straight to Carl solo, else pick the member. */
+  private startEquipFlow(itemId: string): void {
+    const def = this.content.items[itemId];
+    const equip = def?.equip;
+    if (!equip) return;
+    const party = this.state.party;
+    if (party.length <= 1) {
+      this.equipTo(party[0] ?? 'carl', itemId);
+      return;
+    }
+    this.game.pushScene(
+      new ListMenuScene(this.game, {
+        title: `EQUIP ${def.name}`,
+        items: party.map((id) => ({
+          label: this.content.combatants[id]?.name ?? id.toUpperCase(),
+        })),
+        footer: 'ESC: BACK',
+        onPick: (i) => {
+          this.game.popScene();
+          this.equipTo(party[i], itemId);
+        },
+        onCancel: () => this.game.popScene(),
+      }),
+    );
+  }
+
+  private equipTo(memberId: string, itemId: string): void {
+    const def = this.content.items[itemId];
+    if (!def?.equip) return;
+    if (this.state.equipItem(memberId, itemId, def.equip.slot)) {
+      const who = this.content.combatants[memberId]?.name ?? memberId.toUpperCase();
+      this.toasts.push('EQUIPPED', `${def.name} - ${who}`, '#3fd9ff');
+    }
+  }
+
+  private equipSummaryLines(): string[] {
+    return this.state.party.map((memberId) => {
+      const who = this.content.combatants[memberId]?.name ?? memberId.toUpperCase();
+      const slots = this.state.getEquipped(memberId);
+      const nameOf = (id?: string): string =>
+        id ? this.content.items[id]?.name ?? id.toUpperCase() : '-';
+      return `${who}: W:${nameOf(slots.weapon)} A:${nameOf(slots.armor)} T:${nameOf(slots.trinket)}`;
+    });
   }
 
   private doSave(slot: SaveSlot): void {
@@ -921,12 +999,19 @@ export class RoomScene implements Scene, ScriptHost {
       if (input.consumePress('Escape')) this.invScreen.close();
       const click = input.consumeClick();
       if (click) {
-        const action = this.invScreen.actionAt(click, this.activeVerb, this.state.inventory);
+        const action = this.invScreen.actionAt(
+          click,
+          this.activeVerb,
+          this.state.inventory,
+          this.content.items,
+        );
         if (action?.kind === 'close') this.invScreen.close();
         else if (action?.kind === 'select') {
           this.state.heldItem = action.id;
           this.activeVerb = 'item';
           this.invScreen.close();
+        } else if (action?.kind === 'equip') {
+          this.startEquipFlow(action.id);
         } else if (action?.kind === 'look') {
           const def = this.content.items[action.id];
           this.runLine(def?.description ?? `It's ${action.id}. The dungeon shrugs.`);
@@ -1165,6 +1250,8 @@ export class RoomScene implements Scene, ScriptHost {
         this.content.items,
         this.itemIcons,
         this.state.heldItem,
+        this.invScreen.open ? this.equipSummaryLines() : [],
+        this.state.gold,
       );
 
       // Cinematic letterbox bars
