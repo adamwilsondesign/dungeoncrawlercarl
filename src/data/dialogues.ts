@@ -283,9 +283,285 @@ const kivvi: DialogueTree = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Frank & Maggie — hostile crawlers (Act III, R12). Talk turns to threat.
+// ---------------------------------------------------------------------------
+
+const frankMaggie: DialogueTree = {
+  id: 'frank_maggie',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'frank', text: "Well. The explosion guy. We've been watching your channel, friend. Big numbers. Big, valuable numbers.", expression: 'smug' },
+        { speakerId: 'maggie', text: 'The cat alone is worth a sponsorship. Hello, kitty.', expression: 'smug' },
+        { speakerId: 'donut', text: 'The cat has a TITLE, and the title has LAWYERS.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'We want no trouble.', goto: 'trouble' },
+        { text: 'What do you two want?', goto: 'want' },
+        { text: "We're leaving now.", goto: 'leave' },
+      ],
+    },
+    trouble: {
+      lines: [
+        { speakerId: 'frank', text: "Nobody WANTS trouble. Trouble is just what's left when people want the same bridge.", expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    want: {
+      lines: [
+        { speakerId: 'maggie', text: 'Your pack, your gold, and your time slot. The audience follows loot, friend. We intend to inherit.', expression: 'smug' },
+        { speakerId: 'frank', text: 'Not here, of course. Cameras love a bottleneck. See you somewhere narrow.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    leave: {
+      onEnter: [setFlag('frank:met', true)],
+      lines: [
+        { speakerId: 'frank', text: 'Walk safe. The corridor east pinches tight by the bridge. Terrible place to be surprised in.', expression: 'smug' },
+        { speakerId: 'maggie', text: 'Give our love to the cut. Bye now.', expression: 'smug' },
+        { speakerId: 'carl', text: 'Donut. They just told us exactly where.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// The Meadow Lark crew (Act III, R13) — compact recruit trees
+// ---------------------------------------------------------------------------
+
+const brandonTree: DialogueTree = {
+  id: 'brandon',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'brandon', text: "Easy - friendly! You're the workshop crawler. I'm Brandon. Night shift at the Meadow Lark care home, back when homes existed." },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'How did you all survive?', goto: 'survive', once: true },
+        { text: 'What is blocking the stairs?', goto: 'stairs' },
+        { text: 'Train with us. We hit it together.', goto: 'recruit', showIf: { flag: 'ally:brandon', not: true } },
+        { text: 'Talk later.', goto: 'bye' },
+      ],
+    },
+    survive: {
+      lines: [
+        { speakerId: 'brandon', text: 'We got our residents down the stairs and just... kept doing the job. Feed people, watch the door, stay kind. Kindness scales, it turns out.' },
+      ],
+      goto: 'hub',
+    },
+    stairs: {
+      lines: [
+        { speakerId: 'brandon', text: 'The stairwell to Floor Two sits off the old ring line. Something huge rolls that loop day and night. Nobody crosses the platform and comes back.', expression: 'worried' },
+        { speakerId: 'brandon', text: 'Until it dies, every soul at this bridge is stuck on a floor that is closing. That is the whole problem, crawler.' },
+      ],
+      goto: 'hub',
+    },
+    recruit: {
+      onEnter: [setFlag('ally:brandon', true)],
+      lines: [
+        { speakerId: 'brandon', text: "I hoped you'd say that. I can hold a line and I can keep heads level. Count me in. Talk to the others - they follow deeds, not speeches." },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'brandon', text: 'Door is always open. Mind the drawbridge chain on your way.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
+const chrisTree: DialogueTree = {
+  id: 'chris',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'chris', text: '...Chris.' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'What is with the metal cap?', goto: 'cap', once: true },
+        { text: 'Will you fight with us?', goto: 'recruit', showIf: { flag: 'ally:chris', not: true } },
+        { text: 'Be well, Chris.', goto: 'bye' },
+      ],
+    },
+    cap: {
+      lines: [
+        { speakerId: 'chris', text: 'The dungeon gave me a skill. The cap keeps it... polite. You do not want the impolite version. Neither do I.', expression: 'worried' },
+      ],
+      goto: 'hub',
+    },
+    recruit: {
+      onEnter: [setFlag('ally:chris', true)],
+      lines: [
+        { speakerId: 'chris', text: '...Yes. Stand behind me when it gets loud.' },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'chris', text: '...Mm.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
+const yolandaTree: DialogueTree = {
+  id: 'yolanda',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'yolanda', text: 'Sit, you look terrible. Yolanda. Thirty years of nights in scrubs - I have seen worse than you, but not by much.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'Where did the bow come from?', goto: 'bow', once: true },
+        { text: 'We could use you on the raid.', goto: 'recruit', showIf: { flag: 'ally:yolanda', not: true } },
+        { text: 'Thanks, Yolanda.', goto: 'bye' },
+      ],
+    },
+    bow: {
+      lines: [
+        { speakerId: 'yolanda', text: 'Loot box. The quiver refills itself and drags when I walk, which the audience finds HILARIOUS. Laugh once and lose a toe, crawler.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    recruit: {
+      onEnter: [setFlag('ally:yolanda', true)],
+      lines: [
+        { speakerId: 'yolanda', text: "Finally, someone with a plan instead of a prayer. I'm in. I patch who I can and pin what I can't." },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'yolanda', text: 'Drink water. I mean it.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
+const imaniTree: DialogueTree = {
+  id: 'imani',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'imani', text: 'Imani. You are the one the screens keep showing.', expression: 'worried' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'That sword has seen use.', goto: 'sword', once: true },
+        { text: 'Fight beside us at the ring.', goto: 'recruit', showIf: { flag: 'ally:imani', not: true } },
+        { text: 'Rest easy, Imani.', goto: 'bye' },
+      ],
+    },
+    sword: {
+      lines: [
+        { speakerId: 'imani', text: 'The floor kept coming for the residents. I kept being between it and them. The number is not one I say out loud.', expression: 'worried' },
+        { speakerId: 'donut', text: '...The court recognizes this one. Do not stand in her lane, Carl.' },
+      ],
+      goto: 'hub',
+    },
+    recruit: {
+      onEnter: [setFlag('ally:imani', true)],
+      lines: [
+        { speakerId: 'imani', text: 'Yes. Point me at the thing that ends this. I will handle my lane.' },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'imani', text: 'Sleep when it is over.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
+const agathaTree: DialogueTree = {
+  id: 'agatha',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'agatha', text: 'You TOUCH the cart, you LOSE the hand. State your business.', expression: 'angry' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'What is in the cart?', goto: 'cart', once: true },
+        { text: 'Why the flamingo?', goto: 'flamingo', once: true },
+        { text: 'We will guard your cart during the raid.', goto: 'promise', showIf: { flag: 'agatha:cart_promised', not: true } },
+        { text: 'Good day, Agatha.', goto: 'bye' },
+      ],
+    },
+    cart: {
+      lines: [
+        { speakerId: 'agatha', text: 'Everything. Blankets, batteries, forty years of mine and none of yours. A life fits in a cart if you stack it right.', expression: 'angry' },
+      ],
+      goto: 'hub',
+    },
+    flamingo: {
+      lines: [
+        { speakerId: 'agatha', text: 'Herbert stood in my yard for thirty years and took an arrow on this floor without complaint. Show me a soldier with a better record.' },
+        { speakerId: 'donut', text: 'The bird stays, Carl. The bird has EARNED it.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    promise: {
+      onEnter: [setFlag('agatha:cart_promised', true)],
+      lines: [
+        { speakerId: 'agatha', text: 'Hm. Then you are less useless than advertised. The cart, the bird, and me - at the bridge when you come back. ALL wheels attached.' },
+      ],
+      goto: 'hub',
+    },
+    bye: {
+      lines: [
+        { speakerId: 'agatha', text: 'Walk on. And tuck your shirt in, you are on television.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
 export const dialogues: Record<string, DialogueTree> = {
   [mordecai.id]: mordecai,
   [donutCourt.id]: donutCourt,
   [tally.id]: tally,
   [kivvi.id]: kivvi,
+  [frankMaggie.id]: frankMaggie,
+  [brandonTree.id]: brandonTree,
+  [chrisTree.id]: chrisTree,
+  [yolandaTree.id]: yolandaTree,
+  [imaniTree.id]: imaniTree,
+  [agathaTree.id]: agathaTree,
 };

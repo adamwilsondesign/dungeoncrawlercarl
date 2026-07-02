@@ -26,8 +26,8 @@ export const r11_aftermath: RoomDef = {
     {
       id: 'east',
       rect: { x: 312, y: 128, w: 8, h: 64 },
-      targetRoom: 'r12_act3_stub',
-      targetSpawn: { x: 36, y: 160 },
+      targetRoom: 'r12_east',
+      targetSpawn: { x: 30, y: 162 },
       facing: 'right',
     },
   ],

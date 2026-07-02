@@ -71,6 +71,8 @@ export interface ScriptHost {
   awardAchievement(id: string): void;
   /** Begin the death sequence (fade + death dialog). */
   killPlayer(reason: string): void;
+  /** End-of-demo: unwind to the title screen (P9 gap; used by credits). */
+  quitToTitle(): void;
   /**
    * Run an encounter to completion. Applies rewards on victory (before
    * resolving); returns the result, or null if the encounter is unknown.
@@ -279,6 +281,9 @@ export class ScriptRunner {
         }
         break;
       }
+      case 'quitToTitle':
+        host.quitToTitle();
+        break;
       case 'startCombat': {
         const encounter = host.getEncounter(action.encounterId);
         if (!encounter) {

@@ -23,9 +23,11 @@ import {
   gotoRoom,
   joinParty,
   learnSkill,
+  ifFlag,
   moveActor,
   musicCue,
   narrate,
+  quitToTitle,
   say,
   setFlag,
   setLetterbox,
@@ -291,6 +293,137 @@ const act2Aftermath: CutsceneDef = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// R12 — the reverse-trap pays off (restraint: the System confirms nothing)
+// ---------------------------------------------------------------------------
+
+const act3Trap: CutsceneDef = {
+  id: 'act3_trap',
+  actions: [
+    setLetterbox(true),
+    musicCue('silence'),
+    narrate('You step into the narrow cut, loud on purpose. Behind you: two sets of footsteps that were always going to be there.'),
+    say('maggie', 'Told you. Somewhere narrow.'),
+    sfxCue('trip_snap'),
+    fadeOut(90),
+    fadeIn(160),
+    narrate('The tripline answers before you do. Dust. Ringing. Then the corridor is very still.'),
+    wait(500),
+    narrate('When it settles, the cut is empty behind you. Two packs lie where their owners chose to leave them. THE FOOTAGE IS RATED: HANDLED.'),
+    say('carl', 'They followed us into a bottleneck they picked. I just got there first.'),
+    say('donut', 'You are learning the floor, Carl. I am choosing not to examine how quickly.'),
+    giveXp(150),
+    giveGold(40),
+    awardAchievement('return_to_sender'),
+    enableExit('east'),
+    setLetterbox(false),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// R15 — the training montage (game-show flair; the crew becomes a unit)
+// ---------------------------------------------------------------------------
+
+const act3Montage: CutsceneDef = {
+  id: 'act3_montage',
+  actions: [
+    setLetterbox(true),
+    musicCue('montage_theme'),
+    narrate('TRAINING ARC DETECTED. THE AUDIENCE HAS BEEN WAITING FOR THIS EPISODE ALL SEASON.'),
+    sfxCue('weights_clank'),
+    narrate('Brandon calls lifts like med rounds. Yolanda pins bottle caps at forty paces. Chris breaks a heavy bag with his hat. Everyone pretends that was normal.'),
+    fadeOut(150),
+    fadeIn(200),
+    narrate("Imani and Donut spar. It ends in four seconds. Donut awards herself the win on style. Imani allows it, which is how you know who won."),
+    say('donut', 'We are calling that a draw, and I am calling myself the winner of the draw.'),
+    fadeOut(150),
+    fadeIn(200),
+    narrate('Days compress the way they only do on camera. Calluses, drills, one shared pot of terrible coffee. A crew, assembling itself around a cook.'),
+    addViews(6821),
+    giveXp(350),
+    narrate('THE DUNGEON CERTIFIES: RAID READINESS ACHIEVED. MERCHANDISE PENDING.'),
+    say('carl', 'We go at the ring tomorrow. Everyone sleeps tonight. That is the whole speech.'),
+    setFlag('raid:trained', true),
+    setLetterbox(false),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// R16 — the derail (phase 1 payoff; combat starts from the hotspot script)
+// ---------------------------------------------------------------------------
+
+const act3Derail: CutsceneDef = {
+  id: 'act3_derail',
+  actions: [
+    setLetterbox(true),
+    musicCue('silence'),
+    narrate('You count the lap under your breath. Wide on the bend. Twelve seconds. You squeeze the striker on ten.'),
+    sfxCue('det_cord_crack'),
+    fadeOut(80),
+    fadeIn(120),
+    narrate('The rigged barbell fires as the mass leans into the bend. Iron meets momentum. Momentum files a complaint.'),
+    sfxCue('ball_derail'),
+    fadeOut(120),
+    fadeIn(250),
+    narrate('THE BALL leaves the rail, chews through a pillar, and comes to rest in a shrieking tangle. Pieces of it stand up. IT is trying to.'),
+    setFlag('ball:derailed', true),
+    addViews(12406),
+    narrate('BOROUGH BOSS DERAILED. VULNERABILITY WINDOW: OPEN. THE DUNGEON SUGGESTS YOU HURRY. IT SUGGESTS THIS SINCERELY, FOR ONCE.'),
+    say('brandon', 'NOW! Lanes like we drilled - go, go!'),
+    setLetterbox(false),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// R17 — the finale: loot ceremony, the crew, the stairs, Donut and Carl
+// ---------------------------------------------------------------------------
+
+const act3Finale: CutsceneDef = {
+  id: 'act3_finale',
+  actions: [
+    setLetterbox(true),
+    musicCue('stairs_theme'),
+    narrate('The stairwell doors grind open for the first time in a season. Light from below. Warmer than the light up here. Probably a trick.'),
+    narrate('LOOT CEREMONY. THE DUNGEON DISTRIBUTES: GOLD, GEAR, AND THE STATISTICAL LIKELIHOOD OF SURVIVING FLOOR TWO. TWO OF THESE ARE REAL.'),
+    giveGold(100),
+    addViews(9114),
+    narrate('The Meadow Lark residents file toward the stairs in twos, night-shifters at the rails. Brandon counts heads. Yolanda counts them again.'),
+    ifFlag(
+      'agatha:cart_promised',
+      [
+        narrate('Agatha arrives last, cart intact, every wheel attached, Herbert the flamingo riding point with his arrow at a jaunty angle.'),
+        say('agatha', 'All wheels. Hm. Contract honored, crawler. You may push it down the stairs. CAREFULLY.'),
+      ],
+      [
+        narrate('Agatha muscles her cart past you without a word. Herbert the flamingo watches you go by, arrow and all, unimpressed.'),
+      ],
+    ),
+    say('brandon', 'Whatever is down there, it has not met a night shift. See you on Two, Carl.'),
+    wait(400),
+    say('carl', 'Donut. We got them to the stairs. All of them that were left to get.'),
+    say('donut', 'Then carry the ones we did not, and walk. Royalty does not linger at exits. It makes them look guilty.'),
+    narrate('CRAWLERS. THE AUDIENCE IS ENORMOUS NOW, AND THE FLOORS ONLY GET HUNGRIER. DESCEND WHEN READY. WE WILL BE WATCHING. WE ARE ALWAYS WATCHING.'),
+    awardAchievement('first_floor'),
+    setFlag('act3:finale_seen', true),
+    setLetterbox(false),
+  ],
+};
+
+// The credits card: plays from the stairs hotspot, then unwinds to title.
+const act3Credits: CutsceneDef = {
+  id: 'act3_credits',
+  actions: [
+    setLetterbox(true),
+    musicCue('credits_theme'),
+    fadeOut(700),
+    narrate('END OF PART ONE - THE FIRST FLOOR.'),
+    narrate('DUNGEON CRAWLER CARL: THE FIRST FLOOR. A fan-made adventure demo. All art: placeholder, lovingly generated at runtime.'),
+    narrate('Starring: a cook, a cat, and the worst game show in the galaxy.'),
+    narrate('THANK YOU FOR CRAWLING. THE DUNGEON WILL REMEMBER YOU FONDLY, WHICH SHOULD WORRY YOU.'),
+    quitToTitle(),
+  ],
+};
+
 export const cutscenes: Record<string, CutsceneDef> = {
   [act1Intro.id]: act1Intro,
   [act1Descent.id]: act1Descent,
@@ -300,4 +433,9 @@ export const cutscenes: Record<string, CutsceneDef> = {
   [act2DonutClaws.id]: act2DonutClaws,
   [act2Detonation.id]: act2Detonation,
   [act2Aftermath.id]: act2Aftermath,
+  [act3Trap.id]: act3Trap,
+  [act3Montage.id]: act3Montage,
+  [act3Derail.id]: act3Derail,
+  [act3Finale.id]: act3Finale,
+  [act3Credits.id]: act3Credits,
 };

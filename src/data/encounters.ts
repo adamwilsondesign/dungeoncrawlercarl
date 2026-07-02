@@ -246,6 +246,92 @@ const warChieftainLair: EncounterDef = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Act III — the gym and the ring
+// ---------------------------------------------------------------------------
+
+// Mandatory gym fight 1: Brandon and Yolanda ride along (4-member combat).
+const gymLobby: EncounterDef = {
+  id: 'gym_lobby',
+  enemies: ['trog_brute', 'trog_brute', 'trog_howler'],
+  partyOverride: ['carl', 'donut', 'brandon', 'yolanda'],
+  backdrop: 'backgrounds/combat_gym.png',
+  backdropLabel: 'PUMP CITY',
+  backdropMood: 'workshop',
+  introText: 'THE TROGS DEFEND THEIR GAINS. LITERALLY. THIS IS THEIR WHOLE THING.',
+  rewards: { xp: 170, gold: 20 },
+  victoryScript: [
+    disableHotspot('mob1'),
+    awardAchievement('gym_membership'),
+    narrate('The cardio floor is yours. Yolanda retrieves her arrows with the efficiency of a woman who has counted them. All of them.'),
+  ],
+};
+
+// Mandatory gym fight 2: Chris and Imani take the second shift.
+const gymRacks: EncounterDef = {
+  id: 'gym_racks',
+  enemies: ['trog_brute', 'trog_brute', 'trog_howler', 'trog_howler'],
+  partyOverride: ['carl', 'donut', 'chris', 'imani'],
+  backdrop: 'backgrounds/combat_gym.png',
+  backdropLabel: 'PUMP CITY',
+  backdropMood: 'workshop',
+  introText: 'THE RACK CAVE OBJECTS. THE FOREMAN HOWLS THE PAPERWORK.',
+  rewards: { xp: 170, gold: 25 },
+  victoryScript: [
+    disableHotspot('mob2'),
+    enableExit('east'),
+    narrate('The racks fall quiet. Chris straightens his cap. Imani cleans her blade in one motion, which answers questions you did not ask.'),
+  ],
+};
+
+/**
+ * THE BALL — borough boss, the third boss pattern: TIME/PLACEMENT unlock.
+ * Phase-gated like the Hoarder (flag phase) and the Chieftain (deterrent),
+ * but the flag 'ball:derailed' is set by the act3_derail cutscene, which the
+ * R16 bend hotspot only fires when the player has BOTH placed the rigged
+ * barbell AND learned the lap timing (LOOK the Ball). Head-on while rolling
+ * = 0.05 mult + mockery = recoverable steer-to-death. The raid itself is the
+ * full six-fighter party and is meant to be WON at the trained level (~L6).
+ */
+const ballRing: EncounterDef = {
+  id: 'ball_ring',
+  enemies: ['the_ball', 'tuskling', 'tuskling'],
+  partyOverride: ['carl', 'donut', 'brandon', 'chris', 'yolanda', 'imani'],
+  backdrop: 'backgrounds/combat_ring.png',
+  backdropLabel: 'THE RING',
+  backdropMood: 'boss',
+  noFlee: true,
+  introText: 'BOROUGH BOSS: THE BALL. FORTY KNIGHTS, ONE OPINION, NO BRAKES.',
+  phases: [
+    {
+      when: { flag: 'ball:derailed' },
+      enemyDamageTakenMult: 1,
+      announce: 'IT IS OFF THE RAIL AND FURIOUS ABOUT PHYSICS. THE WINDOW IS OPEN, CRAWLERS.',
+    },
+    {
+      enemyDamageTakenMult: 0.05,
+      announce: 'IT IS STILL ROLLING. YOU ARE FIGHTING A COMMUTE. THE DUNGEON SUGGESTS ENGINEERING.',
+    },
+  ],
+  beforeTurn: (ctx) => {
+    if (ctx.round === 2 && !ctx.state.getFlag('ball:derailed')) {
+      return 'DONUT: THE PLAN, CARL. THE BEND, THE IRON, THE COUNT. WE REHEARSED THIS SET.';
+    }
+  },
+  rewards: { xp: 400, gold: 250, items: ['tusk_crown', 'healing_salve'] },
+  victoryScript: [
+    setFlag('ball:defeated', true),
+    awardAchievement('derailed'),
+    narrate('The Ball comes apart into knights and ladies who are, at last, allowed to stop. The ring falls silent for the first time in a season.'),
+    despawnActor('ball'),
+    disableHotspot('ball'),
+    disableHotspot('the_bend'),
+    disableHotspot('the_straight'),
+    enableExit('east'),
+    narrate('BOROUGH BOSS ELIMINATED. THE PLATFORM IS OPEN. THE STAIRS ARE LISTED AS: FINALLY.'),
+  ],
+};
+
 export const encounters: Record<string, EncounterDef> = {
   [scrapPit.id]: scrapPit,
   [junkGolemLair.id]: junkGolemLair,
@@ -256,4 +342,7 @@ export const encounters: Record<string, EncounterDef> = {
   [hoarderLair.id]: hoarderLair,
   [goblinPatrol.id]: goblinPatrol,
   [warChieftainLair.id]: warChieftainLair,
+  [gymLobby.id]: gymLobby,
+  [gymRacks.id]: gymRacks,
+  [ballRing.id]: ballRing,
 };

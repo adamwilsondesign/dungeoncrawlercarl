@@ -56,4 +56,47 @@ export const characters: Record<string, CharacterDef> = {
     color: '#b0623a',
     portrait: { characterId: 'war_chieftain', expressions: ['neutral', 'angry'] },
   },
+  // --- Act III ---
+  frank: {
+    id: 'frank',
+    name: 'FRANK Q',
+    color: '#a05a5a',
+    portrait: { characterId: 'frank', expressions: ['neutral', 'smug'] },
+  },
+  maggie: {
+    id: 'maggie',
+    name: 'MAGGIE MY',
+    color: '#c47a9e',
+    portrait: { characterId: 'maggie', expressions: ['neutral', 'smug'] },
+  },
+  brandon: {
+    id: 'brandon',
+    name: 'BRANDON AN',
+    color: '#5a8ac4',
+    portrait: { characterId: 'brandon', expressions: ['neutral', 'worried'] },
+  },
+  chris: {
+    id: 'chris',
+    name: 'CHRIS ANDREWS',
+    color: '#8a92a8',
+    portrait: { characterId: 'chris', expressions: ['neutral', 'worried'] },
+  },
+  yolanda: {
+    id: 'yolanda',
+    name: 'YOLANDA MARTINEZ',
+    color: '#c4785a',
+    portrait: { characterId: 'yolanda', expressions: ['neutral', 'smug'] },
+  },
+  imani: {
+    id: 'imani',
+    name: 'IMANI C',
+    color: '#7a5ac4',
+    portrait: { characterId: 'imani', expressions: ['neutral', 'worried'] },
+  },
+  agatha: {
+    id: 'agatha',
+    name: 'AGATHA',
+    color: '#c4b05a',
+    portrait: { characterId: 'agatha', expressions: ['neutral', 'angry'] },
+  },
 };

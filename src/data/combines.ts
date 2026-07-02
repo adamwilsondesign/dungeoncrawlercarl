@@ -61,6 +61,29 @@ export const combines: Record<string, CombineDef> = {
       killPlayer('CAUSE OF DEATH: IMPATIENCE, DELUXE EDITION. Delivery FIRST. Ignition SECOND.'),
     ],
   },
+  // --- Act III, the reverse-trap: cord + powder = a welcome mat ---
+  [combineKey('trip_cord', 'powder_pouch')]: {
+    script: [
+      takeItem('trip_cord'),
+      takeItem('powder_pouch'),
+      giveItem('tripline_charge'),
+      narrate('Cord through the pouch throat, powder packed at the anchor end. R10 taught you this grammar. You hate that you are fluent.'),
+    ],
+  },
+  // --- Act III, the derail kit: iron + det cord ---
+  [combineKey('barbell', 'det_cord')]: {
+    script: [
+      takeItem('barbell'),
+      takeItem('det_cord'),
+      giveItem('rigged_barbell'),
+      narrate('You lash the det cord along the bar and cap both plates. A DERAILMENT KIT, the audience is informed, IS NOT STANDARD GYM EQUIPMENT.'),
+    ],
+  },
+  [combineKey('det_cord', 'coal_chunk')]: {
+    script: [
+      narrate('You consider cooking the souvenir coal. The dungeon reminds you that some materials are for HEATING and some are for LEAVING ALONE.'),
+    ],
+  },
   // --- Flavor non-answers that teach the grammar without solving anything ---
   [combineKey('fuse_wick', 'healing_salve')]: {
     script: [

@@ -19,7 +19,12 @@ import { r08_alcove } from './data/rooms/r08_alcove';
 import { r09_approach } from './data/rooms/r09_approach';
 import { r10_workshop } from './data/rooms/r10_workshop';
 import { r11_aftermath } from './data/rooms/r11_aftermath';
-import { r12_act3_stub } from './data/rooms/r12_act3_stub';
+import { r12_east } from './data/rooms/r12_east';
+import { r13_meadowlark } from './data/rooms/r13_meadowlark';
+import { r14_gym } from './data/rooms/r14_gym';
+import { r15_training } from './data/rooms/r15_training';
+import { r16_ring } from './data/rooms/r16_ring';
+import { r17_stairs } from './data/rooms/r17_stairs';
 import { skills } from './data/skills';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
@@ -62,7 +67,12 @@ const rooms: Record<string, RoomDef> = {
   [r09_approach.id]: r09_approach,
   [r10_workshop.id]: r10_workshop,
   [r11_aftermath.id]: r11_aftermath,
-  [r12_act3_stub.id]: r12_act3_stub,
+  [r12_east.id]: r12_east,
+  [r13_meadowlark.id]: r13_meadowlark,
+  [r14_gym.id]: r14_gym,
+  [r15_training.id]: r15_training,
+  [r16_ring.id]: r16_ring,
+  [r17_stairs.id]: r17_stairs,
   // Engine proving ground from P1-P5; unreachable in normal play but kept
   // registered so old saves and regression checks still load.
   [r00_test.id]: r00_test,

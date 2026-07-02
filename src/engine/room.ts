@@ -665,6 +665,10 @@ export class RoomScene implements Scene, ScriptHost {
     void this.scriptFadeForDeath().then(() => this.openDeathDialog(reason));
   }
 
+  quitToTitle(): void {
+    this.flow.quitToTitle();
+  }
+
   getEncounter(id: string): EncounterDef | undefined {
     return this.content.encounters[id];
   }
@@ -1015,6 +1019,9 @@ export class RoomScene implements Scene, ScriptHost {
           this.state.heldItem = action.id;
           this.activeVerb = 'item';
           this.invScreen.close();
+        } else if (action?.kind === 'unhold') {
+          this.state.heldItem = null;
+          this.activeVerb = 'walk';
         } else if (action?.kind === 'combine') {
           this.resolveCombine(action.a, action.b);
         } else if (action?.kind === 'equip') {

@@ -16,7 +16,9 @@ export type InventoryAction =
   | { kind: 'look'; id: string }
   | { kind: 'equip'; id: string }
   /** Held item + clicked slot: try the combines registry (P8). */
-  | { kind: 'combine'; a: string; b: string };
+  | { kind: 'combine'; a: string; b: string }
+  /** Clicked the currently-held slot: cancel the hold (P9 UX fix). */
+  | { kind: 'unhold' };
 
 const PANEL: Rect = { x: 8, y: 12, w: LOGICAL_W - 16, h: LOGICAL_H - 24 };
 const CLOSE: Rect = { x: PANEL.x + PANEL.w - 16, y: PANEL.y + 3, w: 12, h: 10 };
@@ -77,6 +79,7 @@ export class InventoryScreen {
       if (inRect(p, slotRect(i))) {
         const id = entries[i].id;
         if (verb === 'look') return { kind: 'look', id };
+        if (heldItem && heldItem === id) return { kind: 'unhold' };
         if (heldItem && heldItem !== id) return { kind: 'combine', a: heldItem, b: id };
         if (defs[id]?.equip) return { kind: 'equip', id };
         return { kind: 'select', id };

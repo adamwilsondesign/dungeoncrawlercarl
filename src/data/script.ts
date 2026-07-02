@@ -72,7 +72,9 @@ export type ScriptAction =
   /** Story skill unlock for a party member (P7 gap; e.g. Donut's claws). */
   | { type: 'learnSkill'; memberId: string; skillId: string }
   /** Scripted XP grant with level-ups (P8 gap: puzzle-as-kill rewards). */
-  | { type: 'giveXp'; amount: number };
+  | { type: 'giveXp'; amount: number }
+  /** End of demo: unwind to the title screen (P9 gap; credits only). */
+  | { type: 'quitToTitle' };
 
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
@@ -191,3 +193,5 @@ export const learnSkill = (memberId: string, skillId: string): ScriptAction => (
 });
 
 export const giveXp = (amount: number): ScriptAction => ({ type: 'giveXp', amount });
+
+export const quitToTitle = (): ScriptAction => ({ type: 'quitToTitle' });

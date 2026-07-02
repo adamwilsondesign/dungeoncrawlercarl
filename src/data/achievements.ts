@@ -57,6 +57,31 @@ export const achievements: Record<string, AchievementDef> = {
     name: 'WHOLESALE',
     description: 'Retail violence is for lesser crawlers. You went wholesale. The audience is still cheering.',
   },
+  return_to_sender: {
+    id: 'return_to_sender',
+    name: 'RETURN TO SENDER',
+    description: 'Somebody planned an ambush. Somebody received one. The paperwork sorted itself.',
+  },
+  night_shift: {
+    id: 'night_shift',
+    name: 'THE NIGHT SHIFT',
+    description: 'Four caregivers, one cat, one cook. The worst floor in the world formed its best crew.',
+  },
+  gym_membership: {
+    id: 'gym_membership',
+    name: 'GYM MEMBERSHIP',
+    description: 'You cleared the equipment floor. The trogs cancelled. No refunds.',
+  },
+  derailed: {
+    id: 'derailed',
+    name: 'DERAILED',
+    description: 'The Ball stopped rolling. The borough is under new management: nobody, again.',
+  },
+  first_floor: {
+    id: 'first_floor',
+    name: 'FLOOR ONE, CLEARED',
+    description: 'PART ONE COMPLETE. Eighteen floors remain. The audience has renewed you for a season.',
+  },
   first_death: {
     id: 'first_death',
     name: 'FRESH MEAT',

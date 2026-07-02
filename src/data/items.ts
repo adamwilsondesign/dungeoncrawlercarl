@@ -142,6 +142,63 @@ export const items: Record<string, ItemDef> = {
     description: 'Souvenir-grade coal. The dungeon assures you it will one day be a diamond. It is lying.',
     stackable: true,
   },
+  // --- Act III: the trap, the gym, the ring ---
+  trip_cord: {
+    id: 'trip_cord',
+    name: 'TRIP CORD',
+    description:
+      'Braided cable from a downed sign, ankle-height ambitions. Strung tight across a narrow spot, it asks one question.',
+  },
+  powder_pouch: {
+    id: 'powder_pouch',
+    name: 'POWDER POUCH',
+    description:
+      "A miner's belt pouch of blasting powder, palm-sized. Small charge, strong opinions. You know this recipe by now.",
+  },
+  tripline_charge: {
+    id: 'tripline_charge',
+    name: 'TRIPLINE CHARGE',
+    description:
+      'Cord plus powder: a welcome mat for people who follow you into narrow places. Needs a chokepoint.',
+  },
+  kettle_crusher: {
+    id: 'kettle_crusher',
+    name: 'KETTLE CRUSHER',
+    description:
+      'A kettlebell on a wrist strap. Somewhere between a mace and a gym membership. ATTACK +5.',
+    equip: { slot: 'weapon', attack: 5 },
+  },
+  weight_belt: {
+    id: 'weight_belt',
+    name: 'WEIGHT BELT',
+    description: 'A lifting belt, troll-notched. Your spine writes a thank-you note. CON +2.',
+    equip: { slot: 'trinket', statMods: { con: 2 } },
+  },
+  barbell: {
+    id: 'barbell',
+    name: 'BARBELL',
+    description:
+      'Two hundred pounds of honest iron. Useless as a weapon, magnificent as an obstruction. Rails exist. Thoughts occur.',
+  },
+  det_cord: {
+    id: 'det_cord',
+    name: 'DET CORD',
+    description:
+      'Demolition cord from the ring maintenance chest. Burns instant and total. Do not confuse with licorice.',
+  },
+  rigged_barbell: {
+    id: 'rigged_barbell',
+    name: 'RIGGED BARBELL',
+    description:
+      'Iron plus det cord: a derailment kit. It wants a bend in the rail and impeccable timing.',
+  },
+  tusk_crown: {
+    id: 'tusk_crown',
+    name: 'TUSK CROWN',
+    description:
+      'A circlet of polished tusk tips from the Ball. Royalty recognizes royalty. INT +2.',
+    equip: { slot: 'trinket', statMods: { int: 2 } },
+  },
   // --- Combat consumables ---
   goblin_bomb: {
     id: 'goblin_bomb',

@@ -164,7 +164,9 @@ export class CombatScene implements Scene {
     });
 
     const { state, combatants } = deps;
-    const partyIds = (encounter.partyOverride ?? state.party).slice(0, 4);
+    // P9 gap change: cap raised 4 -> 6 for the raid finale (layout below
+    // staggers each side into two columns so six sprites fit the field).
+    const partyIds = (encounter.partyOverride ?? state.party).slice(0, 6);
 
     const buildOne = async (
       defId: string,
@@ -211,6 +213,7 @@ export class CombatScene implements Scene {
         skillIds = [...def.skills];
       }
       const col = index % 2;
+      const row = Math.floor(index / 2);
       return {
         key: `${side}:${index}`,
         defId,
@@ -224,7 +227,7 @@ export class CombatScene implements Scene {
         defending: false,
         image,
         x: side === 'enemy' ? 60 + col * 28 : 260 - col * 28,
-        y: 76 + index * 22,
+        y: 80 + row * 26 + col * 8,
         ai: def.ai ?? 'basic',
         xpReward: def.xpReward ?? 0,
         bossSkillPtr: 0,

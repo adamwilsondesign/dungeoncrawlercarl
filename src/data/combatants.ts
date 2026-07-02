@@ -36,6 +36,39 @@ export const combatants: Record<string, CombatantDef> = {
     skills: ['shield_wall', 'magic_missile', 'jeer', 'mend'],
     learnset: { 2: ['missile_storm'] },
   },
+  // --- The Meadow Lark raid crew (Act III allies; levels via shared pool) ---
+  brandon: {
+    id: 'brandon',
+    name: 'BRANDON',
+    color: '#5a8ac4',
+    sprite: 'sprites/brandon_an.png',
+    stats: { maxHp: 30, hp: 30, str: 6, dex: 5, con: 6, int: 5, spd: 5, maxMp: 8, mp: 8 },
+    skills: ['rally_cry'],
+  },
+  chris: {
+    id: 'chris',
+    name: 'CHRIS',
+    color: '#8a92a8',
+    sprite: 'sprites/chris_andrews.png',
+    stats: { maxHp: 28, hp: 28, str: 6, dex: 4, con: 7, int: 4, spd: 4 },
+    skills: ['skull_knock'],
+  },
+  yolanda: {
+    id: 'yolanda',
+    name: 'YOLANDA',
+    color: '#c4785a',
+    sprite: 'sprites/yolanda_martinez.png',
+    stats: { maxHp: 26, hp: 26, str: 7, dex: 7, con: 4, int: 5, spd: 6 },
+    skills: ['pin_cushion'],
+  },
+  imani: {
+    id: 'imani',
+    name: 'IMANI',
+    color: '#7a5ac4',
+    sprite: 'sprites/imani_c.png',
+    stats: { maxHp: 26, hp: 26, str: 8, dex: 7, con: 4, int: 5, spd: 7 },
+    skills: ['quiet_edge'],
+  },
   // --- Enemies ---
   // Tutorial enemy: dies in one or two bare-handed hits, threatens nothing.
   lint_mite: {
@@ -120,6 +153,48 @@ export const combatants: Record<string, CombatantDef> = {
     stats: { maxHp: 90, hp: 90, str: 12, dex: 5, con: 10, int: 3, spd: 4 },
     skills: ['skullsplitter', 'dread_bellow'],
     xpReward: 300,
+    ai: 'boss',
+  },
+  // --- Act III: the gym and the ring ---
+  trog_brute: {
+    id: 'trog_brute',
+    name: 'TROG BRUTE',
+    color: '#7a8a5a',
+    sprite: 'sprites/trog_brute.png',
+    stats: { maxHp: 24, hp: 24, str: 8, dex: 4, con: 6, int: 1, spd: 4 },
+    skills: [],
+    xpReward: 40,
+    ai: 'basic',
+  },
+  trog_howler: {
+    id: 'trog_howler',
+    name: 'TROG HOWLER',
+    color: '#9a7a4a',
+    sprite: 'sprites/trog_howler.png',
+    stats: { maxHp: 18, hp: 18, str: 5, dex: 5, con: 4, int: 6, spd: 6, maxMp: 8, mp: 8 },
+    skills: ['dread_bellow'],
+    xpReward: 45,
+    ai: 'caster',
+  },
+  tuskling: {
+    id: 'tuskling',
+    name: 'TUSKLING',
+    color: '#d8c8b8',
+    sprite: 'sprites/tuskling.png',
+    stats: { maxHp: 22, hp: 22, str: 7, dex: 5, con: 5, int: 2, spd: 6 },
+    skills: [],
+    xpReward: 50,
+    ai: 'basic',
+  },
+  // Borough boss: only vulnerable while derailed (phase table on the encounter).
+  the_ball: {
+    id: 'the_ball',
+    name: 'THE BALL',
+    color: '#c8b8d8',
+    sprite: 'sprites/the_ball.png',
+    stats: { maxHp: 150, hp: 150, str: 13, dex: 5, con: 12, int: 2, spd: 12 },
+    skills: ['flatten', 'tusk_gore'],
+    xpReward: 400,
     ai: 'boss',
   },
   junk_golem: {
