@@ -27,6 +27,12 @@ export const donutCatSheet: SpriteSheetDef = {
     idle_up: { frames: [3], frameMs: 400, loop: true },
     idle_right: { frames: [6], frameMs: 400, loop: true },
   },
+  // Tortoiseshell Persian: cream base mottled black / white / caramel.
+  placeholderOutfit: {
+    torso: '#e3cfa8',
+    head: '#efe0c0',
+    patches: ['#3a332c', '#f6f0e2', '#a2703c'],
+  },
 };
 
 export const r01_street: RoomDef = {
@@ -130,6 +136,81 @@ export const r01_street: RoomDef = {
     { yTop: 100, yBottom: 112, scale: 0.75 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: frozen Seattle street post-collapse - apartment ruin + bare
+  // tree, sodium streetlight pools, rubble, the staircase of light far right.
+  placeholderArtDraw: (ctx, pal) => {
+    // Collapsed apartment block, left: a broken silhouette against the night
+    ctx.fillStyle = '#141e30';
+    ctx.fillRect(8, 26, 92, 84);
+    ctx.fillStyle = '#0e1626';
+    ctx.beginPath();
+    ctx.moveTo(8, 26);
+    ctx.lineTo(46, 14);
+    ctx.lineTo(100, 30);
+    ctx.lineTo(100, 44);
+    ctx.lineTo(8, 40);
+    ctx.closePath();
+    ctx.fill();
+    // Mrs. Parsons' first-floor window, still lit; one dark open window above
+    ctx.fillStyle = '#ffcf7a';
+    ctx.fillRect(22, 88, 10, 12);
+    ctx.fillStyle = '#060a12';
+    ctx.fillRect(60, 46, 10, 12);
+    for (const wx of [22, 42, 78]) {
+      ctx.fillStyle = '#0a1220';
+      ctx.fillRect(wx, 62, 10, 12);
+    }
+    // Bare winter tree between sidewalk and building
+    ctx.strokeStyle = '#241c14';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(120, 110);
+    ctx.lineTo(118, 70);
+    ctx.moveTo(118, 84);
+    ctx.lineTo(104, 62);
+    ctx.moveTo(118, 76);
+    ctx.lineTo(132, 56);
+    ctx.moveTo(119, 92);
+    ctx.lineTo(134, 78);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    // Sodium streetlight pool mid-street
+    const lamp = ctx.createRadialGradient(180, 150, 4, 180, 150, 60);
+    lamp.addColorStop(0, 'rgba(255,170,80,0.30)');
+    lamp.addColorStop(1, 'rgba(255,170,80,0)');
+    ctx.fillStyle = lamp;
+    ctx.fillRect(120, 100, 120, 100);
+    ctx.fillStyle = '#1a2334';
+    ctx.fillRect(178, 60, 3, 60);
+    ctx.fillStyle = '#ffcf8a';
+    ctx.fillRect(174, 56, 11, 4);
+    // Rubble field where the block used to be
+    void pal;
+    ctx.fillStyle = '#22334a';
+    for (const [rx, ry, rw2, rh2] of [
+      [96, 112, 60, 12],
+      [4, 112, 52, 22],
+      [140, 118, 26, 8],
+      [210, 120, 30, 9],
+    ] as const) {
+      ctx.beginPath();
+      ctx.moveTo(rx, ry + rh2);
+      ctx.lineTo(rx + rw2 * 0.3, ry);
+      ctx.lineTo(rx + rw2 * 0.7, ry + rh2 * 0.4);
+      ctx.lineTo(rx + rw2, ry + rh2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The staircase of light, punching up through the ground at far right
+    const beam = ctx.createLinearGradient(284, 0, 284, 200);
+    beam.addColorStop(0, 'rgba(255,236,170,0.10)');
+    beam.addColorStop(0.55, 'rgba(255,224,140,0.55)');
+    beam.addColorStop(1, 'rgba(255,210,110,0.85)');
+    ctx.fillStyle = beam;
+    ctx.fillRect(280, 20, 40, 180);
+    ctx.fillStyle = '#ffe9b0';
+    for (let i = 0; i < 6; i++) ctx.fillRect(284, 108 + i * 14, 32, 3);
+  },
   placeholderMaskDraw: (ctx) => {
     // Rubble piles narrow the street
     ctx.fillStyle = '#000000';

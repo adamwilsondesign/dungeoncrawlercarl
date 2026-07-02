@@ -75,6 +75,61 @@ export const r11_aftermath: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: the workshop, after - ash grays, dying embers, drifting
+  // smoke, the scorch shadow, one intact bench. Restraint.
+  placeholderArtDraw: (ctx) => {
+    // Ash-out: mute everything toward gray
+    ctx.fillStyle = 'rgba(60,58,54,0.55)';
+    ctx.fillRect(0, 0, 320, 200);
+    // Collapsed roof beams
+    ctx.fillStyle = '#211d19';
+    ctx.beginPath();
+    ctx.moveTo(210, 10);
+    ctx.lineTo(222, 8);
+    ctx.lineTo(268, 96);
+    ctx.lineTo(256, 100);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(24, 44, 60, 6);
+    // The scorch shadow printed on the wall
+    ctx.fillStyle = 'rgba(16,14,12,0.8)';
+    ctx.beginPath();
+    ctx.ellipse(80, 96, 15, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(80, 66, 8, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Dying embers in the wreck line
+    for (const [ex2, ey2] of [[150, 120], [186, 116], [230, 122], [204, 126], [122, 124]] as const) {
+      const g = ctx.createRadialGradient(ex2, ey2, 0, ex2, ey2, 7);
+      g.addColorStop(0, 'rgba(255,120,50,0.8)');
+      g.addColorStop(1, 'rgba(255,120,50,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(ex2 - 7, ey2 - 7, 14, 14);
+      ctx.fillStyle = '#ff8a4a';
+      ctx.fillRect(ex2, ey2, 2, 1);
+    }
+    // Kivvi's bench: intact, tools laid out, the half-built chopper on blocks
+    ctx.fillStyle = '#3d3226';
+    ctx.fillRect(138, 122, 56, 6);
+    ctx.fillStyle = '#2e2418';
+    ctx.fillRect(142, 128, 4, 12);
+    ctx.fillRect(186, 128, 4, 12);
+    ctx.fillStyle = '#8f5a2a';
+    ctx.beginPath();
+    ctx.ellipse(166, 116, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#b0b4ba';
+    ctx.fillRect(146, 119, 8, 2);
+    ctx.fillRect(158, 119, 5, 2);
+    // Smoke drifting up in slow columns
+    ctx.fillStyle = 'rgba(120,116,110,0.25)';
+    for (const [sx2, sw2] of [[160, 16], [236, 12], [96, 10]] as const) {
+      ctx.beginPath();
+      ctx.ellipse(sx2, 60, sw2 / 2, 46, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(134, 118, 64, 24); // the bench and bike

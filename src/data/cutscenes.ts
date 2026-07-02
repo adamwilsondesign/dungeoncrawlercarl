@@ -48,6 +48,13 @@ export const donutSheet: SpriteSheetDef = {
     idle_up: { frames: [3], frameMs: 400, loop: true },
     idle_right: { frames: [6], frameMs: 400, loop: true },
   },
+  // Same tortoiseshell as cat form, plus the post-transformation tiara.
+  placeholderOutfit: {
+    torso: '#e3cfa8',
+    head: '#efe0c0',
+    patches: ['#3a332c', '#f6f0e2', '#a2703c'],
+    crown: true,
+  },
 };
 
 // ---------------------------------------------------------------------------

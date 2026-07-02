@@ -51,7 +51,7 @@ export const r07_moonburger: RoomDef = {
     {
       id: 'tally',
       label: 'TALLY',
-      color: '#8fd4a8',
+      color: '#9a8f72',
       sheet: tallySheet,
       x: 176,
       y: 138,
@@ -120,6 +120,87 @@ export const r07_moonburger: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: an intact fast-food restaurant transplanted whole into the
+  // dungeon - cheerful reds and yellows, menu screens, big windows that
+  // look out on solid rock, booths, and a playground ball pit.
+  placeholderArtDraw: (ctx) => {
+    // Clean interior walls + checker tile floor
+    ctx.fillStyle = '#e8ddc6';
+    ctx.fillRect(0, 0, 320, 106);
+    ctx.fillStyle = '#c43a3a';
+    ctx.fillRect(0, 0, 320, 10);
+    ctx.fillRect(0, 100, 320, 6);
+    for (let y = 110; y < 200; y += 12) {
+      for (let x = (y / 12) % 2 === 0 ? 0 : 12; x < 320; x += 24) {
+        ctx.fillStyle = 'rgba(255,244,224,0.16)';
+        ctx.fillRect(x, y, 12, 12);
+      }
+    }
+    // Windows showing SOLID WALL beyond
+    for (const wx of [16, 254]) {
+      ctx.fillStyle = '#3a3128';
+      ctx.fillRect(wx, 24, 44, 56);
+      ctx.fillStyle = '#2c251e';
+      for (let i = 0; i < 5; i++) ctx.fillRect(wx + 4, 30 + i * 10, 36, 4);
+      ctx.strokeStyle = '#b0342f';
+      ctx.strokeRect(wx + 0.5, 24.5, 43, 55);
+    }
+    // Service counter + three glowing menu screens
+    ctx.fillStyle = '#b0342f';
+    ctx.fillRect(66, 96, 108, 22);
+    ctx.fillStyle = '#d8cdb4';
+    ctx.fillRect(66, 92, 108, 6);
+    for (let i = 0; i < 3; i++) {
+      const mx = 72 + i * 34;
+      ctx.fillStyle = '#141824';
+      ctx.fillRect(mx, 34, 30, 22);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(mx + 3, 38, 24, 3);
+      ctx.fillStyle = '#ff9a5a';
+      ctx.fillRect(mx + 3, 44, 18, 3);
+      ctx.fillStyle = '#8fd4a8';
+      ctx.fillRect(mx + 3, 50, 21, 2);
+      ctx.strokeStyle = '#ffcf6a';
+      ctx.strokeRect(mx + 0.5, 34.5, 29, 21);
+    }
+    // Crescent-moon brand sign
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.arc(196, 22, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e8ddc6';
+    ctx.beginPath();
+    ctx.arc(200, 20, 8, 0, Math.PI * 2);
+    ctx.fill();
+    // Booth row, right
+    ctx.fillStyle = '#a82c2c';
+    ctx.fillRect(232, 100, 66, 8);
+    ctx.fillRect(232, 116, 66, 8);
+    ctx.fillStyle = '#d8cdb4';
+    ctx.fillRect(240, 108, 50, 8);
+    // Playground corner: slide + ball pit
+    ctx.fillStyle = '#3a7ac4';
+    ctx.beginPath();
+    ctx.moveTo(6, 64);
+    ctx.lineTo(22, 64);
+    ctx.lineTo(50, 100);
+    ctx.lineTo(34, 100);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#2c5c94';
+    ctx.fillRect(6, 56, 16, 10);
+    ctx.fillStyle = '#1c2a3a';
+    ctx.fillRect(28, 100, 34, 10);
+    for (const [bx2, by2, bc] of [
+      [32, 100, '#ff6a6a'], [39, 102, '#ffd166'], [46, 100, '#5ad48f'],
+      [52, 103, '#6a9aff'], [57, 100, '#ff9a5a'], [36, 105, '#c98aff'],
+    ] as const) {
+      ctx.fillStyle = bc;
+      ctx.beginPath();
+      ctx.arc(bx2, by2 + 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(40, 96, 130, 26); // service counter

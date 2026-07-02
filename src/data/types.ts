@@ -30,6 +30,29 @@ export interface FlagCondition {
 /** Known mood strings map to distinct placeholder palettes. */
 export type Mood = 'cold' | 'dungeon' | 'safe' | 'workshop' | 'boss';
 
+/** The generated-background palette handed to per-room art callbacks. */
+export interface MoodPalette {
+  wall: string;
+  floor: string;
+  accent: string;
+  text: string;
+}
+
+/**
+ * Multi-tone dressing for generated actor sprites (the art-direction color
+ * anchors): torso/legs/feet/head tints, mottled fur patches, and a tiny
+ * crown for exactly one very important cat.
+ */
+export interface PlaceholderOutfit {
+  torso?: string;
+  legs?: string;
+  feet?: string;
+  head?: string;
+  /** Fur mottling drawn as fixed blobs over the torso (tortoiseshell). */
+  patches?: string[];
+  crown?: boolean;
+}
+
 export interface Point {
   x: number;
   y: number;
@@ -62,6 +85,8 @@ export interface SpriteSheetDef {
   /** When true, left-facing actors reuse the *_right anims mirrored horizontally. */
   mirrorLeft?: boolean;
   anims: Record<string, AnimDef>;
+  /** Color anchors applied when this sheet's art is generated. */
+  placeholderOutfit?: PlaceholderOutfit;
 }
 
 export interface ActorDef {
@@ -287,6 +312,8 @@ export interface CombatantDef {
   xpReward?: number;
   /** Enemy AI: 'basic' attacks (50% skill), 'caster' prefers skills, 'boss' cycles skills then attacks. */
   ai?: 'basic' | 'caster' | 'boss';
+  /** Color anchors applied when this combatant's sprite is generated. */
+  outfit?: PlaceholderOutfit;
 }
 
 /**
@@ -399,11 +426,31 @@ export interface RoomDef {
    * 4x4 sampling stays exact.
    */
   placeholderMaskDraw?: (ctx: CanvasRenderingContext2D) => void;
+  /**
+   * Per-room art direction for the generated background: runs after the
+   * mood base (walls/floor/ambient dressing) and before the frame border.
+   * This is where each room paints its brief - rubble, signage, furniture,
+   * machines - in simple shapes over the palette.
+   */
+  placeholderArtDraw?: (ctx: CanvasRenderingContext2D, pal: MoodPalette) => void;
 }
 
 export type PlaceholderSpec =
-  | { kind: 'background'; label: string; mood: Mood }
-  | { kind: 'actor'; label: string; color: string; frameW: number; frameH: number }
+  | {
+      kind: 'background';
+      label: string;
+      mood: Mood;
+      /** Per-room art brief, drawn over the mood base (see RoomDef). */
+      draw?: (ctx: CanvasRenderingContext2D, pal: MoodPalette) => void;
+    }
+  | {
+      kind: 'actor';
+      label: string;
+      color: string;
+      frameW: number;
+      frameH: number;
+      outfit?: PlaceholderOutfit;
+    }
   | { kind: 'cursor'; glyph: UiGlyph }
   | { kind: 'icon'; glyph: UiGlyph; label: string; w: number; h: number }
   | { kind: 'portrait'; label: string; color: string; expression: string }

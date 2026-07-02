@@ -10,7 +10,7 @@ export const characters: Record<string, CharacterDef> = {
   carl: {
     id: 'carl',
     name: 'CARL',
-    color: '#f2a65a',
+    color: '#8a6242',
     portrait: { characterId: 'carl', expressions: ['neutral', 'annoyed'] },
   },
   npc: {
@@ -22,7 +22,8 @@ export const characters: Record<string, CharacterDef> = {
   donut: {
     id: 'donut',
     name: 'PRINCESS DONUT',
-    color: '#ff8ad8',
+    // Purple: her color of choice (accessories, name plate) - fur is tortie.
+    color: '#b08ad8',
     portrait: { characterId: 'donut', expressions: ['neutral', 'smug'] },
     portraitSide: 'right',
   },
@@ -41,7 +42,7 @@ export const characters: Record<string, CharacterDef> = {
   tally: {
     id: 'tally',
     name: 'TALLY',
-    color: '#8fd4a8',
+    color: '#9a8f72',
     portrait: { characterId: 'tally', expressions: ['neutral', 'smug'] },
   },
   kivvi: {
@@ -84,7 +85,8 @@ export const characters: Record<string, CharacterDef> = {
   yolanda: {
     id: 'yolanda',
     name: 'YOLANDA MARTINEZ',
-    color: '#c4785a',
+    // Medical scrubs teal (her silhouette anchor is the oversized quiver).
+    color: '#5aa8a0',
     portrait: { characterId: 'yolanda', expressions: ['neutral', 'smug'] },
   },
   imani: {

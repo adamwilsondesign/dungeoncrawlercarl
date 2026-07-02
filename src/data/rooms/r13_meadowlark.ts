@@ -82,7 +82,7 @@ export const r13_meadowlark: RoomDef = {
   actors: [
     person('brandon', 'BRANDON', '#5a8ac4', 'sprites/brandon_an.png', 150, 128),
     person('chris', 'CHRIS', '#8a92a8', 'sprites/chris_andrews.png', 196, 120),
-    person('yolanda', 'YOLANDA', '#c4785a', 'sprites/yolanda_martinez.png', 108, 140, 22, 28),
+    person('yolanda', 'YOLANDA', '#5aa8a0', 'sprites/yolanda_martinez.png', 108, 140, 22, 28),
     person('imani', 'IMANI', '#7a5ac4', 'sprites/imani_c.png', 236, 134, 20, 32),
     person('agatha', 'AGATHA', '#c4b05a', 'sprites/agatha.png', 66, 128, 22, 28),
   ],
@@ -220,6 +220,98 @@ export const r13_meadowlark: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.85 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: the drawbridge camp - moat and raised bridge at right,
+  // lantern strings, laundry lines, blanket bundles, the cook fire, the
+  // cart with its wounded flamingo. A haven built from salvage.
+  placeholderArtDraw: (ctx) => {
+    // The moat + raised drawbridge, right edge
+    ctx.fillStyle = '#1c2a30';
+    ctx.fillRect(296, 84, 24, 116);
+    ctx.fillStyle = '#243a42';
+    for (let y = 92; y < 196; y += 14) ctx.fillRect(298, y, 20, 3);
+    ctx.save();
+    ctx.translate(296, 148);
+    ctx.rotate(-1.15);
+    ctx.fillStyle = '#4a3a20';
+    ctx.fillRect(0, -7, 74, 14);
+    ctx.fillStyle = '#33280e';
+    for (let x = 6; x < 70; x += 12) ctx.fillRect(x, -7, 3, 14);
+    ctx.restore();
+    // Beam gate + chain
+    ctx.fillStyle = '#3a2c14';
+    ctx.fillRect(288, 60, 6, 92);
+    ctx.strokeStyle = '#6b6b70';
+    ctx.beginPath();
+    ctx.moveTo(291, 62);
+    ctx.lineTo(322, 96);
+    ctx.stroke();
+    // Laundry line with hung cloth
+    ctx.strokeStyle = '#8a8a80';
+    ctx.beginPath();
+    ctx.moveTo(96, 46);
+    ctx.quadraticCurveTo(160, 58, 226, 44);
+    ctx.stroke();
+    for (const [lx2, lc] of [[116, '#c47a7a'], [146, '#7a9ac4'], [178, '#d8cdb4'], [204, '#8fb08a']] as const) {
+      ctx.fillStyle = lc;
+      ctx.fillRect(lx2, 50, 12, 14);
+    }
+    // Lantern string glow
+    for (const gx of [70, 160, 250]) {
+      const g = ctx.createRadialGradient(gx, 34, 2, gx, 34, 30);
+      g.addColorStop(0, 'rgba(255,214,130,0.5)');
+      g.addColorStop(1, 'rgba(255,214,130,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(gx - 30, 4, 60, 60);
+      ctx.fillStyle = '#ffd982';
+      ctx.fillRect(gx - 2, 30, 5, 7);
+    }
+    // Cook fire ring
+    const fire = ctx.createRadialGradient(160, 152, 2, 160, 152, 26);
+    fire.addColorStop(0, 'rgba(255,190,90,0.9)');
+    fire.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = fire;
+    ctx.fillRect(134, 128, 52, 44);
+    ctx.fillStyle = '#4a4238';
+    for (let a = 0; a < 8; a++) {
+      const ang = (a / 8) * Math.PI * 2;
+      ctx.fillRect(160 + Math.cos(ang) * 20 - 2, 152 + Math.sin(ang) * 9 - 1, 5, 4);
+    }
+    // Bedrolls + a wheelchair silhouette among the residents
+    ctx.fillStyle = '#6e2f2f';
+    ctx.fillRect(122, 166, 22, 7);
+    ctx.fillStyle = '#2f4a6e';
+    ctx.fillRect(186, 168, 22, 7);
+    ctx.strokeStyle = '#8a8a90';
+    ctx.beginPath();
+    ctx.arc(216, 158, 6, 0, Math.PI * 2);
+    ctx.moveTo(216, 146);
+    ctx.lineTo(222, 152);
+    ctx.stroke();
+    // Agatha's cart: piled blankets + the flamingo, arrow and all
+    ctx.fillStyle = '#8a8a90';
+    ctx.fillRect(40, 130, 32, 16);
+    ctx.strokeStyle = '#6b6b70';
+    ctx.strokeRect(40.5, 130.5, 31, 15);
+    ctx.fillStyle = '#241f18';
+    ctx.beginPath();
+    ctx.arc(46, 148, 4, 0, Math.PI * 2);
+    ctx.arc(66, 148, 4, 0, Math.PI * 2);
+    ctx.fill();
+    for (const [bx3, bc2] of [[42, '#c47a7a'], [52, '#7a9ac4'], [62, '#d8cdb4']] as const) {
+      ctx.fillStyle = bc2;
+      ctx.fillRect(bx3, 124, 9, 7);
+    }
+    ctx.fillStyle = '#ff8ab4';
+    ctx.fillRect(58, 108, 3, 16);
+    ctx.beginPath();
+    ctx.ellipse(62, 108, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6b5228';
+    ctx.beginPath();
+    ctx.moveTo(54, 104);
+    ctx.lineTo(70, 112);
+    ctx.stroke();
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(36, 118, 40, 16); // the cart

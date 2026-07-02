@@ -11,8 +11,9 @@ export const combatants: Record<string, CombatantDef> = {
   carl: {
     id: 'carl',
     name: 'CARL',
-    color: '#f2a65a',
+    color: '#8a6242',
     sprite: 'sprites/carl.png',
+    outfit: { torso: '#6e4f33', head: '#e0aa80', legs: '#d8a078', feet: '#ff8ab4' },
     stats: { maxHp: 34, hp: 34, str: 6, dex: 5, con: 5, int: 3, spd: 5, maxMp: 6, mp: 6 },
     skills: ['cudgel_crack'],
     learnset: { 2: ['bomb_toss'] },
@@ -20,8 +21,14 @@ export const combatants: Record<string, CombatantDef> = {
   donut: {
     id: 'donut',
     name: 'PRINCESS DONUT',
-    color: '#ff8ad8',
+    color: '#e3cfa8',
     sprite: 'sprites/donut.png',
+    outfit: {
+      torso: '#e3cfa8',
+      head: '#efe0c0',
+      patches: ['#3a332c', '#f6f0e2', '#a2703c'],
+      crown: true,
+    },
     stats: { maxHp: 24, hp: 24, str: 3, dex: 7, con: 3, int: 8, spd: 8, maxMp: 12, mp: 12 },
     skills: ['magic_missile'],
     learnset: { 2: ['missile_storm'], 3: ['jeer'] },
@@ -194,8 +201,10 @@ export const combatants: Record<string, CombatantDef> = {
   the_ball: {
     id: 'the_ball',
     name: 'THE BALL',
-    color: '#c8b8d8',
+    color: '#e8a4b0',
     sprite: 'sprites/the_ball.png',
+    // Pink fused flesh studded with steel plate.
+    outfit: { patches: ['#8f939c', '#d8dbe0', '#c87884'] },
     stats: { maxHp: 150, hp: 150, str: 13, dex: 5, con: 12, int: 2, spd: 12 },
     skills: ['flatten', 'tusk_gore'],
     xpReward: 400,

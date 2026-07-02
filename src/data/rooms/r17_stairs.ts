@@ -76,6 +76,71 @@ export const r17_stairs: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.85 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: the earned staircase - doors open on warm light going down
+  // (echoing R02), loot strewn about, the cart at the stairhead.
+  placeholderArtDraw: (ctx) => {
+    // The opened stairwell: warm light flooding out of the descent
+    ctx.fillStyle = '#31353a';
+    ctx.fillRect(244, 30, 70, 96);
+    const well = ctx.createLinearGradient(0, 30, 0, 126);
+    well.addColorStop(0, 'rgba(255,220,140,0.25)');
+    well.addColorStop(1, 'rgba(255,200,100,0.9)');
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(250, 36, 58, 88);
+    ctx.clip();
+    ctx.fillStyle = '#1c150c';
+    ctx.fillRect(250, 36, 58, 88);
+    ctx.fillStyle = well;
+    ctx.fillRect(250, 36, 58, 88);
+    // Steps descending into the glow
+    for (let i = 0; i < 7; i++) {
+      const t = i / 6;
+      ctx.fillStyle = `rgba(40,26,12,${0.8 - t * 0.5})`;
+      ctx.fillRect(254 + t * 8, 44 + i * 11, 50 - t * 16, 4);
+    }
+    ctx.restore();
+    const spill = ctx.createRadialGradient(278, 126, 6, 278, 126, 80);
+    spill.addColorStop(0, 'rgba(255,210,120,0.5)');
+    spill.addColorStop(1, 'rgba(255,210,120,0)');
+    ctx.fillStyle = spill;
+    ctx.fillRect(198, 90, 160, 110);
+    // Loot strewn across the platform: coins, a shield, an open crate
+    ctx.fillStyle = '#ffd166';
+    for (const [gx2, gy2] of [[126, 148], [142, 156], [118, 162], [160, 150], [200, 164]] as const) {
+      ctx.fillRect(gx2, gy2, 3, 2);
+    }
+    ctx.fillStyle = '#7a8a9a';
+    ctx.beginPath();
+    ctx.ellipse(98, 150, 9, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5c4a2a';
+    ctx.fillRect(60, 140, 22, 14);
+    ctx.fillStyle = '#3d2f18';
+    ctx.fillRect(60, 138, 22, 4);
+    // The cart, parked at the stairhead, flamingo riding point
+    ctx.fillStyle = '#8a8a90';
+    ctx.fillRect(176, 122, 34, 15);
+    ctx.fillStyle = '#241f18';
+    ctx.beginPath();
+    ctx.arc(182, 138, 4, 0, Math.PI * 2);
+    ctx.arc(202, 138, 4, 0, Math.PI * 2);
+    ctx.fill();
+    for (const [bx4, bc3] of [[178, '#c47a7a'], [188, '#7a9ac4'], [198, '#d8cdb4']] as const) {
+      ctx.fillStyle = bc3;
+      ctx.fillRect(bx4, 116, 9, 7);
+    }
+    ctx.fillStyle = '#ff8ab4';
+    ctx.fillRect(196, 100, 3, 16);
+    ctx.beginPath();
+    ctx.ellipse(200, 100, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6b5228';
+    ctx.beginPath();
+    ctx.moveTo(192, 96);
+    ctx.lineTo(208, 104);
+    ctx.stroke();
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(172, 132, 44, 14); // the cart

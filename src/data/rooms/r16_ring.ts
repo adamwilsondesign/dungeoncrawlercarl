@@ -39,6 +39,8 @@ const ballSheet: SpriteSheetDef = {
     idle_up: { frames: [3], frameMs: 400, loop: true },
     idle_right: { frames: [6], frameMs: 400, loop: true },
   },
+  // Pink fused mass studded with steel plate (matches the combatant anchor).
+  placeholderOutfit: { torso: '#e8a4b0', head: '#e8a4b0', patches: ['#8f939c', '#d8dbe0', '#c87884'] },
 };
 
 export const r16_ring: RoomDef = {
@@ -92,7 +94,7 @@ export const r16_ring: RoomDef = {
     {
       id: 'ball',
       label: 'THE BALL',
-      color: '#c8b8d8',
+      color: '#e8a4b0',
       sheet: ballSheet,
       x: 170,
       y: 96,
@@ -241,6 +243,62 @@ export const r16_ring: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.85 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: a subway-like ring - tiled platform wall, harsh strip
+  // lights, the curving rail trench, the shut stairwell doors beyond.
+  placeholderArtDraw: (ctx) => {
+    // Tiled platform wall over the stone
+    ctx.fillStyle = '#5a5e62';
+    ctx.fillRect(0, 26, 320, 80);
+    ctx.fillStyle = '#4a4e52';
+    for (let y = 30; y < 104; y += 12) {
+      ctx.fillRect(0, y, 320, 1);
+      for (let x = (y / 12) % 2 === 0 ? 10 : 0; x < 320; x += 20) ctx.fillRect(x, y - 11, 1, 11);
+    }
+    // Warning stripe along the platform edge
+    ctx.fillStyle = '#c9b23a';
+    ctx.fillRect(0, 106, 320, 4);
+    ctx.fillStyle = '#141414';
+    for (let x = 0; x < 320; x += 16) ctx.fillRect(x, 106, 8, 4);
+    // Harsh strip lights
+    for (const fx of [40, 130, 220, 296]) {
+      ctx.fillStyle = '#e0e6ea';
+      ctx.fillRect(fx, 10, 36, 4);
+      const g = ctx.createRadialGradient(fx + 18, 12, 4, fx + 18, 12, 50);
+      g.addColorStop(0, 'rgba(220,230,240,0.30)');
+      g.addColorStop(1, 'rgba(220,230,240,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(fx - 32, 0, 100, 100);
+    }
+    // The rail trench curving through the room (the loop)
+    ctx.fillStyle = '#22262a';
+    ctx.beginPath();
+    ctx.moveTo(90, 110);
+    ctx.quadraticCurveTo(200, 132, 320, 118);
+    ctx.lineTo(320, 138);
+    ctx.quadraticCurveTo(200, 152, 90, 130);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#6b6e72';
+    for (const off of [4, 12]) {
+      ctx.beginPath();
+      ctx.moveTo(92, 114 + off);
+      ctx.quadraticCurveTo(200, 136 + off, 320, 122 + off);
+      ctx.stroke();
+    }
+    // Scuffed impact marks where it leans wide on the bend
+    ctx.fillStyle = 'rgba(180,150,140,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(238, 122, 26, 6, -0.06, 0, Math.PI * 2);
+    ctx.fill();
+    // The stairwell doors on the far platform, shut tight
+    ctx.fillStyle = '#31353a';
+    ctx.fillRect(262, 40, 44, 62);
+    ctx.fillStyle = '#26292e';
+    ctx.fillRect(266, 44, 17, 58);
+    ctx.fillRect(285, 44, 17, 58);
+    ctx.fillStyle = '#c9b23a';
+    ctx.fillRect(266, 68, 36, 3);
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(40, 108, 44, 18); // chest plinth

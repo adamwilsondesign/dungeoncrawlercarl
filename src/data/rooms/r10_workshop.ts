@@ -281,6 +281,73 @@ export const r10_workshop: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.85 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: the forge workshop - keg wall, coal-cart rail dead-ending at
+  // the iron door, fuel line, forge fire and welding sparks. Everything
+  // here is the puzzle's stage.
+  placeholderArtDraw: (ctx) => {
+    // Keg wall, left: stacked barrels with warning bands
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3 - (row % 2); col++) {
+        const kx = 36 + col * 20 + (row % 2) * 10;
+        const ky = 96 - row * 18;
+        ctx.fillStyle = '#4a3418';
+        ctx.beginPath();
+        ctx.roundRect(kx, ky, 17, 17, 3);
+        ctx.fill();
+        ctx.fillStyle = '#c43a3a';
+        ctx.fillRect(kx, ky + 6, 17, 4);
+        ctx.fillStyle = '#241a0c';
+        ctx.fillRect(kx, ky + 2, 17, 1);
+        ctx.fillRect(kx, ky + 13, 17, 1);
+      }
+    }
+    // Fuel line along the wall, bracketed, running toward the boss door
+    ctx.fillStyle = '#8f5a2a';
+    ctx.fillRect(100, 62, 196, 4);
+    ctx.fillStyle = '#5c3a18';
+    for (let x = 108; x < 296; x += 24) ctx.fillRect(x, 60, 3, 8);
+    // The forge: banked fire under a hood
+    ctx.fillStyle = '#241c14';
+    ctx.fillRect(224, 70, 38, 46);
+    ctx.fillStyle = '#171009';
+    ctx.fillRect(228, 90, 30, 22);
+    const forge = ctx.createRadialGradient(243, 106, 2, 243, 106, 24);
+    forge.addColorStop(0, 'rgba(255,190,80,0.95)');
+    forge.addColorStop(0.5, 'rgba(255,110,40,0.6)');
+    forge.addColorStop(1, 'rgba(255,110,40,0)');
+    ctx.fillStyle = forge;
+    ctx.fillRect(220, 84, 46, 34);
+    // Welding sparks
+    ctx.fillStyle = '#ffe9a8';
+    for (const [px2, py2] of [[250, 78], [256, 84], [246, 70], [262, 74]] as const) {
+      ctx.fillRect(px2, py2, 2, 2);
+    }
+    // The rail: from the cart across the floor to the iron door
+    ctx.fillStyle = '#3a3230';
+    ctx.fillRect(150, 138, 160, 3);
+    ctx.fillRect(150, 145, 160, 3);
+    ctx.fillStyle = '#2a2422';
+    for (let x = 154; x < 308; x += 12) ctx.fillRect(x, 136, 3, 14);
+    // The coal cart on the rail
+    ctx.fillStyle = '#43362a';
+    ctx.fillRect(152, 118, 40, 22);
+    ctx.fillStyle = '#16130f';
+    ctx.beginPath();
+    ctx.ellipse(172, 118, 18, 6, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#241f18';
+    ctx.beginPath();
+    ctx.arc(160, 142, 5, 0, Math.PI * 2);
+    ctx.arc(184, 142, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // The iron door, right: hinges like knuckles, rail dead-ends against it
+    ctx.fillStyle = '#33302e';
+    ctx.fillRect(294, 76, 26, 76);
+    ctx.fillStyle = '#26221f';
+    ctx.fillRect(298, 80, 18, 68);
+    ctx.fillStyle = '#4a4542';
+    for (const hy of [88, 110, 132]) ctx.fillRect(294, hy, 8, 6);
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(30, 108, 66, 28); // keg wall footprint

@@ -128,6 +128,57 @@ export const r05_maze: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: maze corridors - lower rough ceiling, branch mouths, survivor
+  // spray-paint arrows, deeper shadow than the entrance halls.
+  placeholderArtDraw: (ctx) => {
+    // Low rough ceiling pressing down
+    ctx.fillStyle = '#241c14';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(320, 0);
+    ctx.lineTo(320, 24);
+    ctx.quadraticCurveTo(230, 40, 150, 30);
+    ctx.quadraticCurveTo(60, 22, 0, 36);
+    ctx.closePath();
+    ctx.fill();
+    // Branch mouths: dark side passages breaking the wall
+    for (const [bx, bw] of [[36, 30], [150, 26], [242, 34]] as const) {
+      const mouth = ctx.createLinearGradient(bx, 0, bx, 108);
+      mouth.addColorStop(0, '#0c0a06');
+      mouth.addColorStop(1, '#1c150e');
+      ctx.fillStyle = mouth;
+      ctx.beginPath();
+      ctx.moveTo(bx, 108);
+      ctx.lineTo(bx + 4, 46);
+      ctx.quadraticCurveTo(bx + bw / 2, 34, bx + bw - 4, 46);
+      ctx.lineTo(bx + bw, 108);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Survivor chalk/spray arrows
+    ctx.fillStyle = '#e8e2d0';
+    ctx.fillRect(96, 66, 14, 3);
+    ctx.beginPath();
+    ctx.moveTo(110, 62);
+    ctx.lineTo(116, 67.5);
+    ctx.lineTo(110, 73);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#d8b06a';
+    ctx.fillRect(206, 70, 3, 12);
+    ctx.beginPath();
+    ctx.moveTo(202, 82);
+    ctx.lineTo(207.5, 88);
+    ctx.lineTo(213, 82);
+    ctx.closePath();
+    ctx.fill();
+    // Deep shadow pooling on the floor edges
+    const shadow = ctx.createLinearGradient(0, 110, 0, 200);
+    shadow.addColorStop(0, 'rgba(0,0,0,0)');
+    shadow.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = shadow;
+    ctx.fillRect(0, 110, 320, 90);
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(60, 110, 44, 18); // rubble bay

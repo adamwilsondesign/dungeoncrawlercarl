@@ -182,6 +182,7 @@ export class CombatScene implements Scene {
         color: def.color,
         frameW: SPRITE_W,
         frameH: SPRITE_H,
+        outfit: def.outfit,
       });
       let stats: CombatantStats;
       let skillIds: string[];

@@ -163,6 +163,57 @@ export const r06_hoarder: RoomDef = {
     { yTop: 100, yBottom: 114, scale: 0.85 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: the inside of a giant dumpster - trash mountains toward the
+  // ceiling, ripped bags, the curated treasure midden, lurid boss-light.
+  placeholderArtDraw: (ctx) => {
+    // Steel dumpster walls with vertical ribs
+    ctx.fillStyle = '#2e3230';
+    ctx.fillRect(0, 0, 320, 106);
+    ctx.fillStyle = '#262a28';
+    for (let x = 12; x < 320; x += 34) ctx.fillRect(x, 0, 4, 106);
+    // Trash mountains stacked toward the ceiling
+    const heap = (cx: number, w: number, top: number, base: string): void => {
+      ctx.fillStyle = base;
+      ctx.beginPath();
+      ctx.moveTo(cx - w / 2, 112);
+      ctx.quadraticCurveTo(cx - w * 0.2, top, cx, top + 4);
+      ctx.quadraticCurveTo(cx + w * 0.25, top - 4, cx + w / 2, 112);
+      ctx.closePath();
+      ctx.fill();
+    };
+    heap(60, 130, 26, '#3d4426');
+    heap(140, 110, 44, '#46422a');
+    heap(96, 90, 60, '#52481f');
+    // Ripped bags + junk glints on the heaps
+    for (const [gx, gy, gc] of [
+      [44, 70, '#1c2014'], [78, 52, '#20241a'], [120, 74, '#1e2216'],
+      [58, 94, '#c4c9a0'], [102, 86, '#b0a068'], [140, 92, '#8f9a78'],
+    ] as const) {
+      ctx.fillStyle = gc;
+      ctx.beginPath();
+      ctx.ellipse(gx, gy, 9, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The treasure midden: her curated pile, glinting
+    ctx.fillStyle = '#4a3e1e';
+    ctx.beginPath();
+    ctx.moveTo(236, 146);
+    ctx.quadraticCurveTo(256, 92, 268, 100);
+    ctx.quadraticCurveTo(292, 92, 296, 146);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffd166';
+    for (const [tx2, ty2] of [[254, 112], [270, 104], [282, 122], [262, 130], [246, 126]] as const) {
+      ctx.fillRect(tx2, ty2, 4, 3);
+    }
+    ctx.fillStyle = '#e8e4d8';
+    ctx.fillRect(274, 112, 5, 4);
+    // A hubcap-shaped vacancy near the top
+    ctx.strokeStyle = '#2a2210';
+    ctx.beginPath();
+    ctx.ellipse(268, 100, 7, 3, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(30, 110, 120, 14); // garbage dunes

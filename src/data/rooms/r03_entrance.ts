@@ -150,6 +150,41 @@ export const r03_entrance: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: entrance tunnels - rocky ceiling arc, official dungeon
+  // signage, debris and one covered shape (the lichen glow is the mood layer).
+  placeholderArtDraw: (ctx) => {
+    // Rough ceiling arc, lower than the wall grid suggests
+    ctx.fillStyle = '#2c221a';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(320, 0);
+    ctx.lineTo(320, 14);
+    ctx.quadraticCurveTo(240, 30, 160, 22);
+    ctx.quadraticCurveTo(70, 14, 0, 26);
+    ctx.closePath();
+    ctx.fill();
+    // Official dungeon signboard, lit
+    ctx.fillStyle = '#101820';
+    ctx.fillRect(126, 40, 70, 26);
+    ctx.strokeStyle = '#7de08a';
+    ctx.strokeRect(126.5, 40.5, 69, 25);
+    ctx.fillStyle = '#7de08a';
+    ctx.fillRect(132, 46, 58, 3);
+    ctx.fillRect(132, 52, 44, 3);
+    ctx.fillRect(132, 58, 50, 3);
+    // Debris and a blanketed shape along the wall base
+    ctx.fillStyle = '#241c14';
+    ctx.fillRect(120, 122, 42, 8);
+    ctx.fillStyle = '#33261a';
+    ctx.beginPath();
+    ctx.ellipse(141, 122, 20, 6, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#3d2f20';
+    for (const [dx, dy] of [[52, 118], [230, 116], [262, 124], [90, 126]] as const) {
+      ctx.fillRect(dx, dy, 8, 4);
+      ctx.fillRect(dx + 2, dy - 3, 5, 3);
+    }
+  },
   placeholderMaskDraw: (ctx) => {
     // Corridor narrows around debris
     ctx.fillStyle = '#000000';

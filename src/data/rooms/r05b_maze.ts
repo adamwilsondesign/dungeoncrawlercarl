@@ -138,6 +138,60 @@ export const r05b_maze: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: east maze - same claustrophobic tunnels, the demolition
+  // crate's stenciled warning, the nest's heat glow, the shining hubcap.
+  placeholderArtDraw: (ctx) => {
+    ctx.fillStyle = '#241c14';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(320, 0);
+    ctx.lineTo(320, 30);
+    ctx.quadraticCurveTo(210, 18, 120, 28);
+    ctx.quadraticCurveTo(50, 36, 0, 24);
+    ctx.closePath();
+    ctx.fill();
+    // The demolition crate on its ledge
+    ctx.fillStyle = '#5c4a2a';
+    ctx.fillRect(52, 98, 30, 30);
+    ctx.strokeStyle = '#2e2410';
+    ctx.strokeRect(52.5, 98.5, 29, 29);
+    ctx.beginPath();
+    ctx.moveTo(52, 98);
+    ctx.lineTo(82, 128);
+    ctx.moveTo(82, 98);
+    ctx.lineTo(52, 128);
+    ctx.stroke();
+    ctx.fillStyle = '#c43a3a';
+    ctx.fillRect(58, 108, 18, 9);
+    // The humming nest: a wall hole ringed in scorch with an ember glow
+    const nest = ctx.createRadialGradient(140, 78, 2, 140, 78, 26);
+    nest.addColorStop(0, 'rgba(255,140,60,0.7)');
+    nest.addColorStop(1, 'rgba(255,140,60,0)');
+    ctx.fillStyle = nest;
+    ctx.fillRect(112, 52, 56, 52);
+    ctx.fillStyle = '#100a06';
+    ctx.beginPath();
+    ctx.ellipse(140, 78, 15, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // The glinting hubcap on the floor
+    ctx.fillStyle = '#c9ccd4';
+    ctx.beginPath();
+    ctx.ellipse(161, 144, 11, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f2f4f8';
+    ctx.beginPath();
+    ctx.ellipse(158, 143, 4, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // The rustling heap blocking the east passage
+    ctx.fillStyle = '#332a1c';
+    ctx.beginPath();
+    ctx.ellipse(272, 130, 34, 22, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#3f3422';
+    ctx.beginPath();
+    ctx.ellipse(258, 132, 14, 12, 0, Math.PI, 0);
+    ctx.fill();
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(40, 110, 50, 20); // crate ledge

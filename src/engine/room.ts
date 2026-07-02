@@ -109,6 +109,7 @@ export class Room {
       kind: 'background',
       label: def.label,
       mood: def.backgroundMood,
+      draw: def.placeholderArtDraw,
     });
 
     let grid: WalkGrid;
@@ -131,6 +132,7 @@ export class Room {
           color: a.color,
           frameW: a.sheet.frameW,
           frameH: a.sheet.frameH,
+          outfit: a.sheet.placeholderOutfit,
         });
         const actor = new Actor({
           id: a.id,
@@ -429,6 +431,7 @@ export class RoomScene implements Scene, ScriptHost {
       color: this.content.player.color,
       frameW: sheet.frameW,
       frameH: sheet.frameH,
+      outfit: sheet.placeholderOutfit,
     });
     const player = new Actor({
       id: 'player',
@@ -554,6 +557,7 @@ export class RoomScene implements Scene, ScriptHost {
       color,
       frameW: spec.sheet.frameW,
       frameH: spec.sheet.frameH,
+      outfit: spec.sheet.placeholderOutfit,
     });
     const actor = new Actor({
       id: spec.actorId,

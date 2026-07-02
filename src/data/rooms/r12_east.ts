@@ -203,6 +203,52 @@ export const r12_east: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: green-lit tunnels near the bridge - the fallen transit sign,
+  // the wall nook, and the narrow cut pinching shut at the east end.
+  placeholderArtDraw: (ctx) => {
+    // The fallen transit sign, angled off its mount
+    ctx.save();
+    ctx.translate(150, 100);
+    ctx.rotate(-0.12);
+    ctx.fillStyle = '#2c4436';
+    ctx.fillRect(-24, -14, 48, 18);
+    ctx.strokeStyle = '#1a2a20';
+    ctx.strokeRect(-23.5, -13.5, 47, 17);
+    ctx.fillStyle = '#c9d4c0';
+    ctx.fillRect(-18, -9, 30, 3);
+    ctx.fillRect(-18, -3, 22, 3);
+    ctx.restore();
+    ctx.fillStyle = '#3a3228';
+    ctx.fillRect(128, 60, 4, 30);
+    // The wall nook with the miner's kit
+    ctx.fillStyle = '#1a140d';
+    ctx.fillRect(62, 112, 28, 18);
+    ctx.fillStyle = '#5c4a2a';
+    ctx.fillRect(66, 122, 10, 7);
+    // The narrow cut: walls pinching in at the east end, deep shadow between
+    ctx.fillStyle = '#2a2118';
+    ctx.beginPath();
+    ctx.moveTo(252, 0);
+    ctx.lineTo(268, 0);
+    ctx.lineTo(284, 106);
+    ctx.lineTo(252, 106);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#241c14';
+    ctx.beginPath();
+    ctx.moveTo(320, 0);
+    ctx.lineTo(320, 106);
+    ctx.lineTo(304, 106);
+    ctx.lineTo(312, 0);
+    ctx.closePath();
+    ctx.fill();
+    const cut = ctx.createLinearGradient(284, 0, 304, 0);
+    cut.addColorStop(0, 'rgba(0,0,0,0.7)');
+    cut.addColorStop(0.5, 'rgba(0,0,0,0.35)');
+    cut.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.fillStyle = cut;
+    ctx.fillRect(284, 20, 20, 86);
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(56, 108, 40, 20); // wall nook shelf

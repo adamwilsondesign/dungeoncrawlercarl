@@ -99,6 +99,47 @@ export const r08_alcove: RoomDef = {
     { yTop: 108, yBottom: 120, scale: 0.8 },
     { yTop: 184, yBottom: 200, scale: 1.0 },
   ],
+  // Art brief: a quiet corner of the tunnels - softer, dimmer green light,
+  // the fallen crawler under a blanket shape, scattered gear, the cairn.
+  placeholderArtDraw: (ctx) => {
+    // Dim the whole alcove; the lichen glow is gentler here
+    ctx.fillStyle = 'rgba(10,12,10,0.30)';
+    ctx.fillRect(0, 0, 320, 200);
+    // The stacked-stone cairn
+    ctx.fillStyle = '#4a4238';
+    for (const [sx2, sy2, sw2] of [
+      [62, 116, 18], [64, 110, 14], [66, 104, 10], [68, 99, 7], [69, 95, 5],
+    ] as const) {
+      ctx.fillRect(sx2, sy2, sw2, 6);
+      ctx.fillStyle = '#3a332b';
+      ctx.fillRect(sx2, sy2 + 4, sw2, 2);
+      ctx.fillStyle = '#4a4238';
+    }
+    // The fallen crawler: a still shape under riot gear, treated gently
+    ctx.fillStyle = '#2c3138';
+    ctx.beginPath();
+    ctx.ellipse(142, 132, 26, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a414a';
+    ctx.beginPath();
+    ctx.ellipse(132, 128, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Scattered pack + helmet
+    ctx.fillStyle = '#33402c';
+    ctx.fillRect(170, 128, 12, 9);
+    ctx.fillStyle = '#454f57';
+    ctx.beginPath();
+    ctx.arc(190, 134, 5, Math.PI, 0);
+    ctx.fill();
+    // The debris pile hiding the scurrier
+    ctx.fillStyle = '#31281c';
+    ctx.beginPath();
+    ctx.ellipse(238, 136, 30, 14, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#3d3222';
+    ctx.fillRect(222, 124, 20, 5);
+    ctx.fillRect(240, 118, 5, 12);
+  },
   placeholderMaskDraw: (ctx) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(50, 104, 44, 18); // stone cairn ledge

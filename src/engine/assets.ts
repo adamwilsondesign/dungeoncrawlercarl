@@ -7,7 +7,7 @@
  * code changes. Missing files produce legible, spec-driven placeholders.
  */
 
-import type { Mood, PlaceholderSpec, UiGlyph } from '../data/types';
+import type { Mood, MoodPalette, PlaceholderOutfit, PlaceholderSpec, UiGlyph } from '../data/types';
 
 export type LoadedImage = HTMLImageElement | HTMLCanvasElement;
 
@@ -209,17 +209,18 @@ export function drawPixelText(
 // Background placeholder
 // ---------------------------------------------------------------------------
 
-interface MoodPalette {
-  wall: string;
-  floor: string;
-  accent: string;
-  text: string;
-}
-
+/**
+ * Art-direction palettes (per the room briefs):
+ * - cold: Seattle night - deep blues, sodium-orange applied per-room.
+ * - dungeon: Floor 1 signature - warm brick/stone under GREEN LICHEN glow.
+ * - safe: lamplit interior warmth - ambers over wood-brown.
+ * - workshop: goblin industry - copper, coal, forge-orange.
+ * - boss: lurid red boss-light over dark stone.
+ */
 const MOOD_PALETTES: Record<Mood, MoodPalette> = {
-  cold: { wall: '#243a52', floor: '#33506e', accent: '#7fd4ff', text: '#d5ecff' },
-  dungeon: { wall: '#332c3e', floor: '#4d4258', accent: '#c9a0ff', text: '#eadfff' },
-  safe: { wall: '#2c3d2a', floor: '#41573a', accent: '#a8e6a0', text: '#e4f5dc' },
+  cold: { wall: '#1c2c44', floor: '#2c4360', accent: '#7fd4ff', text: '#d5ecff' },
+  dungeon: { wall: '#43362a', floor: '#554432', accent: '#7de08a', text: '#dff2d9' },
+  safe: { wall: '#4a3a24', floor: '#5e4a2e', accent: '#ffd98a', text: '#ffefd2' },
   workshop: { wall: '#3d2f24', floor: '#59452f', accent: '#ffc06e', text: '#ffe9c9' },
   boss: { wall: '#3d1f24', floor: '#5c3038', accent: '#ff6e6e', text: '#ffdada' },
 };
@@ -228,7 +229,100 @@ const BG_W = 320;
 const BG_H = 200;
 const BG_HORIZON = 110;
 
-function makeBackgroundPlaceholder(spec: { label: string; mood: Mood }): HTMLCanvasElement {
+/** Deterministic pseudo-random stream so generated art is stable per run. */
+function seeded(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
+/**
+ * Ambient dressing shared by every room of a mood - the "signature look"
+ * layer from the art briefs (green lichen for dungeon, forge haze for
+ * workshop, boss vignette, lamp pools for safe rooms).
+ */
+function drawMoodDressing(ctx: CanvasRenderingContext2D, mood: Mood, pal: MoodPalette): void {
+  const rnd = seeded(mood.length * 7919 + 17);
+  if (mood === 'dungeon') {
+    // Brick courses on the wall
+    ctx.fillStyle = shade(pal.wall, 0.88);
+    for (let y = 14; y < BG_HORIZON - 6; y += 10) {
+      ctx.fillRect(0, y, BG_W, 1);
+      for (let x = (y / 10) % 2 === 0 ? 14 : 0; x < BG_W; x += 28) ctx.fillRect(x, y - 9, 1, 9);
+    }
+    // Glowing green lichen clumps along the ceiling line and wall seams
+    for (let i = 0; i < 26; i++) {
+      const x = rnd() * BG_W;
+      const y = 4 + rnd() * (BG_HORIZON - 30);
+      const r = 3 + rnd() * 7;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+      glow.addColorStop(0, 'rgba(125,224,138,0.5)');
+      glow.addColorStop(1, 'rgba(125,224,138,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+      ctx.fillStyle = i % 3 === 0 ? '#8fe89a' : '#5cae6d';
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Green light spill on the floor
+    const spill = ctx.createLinearGradient(0, BG_HORIZON, 0, BG_H);
+    spill.addColorStop(0, 'rgba(125,224,138,0.14)');
+    spill.addColorStop(1, 'rgba(125,224,138,0)');
+    ctx.fillStyle = spill;
+    ctx.fillRect(0, BG_HORIZON, BG_W, BG_H - BG_HORIZON);
+  } else if (mood === 'workshop') {
+    // Riveted iron panels + coal-smoke haze + ember glow at the seam
+    ctx.fillStyle = shade(pal.wall, 0.82);
+    for (let x = 0; x < BG_W; x += 46) ctx.fillRect(x, 8, 2, BG_HORIZON - 10);
+    ctx.fillStyle = shade(pal.wall, 1.25);
+    for (let x = 6; x < BG_W; x += 23) ctx.fillRect(x, 16, 1, 1);
+    const ember = ctx.createLinearGradient(0, BG_HORIZON - 26, 0, BG_HORIZON + 8);
+    ember.addColorStop(0, 'rgba(255,120,40,0)');
+    ember.addColorStop(1, 'rgba(255,120,40,0.28)');
+    ctx.fillStyle = ember;
+    ctx.fillRect(0, BG_HORIZON - 26, BG_W, 34);
+    ctx.fillStyle = 'rgba(30,22,16,0.35)';
+    for (let i = 0; i < 4; i++) ctx.fillRect(0, 6 + i * 9, BG_W, 3 - (i % 2));
+  } else if (mood === 'boss') {
+    // Lurid red vignette pressing in from the edges
+    const v = ctx.createRadialGradient(BG_W / 2, 120, 40, BG_W / 2, 120, 230);
+    v.addColorStop(0, 'rgba(255,60,60,0)');
+    v.addColorStop(1, 'rgba(120,10,16,0.5)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, BG_W, BG_H);
+  } else if (mood === 'safe') {
+    // Warm lamp pools along the wall
+    for (const x of [70, 250]) {
+      const g = ctx.createRadialGradient(x, 40, 4, x, 40, 70);
+      g.addColorStop(0, 'rgba(255,214,130,0.4)');
+      g.addColorStop(1, 'rgba(255,214,130,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - 70, 0, 140, 120);
+      ctx.fillStyle = '#ffd982';
+      ctx.fillRect(x - 3, 36, 6, 6);
+      ctx.fillStyle = shade(pal.wall, 0.7);
+      ctx.fillRect(x - 1, 28, 2, 8);
+    }
+  } else if (mood === 'cold') {
+    // Night gradient + faint stars above the skyline line
+    const sky = ctx.createLinearGradient(0, 0, 0, BG_HORIZON);
+    sky.addColorStop(0, '#0c1526');
+    sky.addColorStop(1, 'rgba(12,21,38,0)');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, BG_W, BG_HORIZON);
+    ctx.fillStyle = '#cfe4ff';
+    for (let i = 0; i < 24; i++) ctx.fillRect(Math.floor(rnd() * BG_W), Math.floor(rnd() * 48), 1, 1);
+  }
+}
+
+function makeBackgroundPlaceholder(spec: {
+  label: string;
+  mood: Mood;
+  draw?: (ctx: CanvasRenderingContext2D, pal: MoodPalette) => void;
+}): HTMLCanvasElement {
   const pal = MOOD_PALETTES[spec.mood] ?? MOOD_PALETTES.dungeon;
   const [canvas, ctx] = makeCanvas(BG_W, BG_H);
 
@@ -254,8 +348,9 @@ function makeBackgroundPlaceholder(spec: { label: string; mood: Mood }): HTMLCan
   ctx.fillStyle = shade(pal.floor, 1.12);
   ctx.fillRect(0, BG_HORIZON + 1, BG_W, 1);
 
-  // P10 fix: no more big baked-in room title — the scene draws a compact
-  // room-name chip in the HUD instead. (spec.label still names the log line.)
+  // Mood signature layer, then the room's own art brief on top.
+  drawMoodDressing(ctx, spec.mood, pal);
+  spec.draw?.(ctx, pal);
 
   // Thin accent border
   ctx.strokeStyle = pal.accent;
@@ -291,6 +386,7 @@ function makeActorPlaceholder(spec: {
   color: string;
   frameW: number;
   frameH: number;
+  outfit?: PlaceholderOutfit;
 }): HTMLCanvasElement {
   const { frameW, frameH } = spec;
   const [canvas, ctx] = makeCanvas(frameW * 3, frameH * 3);
@@ -310,10 +406,11 @@ function drawHumanoidFrame(
   oy: number,
   dir: 'down' | 'up' | 'right',
   pose: number,
-  spec: { label: string; color: string; frameW: number; frameH: number },
+  spec: { label: string; color: string; frameW: number; frameH: number; outfit?: PlaceholderOutfit },
 ): void {
-  const { color, frameW: w, frameH: h } = spec;
-  const outline = shade(color, 0.5);
+  const { color, frameW: w, frameH: h, outfit } = spec;
+  const torsoColor = outfit?.torso ?? color;
+  const outline = shade(torsoColor, 0.5);
   const cx = ox + Math.floor(w / 2);
   const feetY = oy + h; // feet baseline at the frame bottom, like real art
   const legH = Math.max(3, Math.floor(h * 0.16));
@@ -322,17 +419,25 @@ function drawHumanoidFrame(
   const headR = Math.max(2, Math.floor(w / 6));
   const lift = pose === 2 ? 1 : 0; // slight bob between the two walk poses
 
-  // Legs
-  ctx.fillStyle = shade(color, 0.72);
+  // Legs (and, when dressed, distinct feet - one very specific pair of Crocs)
+  const legColor = outfit?.legs ?? shade(color, 0.72);
+  const drawLeg = (x: number, hgt: number): void => {
+    ctx.fillStyle = legColor;
+    ctx.fillRect(x, feetY - hgt, legW, hgt);
+    if (outfit?.feet) {
+      ctx.fillStyle = outfit.feet;
+      ctx.fillRect(x - 1, feetY - 2, legW + 2, 2);
+    }
+  };
   if (pose === 0) {
-    ctx.fillRect(cx - legW - 1, feetY - legH, legW, legH);
-    ctx.fillRect(cx + 1, feetY - legH, legW, legH);
+    drawLeg(cx - legW - 1, legH);
+    drawLeg(cx + 1, legH);
   } else {
     const spread = 2;
     const backLift = 1;
     const leadLeft = pose === 1;
-    ctx.fillRect(cx - legW - 1 - spread, feetY - legH, legW, legH - (leadLeft ? 0 : backLift));
-    ctx.fillRect(cx + 1 + spread, feetY - legH, legW, legH - (leadLeft ? backLift : 0));
+    drawLeg(cx - legW - 1 - spread, legH - (leadLeft ? 0 : backLift));
+    drawLeg(cx + 1 + spread, legH - (leadLeft ? backLift : 0));
   }
 
   // Torso (rounded) with outline
@@ -342,21 +447,53 @@ function drawHumanoidFrame(
   ctx.beginPath();
   ctx.roundRect(cx - torsoW / 2 - 1, torsoTop - 1, torsoW + 2, torsoH + 2, 4);
   ctx.fill();
-  ctx.fillStyle = color;
+  ctx.fillStyle = torsoColor;
   ctx.beginPath();
   ctx.roundRect(cx - torsoW / 2, torsoTop, torsoW, torsoH, 3);
   ctx.fill();
 
+  // Fur mottling (tortoiseshell patches), clipped to the torso
+  if (outfit?.patches?.length) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(cx - torsoW / 2, torsoTop, torsoW, torsoH, 3);
+    ctx.clip();
+    const spots: Array<[number, number, number]> = [
+      [-torsoW * 0.3, torsoH * 0.25, torsoW * 0.32],
+      [torsoW * 0.28, torsoH * 0.55, torsoW * 0.3],
+      [-torsoW * 0.1, torsoH * 0.8, torsoW * 0.26],
+      [torsoW * 0.2, torsoH * 0.15, torsoW * 0.22],
+    ];
+    spots.forEach(([dx, dy, r], i) => {
+      ctx.fillStyle = outfit.patches![i % outfit.patches!.length];
+      ctx.beginPath();
+      ctx.ellipse(cx + dx, torsoTop + dy, r, r * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
   // Head with outline
   const headCY = oy + 2 + headR - lift;
+  const headColor = outfit?.head ?? shade(torsoColor, 1.2);
   ctx.fillStyle = outline;
   ctx.beginPath();
   ctx.arc(cx, headCY, headR + 1, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = shade(color, 1.2);
+  ctx.fillStyle = headColor;
   ctx.beginPath();
   ctx.arc(cx, headCY, headR, 0, Math.PI * 2);
   ctx.fill();
+
+  // A tiny crown, for royalty
+  if (outfit?.crown) {
+    const cy2 = headCY - headR - 1 + (lift ? 1 : 0);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(cx - 3, cy2 - 1, 6, 2);
+    ctx.fillRect(cx - 3, cy2 - 3, 1, 2);
+    ctx.fillRect(cx, cy2 - 3, 1, 2);
+    ctx.fillRect(cx + 2, cy2 - 3, 1, 2);
+  }
 
   // Facing indicator: small arrow on the chest
   const ay = torsoTop + Math.floor(torsoH / 2);

@@ -44,6 +44,13 @@ const carlSheet: SpriteSheetDef = {
   frameW: 24,
   frameH: 32,
   mirrorLeft: true,
+  // Art-direction anchors: brown leather jacket, bare legs, PINK Crocs.
+  placeholderOutfit: {
+    torso: '#6e4f33',
+    head: '#e0aa80',
+    legs: '#d8a078',
+    feet: '#ff8ab4',
+  },
   anims: {
     idle_down: { frames: [0], frameMs: 400, loop: true },
     walk_down: { frames: [1, 0, 2, 0], frameMs: 140, loop: true },
@@ -91,7 +98,7 @@ function boot(): void {
     game,
     {
       rooms,
-      player: { label: 'CARL', color: '#f2a65a', sheet: carlSheet },
+      player: { label: 'CARL', color: '#8a6242', sheet: carlSheet },
       characters,
       dialogues,
       items,
