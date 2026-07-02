@@ -37,6 +37,17 @@ export const combatants: Record<string, CombatantDef> = {
     learnset: { 2: ['missile_storm'] },
   },
   // --- Enemies ---
+  // Tutorial enemy: dies in one or two bare-handed hits, threatens nothing.
+  lint_mite: {
+    id: 'lint_mite',
+    name: 'LINT MITE',
+    color: '#c9c2a6',
+    sprite: 'sprites/lint_mite.png',
+    stats: { maxHp: 6, hp: 6, str: 2, dex: 2, con: 2, int: 1, spd: 2 },
+    skills: [],
+    xpReward: 30,
+    ai: 'basic',
+  },
   scuttler: {
     id: 'scuttler',
     name: 'SCUTTLER',

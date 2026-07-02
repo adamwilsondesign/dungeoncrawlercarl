@@ -246,6 +246,20 @@ export class ScriptRunner {
       case 'autosave':
         state.autosave();
         break;
+      case 'equipItem': {
+        const def = host.getItemDef(action.itemId);
+        if (!def?.equip) {
+          console.warn(`[script] equipItem: "${action.itemId}" is not equipment`);
+          break;
+        }
+        if (!state.equipItem(action.memberId, action.itemId, def.equip.slot)) {
+          console.warn(`[script] equipItem: "${action.itemId}" not in inventory`);
+        }
+        break;
+      }
+      case 'joinParty':
+        if (!state.party.includes(action.memberId)) state.party.push(action.memberId);
+        break;
       case 'startCombat': {
         const encounter = host.getEncounter(action.encounterId);
         if (!encounter) {

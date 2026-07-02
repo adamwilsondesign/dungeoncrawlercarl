@@ -26,4 +26,10 @@ export const characters: Record<string, CharacterDef> = {
     portrait: { characterId: 'donut', expressions: ['neutral', 'smug'] },
     portraitSide: 'right',
   },
+  mordecai: {
+    id: 'mordecai',
+    name: 'MORDECAI',
+    color: '#b08a5a',
+    portrait: { characterId: 'mordecai', expressions: ['neutral', 'worried'] },
+  },
 };

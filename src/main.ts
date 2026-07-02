@@ -6,6 +6,11 @@ import { dialogues } from './data/dialogues';
 import { encounters } from './data/encounters';
 import { items } from './data/items';
 import { r00_test } from './data/rooms/r00_test';
+import { r01_street } from './data/rooms/r01_street';
+import { r02_descent } from './data/rooms/r02_descent';
+import { r03_entrance } from './data/rooms/r03_entrance';
+import { r04_guild } from './data/rooms/r04_guild';
+import { r05_act2_stub } from './data/rooms/r05_act2_stub';
 import { skills } from './data/skills';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { Game } from './engine/game';
@@ -36,6 +41,13 @@ const carlSheet: SpriteSheetDef = {
 };
 
 const rooms: Record<string, RoomDef> = {
+  [r01_street.id]: r01_street,
+  [r02_descent.id]: r02_descent,
+  [r03_entrance.id]: r03_entrance,
+  [r04_guild.id]: r04_guild,
+  [r05_act2_stub.id]: r05_act2_stub,
+  // Engine proving ground from P1-P5; unreachable in Act I but kept
+  // registered so old saves and regression checks still load.
   [r00_test.id]: r00_test,
 };
 
@@ -61,7 +73,7 @@ function boot(): void {
       skills,
       combatants,
       encounters,
-      startRoom: r00_test.id,
+      startRoom: r01_street.id,
     },
     state,
     { quitToTitle: () => game.resetTo(titleScene) },

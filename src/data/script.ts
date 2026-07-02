@@ -60,7 +60,11 @@ export type ScriptAction =
    * default killPlayer). The result is stored in flag combat:<id>:result
    * ('victory' | 'defeat' | 'fled').
    */
-  | { type: 'startCombat'; encounterId: string };
+  | { type: 'startCombat'; encounterId: string }
+  /** Equip an inventory item onto a party member (slot from its EquipDef). */
+  | { type: 'equipItem'; memberId: string; itemId: string }
+  /** Add a combatant to the active party (no-op if already present). */
+  | { type: 'joinParty'; memberId: string };
 
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
@@ -159,3 +163,11 @@ export const startCombat = (encounterId: string): ScriptAction => ({
   type: 'startCombat',
   encounterId,
 });
+
+export const equipItem = (memberId: string, itemId: string): ScriptAction => ({
+  type: 'equipItem',
+  memberId,
+  itemId,
+});
+
+export const joinParty = (memberId: string): ScriptAction => ({ type: 'joinParty', memberId });

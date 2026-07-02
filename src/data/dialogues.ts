@@ -2,68 +2,145 @@
  * Dialogue tree registry (looked up by startDialogue(treeId), like rooms).
  * Hub-and-spoke Sierra model: intro lines, then a topic menu whose options
  * come and go with flags ('showIf') or after being asked ('once').
+ *
+ * All lines are original writing in the demo's house voice.
  */
 
-import { giveItem } from './script';
+import { enableExit, playCutscene, setFlag } from './script';
 import type { DialogueTree } from './types';
 
-const npcSurvivor: DialogueTree = {
-  id: 'npc_survivor',
-  entry: 'intro',
+// ---------------------------------------------------------------------------
+// Mordecai — the tutorial guildmaster (Act I centerpiece)
+// ---------------------------------------------------------------------------
+
+const mordecai: DialogueTree = {
+  id: 'mordecai',
+  entry: 'greet',
   nodes: {
-    intro: {
+    greet: {
       lines: [
-        { speakerId: 'npc', text: 'Oh good, a new one. Do not pull the lever. Everyone pulls the lever.' },
-        { speakerId: 'npc', text: 'You are going to pull the lever, are you not.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Come in, close the door, touch nothing that glows. I am Mordecai. This is the tutorial guild. Ask your questions.' },
       ],
       goto: 'hub',
     },
     hub: {
       lines: [],
       choices: [
-        { text: 'Who are you?', goto: 'who', once: true },
-        { text: 'What is this place?', goto: 'place' },
-        { text: 'About that lever...', goto: 'lever', showIf: { flag: 'r00.lever_pulled' } },
-        { text: 'Got anything useful?', goto: 'gift', once: true },
-        { text: 'Goodbye.', goto: 'bye' },
+        { text: 'What is the crawl?', goto: 'crawl' },
+        { text: 'Who is running this?', goto: 'syndicate' },
+        { text: 'How do loot and levels work?', goto: 'loot' },
+        { text: 'How do I stay alive?', goto: 'advice' },
+        { text: 'Nice place.', goto: 'aside', once: true },
+        { text: 'Get me registered.', goto: 'register', showIf: { flag: 'carl:registered', not: true } },
+        { text: 'About the cat...', goto: 'cat', showIf: { flag: 'carl:registered' }, once: true },
+        { text: "We're heading out.", goto: 'warning', showIf: { flag: 'act1:party_formed' } },
+        { text: 'That is all for now.', goto: 'bye' },
       ],
     },
-    who: {
+    crawl: {
       lines: [
-        { speakerId: 'npc', text: 'Nobody. I was somebody upstairs. Down here I am a cautionary tale with legs.' },
-        { speakerId: 'donut', text: 'He smells like lever-puller. They always smell like lever-puller.', expression: 'smug' },
-        { speakerId: 'npc', text: 'Your cat is very rude.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Your planet got turned into a game show. Eighteen floors, down being the only direction, cameras in everything.' },
+        { speakerId: 'mordecai', text: 'Survive a floor, you may descend. Entertain the audience, you get gifts. Bore them and... do not bore them.' },
+        { speakerId: 'mordecai', text: 'I have watched a lot of seasons. The ones who treat it like a game last longer than the ones who treat it like a funeral.', expression: 'worried' },
       ],
       goto: 'hub',
     },
-    place: {
+    syndicate: {
       lines: [
-        { speakerId: 'npc', text: 'A test chamber. The dungeon warms you up before it gets creative.' },
-        { speakerId: 'npc', text: 'Touch things. It likes that. It likes it a little too much.' },
+        { speakerId: 'mordecai', text: 'A mining syndicate holds your planetary license. The show pays for the dig. The dig pays for the show. Tidy, if you are not the dirt.' },
+        { speakerId: 'mordecai', text: 'The AI that runs the dungeon answers to them. Mostly. Lately it laughs at strange times. I would not rely on the org chart.' },
       ],
       goto: 'hub',
     },
-    lever: {
+    loot: {
       lines: [
-        { speakerId: 'npc', text: 'You pulled it. Of course you pulled it.', expression: 'worried' },
-        { speakerId: 'npc', text: 'Whatever that hatch leads to, it heard the clunk. It knows you are coming.' },
+        { speakerId: 'mordecai', text: 'Kill things, open things, amuse the viewers: experience and loot boxes. Levels make you harder to kill. Take both seriously.' },
+        { speakerId: 'mordecai', text: 'Gear goes in three places. A thing to hit with, a thing to be hit in, and a trinket. Check your pack after every fight.' },
       ],
       goto: 'hub',
     },
-    gift: {
+    advice: {
       lines: [
-        { speakerId: 'npc', text: 'Take this key. It opens something around here. I never had the nerve to learn what.' },
+        { speakerId: 'mordecai', text: 'Look at everything. Touch carefully. Talk to whatever talks back. The floor rewards the curious and eats the careless.' },
+        { speakerId: 'mordecai', text: 'And keep the audience laughing. A sponsored crawler is a living crawler.', expression: 'worried' },
       ],
-      goto: 'gift_give',
-    },
-    gift_give: {
-      onEnter: [giveItem('rusty_key')],
-      lines: [],
       goto: 'hub',
+    },
+    aside: {
+      lines: [
+        { speakerId: 'mordecai', text: 'It is a repurposed storage closet with a liquor shelf. But thank you. Nobody says that.' },
+      ],
+      goto: 'hub',
+    },
+    register: {
+      onEnter: [playCutscene('act1_character_creation')],
+      lines: [
+        { speakerId: 'mordecai', text: 'There. Registered, classed, and dressed. You look almost dangerous. Almost.' },
+      ],
+      goto: 'hub',
+    },
+    cat: {
+      onEnter: [playCutscene('act1_donut_transformation')],
+      lines: [
+        { speakerId: 'mordecai', text: 'Congratulations. In thirty years of guild work I have never once been outranked by a cat this fast.', expression: 'worried' },
+      ],
+      goto: 'hub',
+    },
+    warning: {
+      onEnter: [enableExit('onward'), setFlag('act1:briefed', true)],
+      lines: [
+        { speakerId: 'mordecai', text: 'Then hear the quiet version, once: the floor is a machine for making stories out of people. Be the teller, not the material.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Door on the right goes deeper. Come back if you breathe wrong. I stock bandages and told-you-sos.' },
+        { speakerId: 'donut', text: 'We thank you for your service, rat person. You may bow at your convenience.', expression: 'smug' },
+      ],
+      goto: 'end',
     },
     bye: {
       lines: [
-        { speakerId: 'npc', text: 'Good luck, Crawler. Statistically you will need all of it.' },
+        { speakerId: 'mordecai', text: 'Go on. And crawler - eat something. Dead men skip meals.' },
+      ],
+      goto: 'end',
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Donut, post-transformation (small court-holding tree)
+// ---------------------------------------------------------------------------
+
+const donutCourt: DialogueTree = {
+  id: 'donut_court',
+  entry: 'greet',
+  nodes: {
+    greet: {
+      lines: [
+        { speakerId: 'donut', text: 'You may approach.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    hub: {
+      lines: [],
+      choices: [
+        { text: 'How are you feeling?', goto: 'feeling', once: true },
+        { text: 'You are still a cat.', goto: 'stillcat', once: true },
+        { text: 'Ready to go?', goto: 'ready' },
+      ],
+    },
+    feeling: {
+      lines: [
+        { speakerId: 'donut', text: 'Enormous. Verbal. Slightly betrayed that you never mentioned thumbs were this useful. I will manage without.' },
+      ],
+      goto: 'hub',
+    },
+    stillcat: {
+      lines: [
+        { speakerId: 'donut', text: 'I am an APEX cat with a TITLE and a SPELL, Carl. You are a man in foam shoes. Let us not do comparisons.', expression: 'smug' },
+      ],
+      goto: 'hub',
+    },
+    ready: {
+      lines: [
+        { speakerId: 'donut', text: 'The Royal Court advances when I say. ...I say now. Walk ahead of me, it is drafty.' },
       ],
       goto: 'end',
     },
@@ -71,5 +148,6 @@ const npcSurvivor: DialogueTree = {
 };
 
 export const dialogues: Record<string, DialogueTree> = {
-  [npcSurvivor.id]: npcSurvivor,
+  [mordecai.id]: mordecai,
+  [donutCourt.id]: donutCourt,
 };

@@ -7,15 +7,25 @@
 import type { AchievementDef } from './types';
 
 export const achievements: Record<string, AchievementDef> = {
-  lever_puller: {
-    id: 'lever_puller',
-    name: 'LEVER PULLER',
-    description: 'You were told not to. Everyone is told not to.',
+  fashion_victim: {
+    id: 'fashion_victim',
+    name: 'FASHION VICTIM',
+    description: 'You looked at yourself. During an apocalypse. Priorities noted.',
   },
-  hatch_toucher: {
-    id: 'hatch_toucher',
-    name: 'HATCH TOUCHER',
-    description: 'You touched the hatch. The hatch has filed a complaint.',
+  first_steps: {
+    id: 'first_steps',
+    name: 'DOWN THE STAIRS',
+    description: 'You descended. Statistically speaking, you should not have.',
+  },
+  guild_member: {
+    id: 'guild_member',
+    name: 'ORIENTATION COMPLETE',
+    description: 'You found the tutorial guild before something found you.',
+  },
+  royal_court: {
+    id: 'royal_court',
+    name: 'THE ROYAL COURT',
+    description: 'Party formed. Leadership structure: contested. Cat: in charge.',
   },
   first_death: {
     id: 'first_death',

@@ -38,6 +38,27 @@ export const items: Record<string, ItemDef> = {
     description: 'Compressed luck, pocket-grade. SPD +2.',
     equip: { slot: 'trinket', statMods: { spd: 2 } },
   },
+  // --- Act I starting kit ---
+  carls_jacket: {
+    id: 'carls_jacket',
+    name: "CARL'S JACKET",
+    description:
+      'Your own winter jacket, formally registered as ARMOR. The System is very pleased with itself. DEFENSE +2.',
+    equip: { slot: 'armor', defense: 2 },
+  },
+  fingerless_gloves: {
+    id: 'fingerless_gloves',
+    name: 'FINGERLESS GLOVES',
+    description: 'Maximum grip, minimum warmth. The System calls this a fair trade. DEX +1.',
+    equip: { slot: 'trinket', statMods: { dex: 1 } },
+  },
+  stale_biscuit: {
+    id: 'stale_biscuit',
+    name: 'STALE BISCUIT',
+    description: 'A dungeon ration of uncertain age. Edible in the legal sense. Restores a little HP.',
+    stackable: true,
+    use: { target: 'ally', heal: true, power: 6 },
+  },
   // --- Combat consumables ---
   goblin_bomb: {
     id: 'goblin_bomb',

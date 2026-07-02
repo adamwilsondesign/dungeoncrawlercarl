@@ -56,7 +56,24 @@ const junkGolemLair: EncounterDef = {
   ],
 };
 
+// Act I tutorial fight: Carl solo, bare hands, unmissable-easy. The intro
+// text doubles as the combat UI lesson.
+const firstBlood: EncounterDef = {
+  id: 'first_blood',
+  enemies: ['lint_mite'],
+  partyOverride: ['carl'],
+  backdrop: 'backgrounds/combat_entrance.png',
+  backdropLabel: 'FLOOR 1 CORRIDOR',
+  backdropMood: 'dungeon',
+  introText: 'YOUR FIRST FIGHT. PICK AN ACTION FROM THE MENU. THE MITE WILL WAIT. PROBABLY.',
+  rewards: { xp: 30 },
+  victoryScript: [
+    narrate('FIRST BLOOD, CRAWLER. The audience notes it was against a dust mite. The audience notes it anyway.'),
+  ],
+};
+
 export const encounters: Record<string, EncounterDef> = {
   [scrapPit.id]: scrapPit,
   [junkGolemLair.id]: junkGolemLair,
+  [firstBlood.id]: firstBlood,
 };
