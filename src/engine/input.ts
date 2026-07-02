@@ -31,6 +31,8 @@ export class Input {
       else if (e.button === 2) this.rightClicks++;
     });
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      // Tab steals focus and Space scrolls; both are game keys (hotspot reveal).
+      if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       if (!e.repeat) this.pressed.add(e.code);
       this.held.add(e.code);
     });

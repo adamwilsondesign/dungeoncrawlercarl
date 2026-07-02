@@ -280,6 +280,9 @@ export class RoomScene implements Scene, ScriptHost {
   private readonly toasts = new ToastManager();
   private readonly runner = new ScriptRunner(this);
   private keyWalking = false;
+  /** Hotspot-reveal pin (H toggles; persisted as a UI pref, not save data). */
+  private revealPinned = localStorage.getItem('dcc_reveal_pin') === '1';
+  private hoverExit: ExitDef | null = null;
   private transition: Transition = { kind: 'loading' };
 
   private activeVerb: Verb = 'walk';
@@ -412,6 +415,7 @@ export class RoomScene implements Scene, ScriptHost {
     this.mover.stop();
     this.mover.speed = 55;
     this.hover = null;
+    this.hoverExit = null;
     this.cameraX = 0;
     // Never leave scripts deadlocked on moves interrupted by a room change.
     this.finishScriptWalk(true);
@@ -986,6 +990,7 @@ export class RoomScene implements Scene, ScriptHost {
       const click = input.consumeClick();
       if (click) this.dialogue.click(click);
       this.hover = null;
+      this.hoverExit = null;
       this.stepMovers(dtMs);
       return;
     }
@@ -998,6 +1003,7 @@ export class RoomScene implements Scene, ScriptHost {
       input.clearRightClicks();
       if (clicked || spaced || entered) this.narrator.advance();
       this.hover = null;
+      this.hoverExit = null;
       this.stepMovers(dtMs);
       return;
     }
@@ -1033,6 +1039,7 @@ export class RoomScene implements Scene, ScriptHost {
         }
       }
       this.hover = null;
+      this.hoverExit = null;
       return;
     }
 
@@ -1041,6 +1048,7 @@ export class RoomScene implements Scene, ScriptHost {
       input.clearClicks();
       input.clearRightClicks();
       this.hover = null;
+      this.hoverExit = null;
       this.stepMovers(dtMs);
       return;
     }
@@ -1048,8 +1056,29 @@ export class RoomScene implements Scene, ScriptHost {
     // Free play: each queued right-click advances one verb.
     while (input.consumeRightClick()) this.activeVerb = nextVerb(this.activeVerb);
 
+    // Hotspot-reveal pin toggle (discoverability fix); persists across reloads.
+    if (input.consumePress('KeyH')) {
+      this.revealPinned = !this.revealPinned;
+      localStorage.setItem('dcc_reveal_pin', this.revealPinned ? '1' : '0');
+      this.toasts.push('HOTSPOT REVEAL', this.revealPinned ? 'PINNED ON (H)' : 'OFF (HOLD TAB)', '#3fd9ff');
+    }
+
+    // One-time, in-voice pointer at the reveal key (once ever, not per save).
+    if (!localStorage.getItem('dcc_hint_reveal') && (this.room?.def.hotspots.length ?? 0) > 0) {
+      localStorage.setItem('dcc_hint_reveal', '1');
+      this.runLine(
+        'A TIP FROM THE BOOTH, CRAWLER: hold TAB to see everything in a room worth touching. Press H to keep it lit. The dungeon hides nothing. It merely declines to point.',
+      );
+      return;
+    }
+
     const worldMouse = this.toWorld(input.mouse);
     this.hover = this.iconBar.coversPoint(input.mouse) ? null : this.hotspotUnderPoint(worldMouse);
+    const exitUnderMouse = room.exitAt(worldMouse);
+    this.hoverExit =
+      !this.hover && exitUnderMouse && this.state.isExitEnabled(room.def.id, exitUnderMouse)
+        ? exitUnderMouse
+        : null;
 
     const click = input.consumeClick();
     if (click) {
@@ -1168,6 +1197,7 @@ export class RoomScene implements Scene, ScriptHost {
     this.game.input.clearClicks();
     this.game.input.clearRightClicks();
     this.hover = null;
+    this.hoverExit = null;
   }
 
   private hotspotUnderPoint(p: Point): HotspotDef | null {
@@ -1303,6 +1333,11 @@ export class RoomScene implements Scene, ScriptHost {
       });
       ctx.restore();
 
+      // Hotspot reveal (discoverability fix): hold TAB/SPACE or pin with H.
+      // Only active interactables show; suppressed whenever input is blocked
+      // (cutscenes, dialogue, inventory, transitions, other scenes on top).
+      if (this.revealVisible(isTop)) this.drawReveal(ctx);
+
       this.iconBar.render(ctx, this.activeVerb);
       this.invScreen.render(
         ctx,
@@ -1345,8 +1380,9 @@ export class RoomScene implements Scene, ScriptHost {
         drawPixelText(ctx, label, LOGICAL_W - w + 6, y + 2, '#ffd9d9');
       }
       this.toasts.render(ctx);
-      if (this.hover && !this.narrator.active && !this.dialogue.active && isTop) {
-        this.drawHoverLabel(ctx, this.hover.name);
+      if (!this.narrator.active && !this.dialogue.active && isTop) {
+        if (this.hover) this.drawHoverLabel(ctx, this.hover.name);
+        else if (this.hoverExit) this.drawHoverLabel(ctx, 'EXIT');
       }
     }
 
@@ -1386,6 +1422,25 @@ export class RoomScene implements Scene, ScriptHost {
         this.activeVerb === 'item' && held ? this.itemIcons.get(held) : undefined;
       const img = heldIcon ?? this.cursors[this.activeVerb];
       const half = Math.floor(img.width / 2);
+      // Over an interactable, frame the cursor with pixel corner brackets so
+      // the hit reads instantly, before the name label registers.
+      if ((this.hover || this.hoverExit) && !this.narrator.active && !this.dialogue.active) {
+        const s = half + 3;
+        ctx.strokeStyle = this.hover ? '#3fd9ff' : '#ffd166';
+        ctx.lineWidth = 1;
+        const corners: Array<[number, number, number, number]> = [
+          [-s, -s, 4, 0], [-s, -s, 0, 4],
+          [s, -s, -4, 0], [s, -s, 0, 4],
+          [-s, s, 4, 0], [-s, s, 0, -4],
+          [s, s, -4, 0], [s, s, 0, -4],
+        ];
+        ctx.beginPath();
+        for (const [dx, dy, lx, ly] of corners) {
+          ctx.moveTo(mouse.x + dx + 0.5, mouse.y + dy + 0.5);
+          ctx.lineTo(mouse.x + dx + lx + 0.5, mouse.y + dy + ly + 0.5);
+        }
+        ctx.stroke();
+      }
       ctx.drawImage(img, mouse.x - half, mouse.y - half);
     }
   }
@@ -1395,10 +1450,86 @@ export class RoomScene implements Scene, ScriptHost {
     const w = pixelTextWidth(name);
     let x = mouse.x + 8;
     let y = mouse.y + 12;
-    if (x + w + 4 > LOGICAL_W - 2) x = LOGICAL_W - 2 - w - 4;
-    if (y + 9 > LOGICAL_H - 2) y = mouse.y - 14;
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(x - 2, y - 2, w + 4, 9);
+    if (x + w + 6 > LOGICAL_W - 2) x = LOGICAL_W - 2 - w - 6;
+    if (y + 11 > LOGICAL_H - 2) y = mouse.y - 16;
+    ctx.fillStyle = 'rgba(4,10,18,0.9)';
+    ctx.fillRect(x - 3, y - 3, w + 6, 11);
+    ctx.strokeStyle = '#ffe9a8';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 2.5, y - 2.5, w + 5, 10);
     drawPixelText(ctx, name, x, y, '#ffe9a8');
+  }
+
+  /** The reveal shows only while the player actually has world input. */
+  private revealVisible(isTop: boolean): boolean {
+    const input = this.game.input;
+    const wanted = this.revealPinned || input.isDown('Tab') || input.isDown('Space');
+    return (
+      wanted &&
+      isTop &&
+      this.transition.kind === 'none' &&
+      !this.runner.running &&
+      !this.narrator.active &&
+      !this.dialogue.active &&
+      !this.invScreen.open &&
+      !this.dying
+    );
+  }
+
+  /** Pixel-style outlines + name chips over every ACTIVE hotspot and exit. */
+  private drawReveal(ctx: CanvasRenderingContext2D): void {
+    const room = this.room;
+    if (!room) return;
+    // 500ms two-phase blink keeps the overlay alive without heavy glow.
+    const bright = Math.floor(this.state.playtimeMs / 500) % 2 === 0;
+
+    const chip = (text: string, cx: number, topY: number, color: string): void => {
+      const w = pixelTextWidth(text);
+      let x = Math.round(cx - w / 2);
+      x = Math.max(2, Math.min(x, LOGICAL_W - w - 2));
+      let y = topY - 10;
+      if (y < IconBar.HEIGHT + 2) y = topY + 2;
+      ctx.fillStyle = 'rgba(4,10,18,0.85)';
+      ctx.fillRect(x - 2, y - 1, w + 4, 9);
+      drawPixelText(ctx, text, x, y, color);
+    };
+
+    ctx.save();
+    ctx.translate(-Math.round(this.cameraX), 0);
+    ctx.lineWidth = 1;
+
+    for (const def of room.def.hotspots) {
+      if (!this.state.isHotspotEnabled(room.def.id, def)) continue;
+      const color = bright ? '#3fd9ff' : '#2a93b3';
+      if (def.polygon && def.polygon.length >= 3) {
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        def.polygon.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x + 0.5, p.y + 0.5) : ctx.lineTo(p.x + 0.5, p.y + 0.5)));
+        ctx.closePath();
+        ctx.stroke();
+        const xs = def.polygon.map((p) => p.x);
+        const ys = def.polygon.map((p) => p.y);
+        chip(def.name, (Math.min(...xs) + Math.max(...xs)) / 2, Math.min(...ys), '#bdeeff');
+      } else if (def.rect) {
+        const r = def.rect;
+        ctx.strokeStyle = color;
+        ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+        chip(def.name, r.x + r.w / 2, r.y, '#bdeeff');
+      }
+    }
+
+    for (const exit of room.def.exits) {
+      if (!this.state.isExitEnabled(room.def.id, exit)) continue;
+      const r = exit.rect;
+      ctx.strokeStyle = bright ? '#ffd166' : '#b3922f';
+      ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+      // Direction arrow toward the screen edge, so exits read as doors.
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      const label = cx < 60 ? '< EXIT' : cx > 260 ? 'EXIT >' : 'EXIT';
+      chip(label, cx, Math.max(cy - 6, r.y), '#ffe9a8');
+    }
+
+    ctx.restore();
   }
 }
