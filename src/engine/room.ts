@@ -21,6 +21,7 @@ import type {
   HotspotDef,
   ItemDef,
   Point,
+  Rect,
   RoomDef,
   SkillDef,
   SpawnPoint,
@@ -46,6 +47,7 @@ import { InventoryScreen } from './inventory';
 import { AchievementsScene, ListMenuScene } from './menus';
 import { NarratorBox, wrapText } from './narrator';
 import { dominantFacing, findPath, Mover, PLAYER_WALK_SPEED, WalkGrid } from './pathfinding';
+import { RadialMenu, type RadialVerb } from './radial';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import {
   formatPlaytime,
@@ -256,6 +258,8 @@ export interface GameFlow {
 const FADE_MS = 250;
 const LETTERBOX_H = 20;
 const LETTERBOX_MS = 250;
+/** Hover dwell before the radial verb menu pops (hover intent). */
+const RADIAL_HOVER_MS = 180;
 
 type Transition =
   | { kind: 'none' }
@@ -297,6 +301,16 @@ export class RoomScene implements Scene, ScriptHost {
   private keyWalking = false;
   /** Hotspot-reveal pin (H toggles; persisted as a UI pref, not save data). */
   private revealPinned = localStorage.getItem('dcc_reveal_pin') === '1';
+  // Radial verb menu: hover-intent tracking + the target it was shown for.
+  private readonly radial = new RadialMenu();
+  private radialTarget:
+    | { kind: 'hotspot'; def: HotspotDef }
+    | { kind: 'exit'; def: ExitDef }
+    | null = null;
+  private hoverIntentKey: string | null = null;
+  private hoverIntentMs = 0;
+  /** Explicitly dismissed (ESC/click-away) over this target: no re-pop until the cursor leaves it. */
+  private radialCooldownKey: string | null = null;
   private hoverExit: ExitDef | null = null;
   private transition: Transition = { kind: 'loading' };
 
@@ -959,6 +973,7 @@ export class RoomScene implements Scene, ScriptHost {
 
     this.state.playtimeMs += dtMs;
     this.tickCinematics(dtMs);
+    this.radial.tick(dtMs);
 
     const room = this.room;
     room?.update(dtMs);
@@ -1077,6 +1092,18 @@ export class RoomScene implements Scene, ScriptHost {
     this.state.playerX = player.x;
     this.state.playerY = player.y;
 
+    // Same gates as world clicks: no radial during scripts, boxes, menus.
+    if (
+      this.dying ||
+      this.runner.running ||
+      this.dialogue.active ||
+      this.narrator.active ||
+      this.invScreen.open
+    ) {
+      this.radial.forceHide();
+      this.hoverIntentMs = 0;
+    }
+
     if (this.dying) {
       this.drainInput();
       return;
@@ -1172,11 +1199,13 @@ export class RoomScene implements Scene, ScriptHost {
       this.toasts.push('HOTSPOT REVEAL', this.revealPinned ? 'PINNED ON (H)' : 'OFF (HOLD TAB)', '#3fd9ff');
     }
 
-    // One-time, in-voice pointer at the reveal key (once ever, not per save).
-    if (!localStorage.getItem('dcc_hint_reveal') && (this.room?.def.hotspots.length ?? 0) > 0) {
-      localStorage.setItem('dcc_hint_reveal', '1');
+    // One-time, in-voice UI pointer (once ever, not per save). New key so
+    // players who saw the pre-wheel hint get the updated one exactly once.
+    if (!localStorage.getItem('dcc_hint_ui') && (this.room?.def.hotspots.length ?? 0) > 0) {
+      localStorage.setItem('dcc_hint_ui', '1');
+      localStorage.setItem('dcc_hint_reveal', '1'); // retire the old hint
       this.runLine(
-        'A TIP FROM THE BOOTH, CRAWLER: hold TAB to see everything in a room worth touching. Press H to keep it lit. The dungeon hides nothing. It merely declines to point.',
+        'A TIP FROM THE BOOTH, CRAWLER: hold TAB to see everything in a room worth touching - press H to keep it lit. And hover a thing to get the wheel: pick what to do from it. The dungeon hides nothing. It merely declines to point.',
       );
       return;
     }
@@ -1188,6 +1217,87 @@ export class RoomScene implements Scene, ScriptHost {
       !this.hover && exitUnderMouse && this.state.isExitEnabled(room.def.id, exitUnderMouse)
         ? exitUnderMouse
         : null;
+
+    // --- Radial verb menu -------------------------------------------------
+    // Hover an interactable for RADIAL_HOVER_MS and the wheel pops at the
+    // cursor. Not in ITEM-held mode (a click there means "use item on it").
+    const itemHeld = this.activeVerb === 'item' && this.state.heldItem !== null;
+    const hoverKey = this.hover ? `h:${this.hover.id}` : this.hoverExit ? `e:${this.hoverExit.id}` : null;
+    if (this.radial.active) {
+      // Dismiss when the cursor leaves both the shown target and the wheel.
+      const t = this.radialTarget;
+      const overShown =
+        (t?.kind === 'hotspot' && this.hover === t.def) ||
+        (t?.kind === 'exit' && this.hoverExit === t.def);
+      if (!overShown && !this.radial.contains(input.mouse)) this.radial.dismiss();
+    }
+    if (this.radial.active) {
+      if (input.consumePress('Escape')) {
+        this.radial.dismiss();
+        this.radialCooldownKey = hoverKey;
+      } else {
+        if (input.consumePress('ArrowUp')) this.radial.selected = 0;
+        if (input.consumePress('ArrowRight')) this.radial.selected = 1;
+        if (input.consumePress('ArrowDown')) this.radial.selected = 2;
+        if (input.consumePress('ArrowLeft')) this.radial.selected = 3;
+        this.radial.updateSelectionFromCursor(input.mouse);
+        const rClick = input.consumeClick();
+        if (rClick) {
+          const disc = this.radial.discAt(rClick);
+          if (disc !== null) {
+            this.radial.selected = disc;
+            this.fireRadial(this.radial.verb);
+          } else if (this.radial.contains(rClick) || hoverKey) {
+            // Flick-and-click: any click while the wheel is up fires the
+            // direction-highlighted option.
+            this.fireRadial(this.radial.verb);
+          } else {
+            this.radial.dismiss();
+            this.radialCooldownKey = hoverKey;
+          }
+        } else if (input.consumePress('Enter') || input.consumePress('Space')) {
+          this.fireRadial(this.radial.verb);
+        }
+      }
+      this.hoverIntentMs = 0;
+      this.stepMovers(dtMs);
+      this.checkExitArrival(); // world simulation continues under the wheel
+      return; // the wheel owns world input while it is up
+    }
+    // No wheel while Carl is already walking somewhere (incl. a WALK just
+    // fired at an exit - re-opening would swallow the arrival transition).
+    if (this.radialCooldownKey !== null && hoverKey !== this.radialCooldownKey) {
+      this.radialCooldownKey = null; // left the dismissed target: re-arm
+    }
+    if (
+      !itemHeld &&
+      hoverKey &&
+      hoverKey !== this.radialCooldownKey &&
+      this.radial.hidden &&
+      !this.mover.active
+    ) {
+      if (this.hoverIntentKey === hoverKey) {
+        this.hoverIntentMs += dtMs;
+        if (this.hoverIntentMs >= RADIAL_HOVER_MS) {
+          this.radialTarget = this.hover
+            ? { kind: 'hotspot', def: this.hover }
+            : this.hoverExit
+              ? { kind: 'exit', def: this.hoverExit }
+              : null;
+          if (this.radialTarget) {
+            const label = this.hover ? this.hover.name : 'EXIT';
+            this.radial.show(input.mouse, label);
+            console.info(`[radial] open: ${label}`);
+          }
+        }
+      } else {
+        this.hoverIntentKey = hoverKey;
+        this.hoverIntentMs = 0;
+      }
+    } else {
+      this.hoverIntentKey = hoverKey;
+      this.hoverIntentMs = 0;
+    }
 
     const click = input.consumeClick();
     if (click) {
@@ -1221,7 +1331,14 @@ export class RoomScene implements Scene, ScriptHost {
     }
 
     this.stepMovers(dtMs);
+    this.checkExitArrival();
+  }
 
+  /** Player feet inside an enabled exit rect: start the room transition. */
+  private checkExitArrival(): void {
+    const room = this.room;
+    const player = this.player;
+    if (!room || !player) return;
     const exit = room.exitAt(player.feet);
     if (exit && this.state.isExitEnabled(room.def.id, exit)) {
       this.mover.stop();
@@ -1308,6 +1425,7 @@ export class RoomScene implements Scene, ScriptHost {
     this.game.input.clearRightClicks();
     this.hover = null;
     this.hoverExit = null;
+    this.radial.forceHide();
   }
 
   private hotspotUnderPoint(p: Point): HotspotDef | null {
@@ -1382,6 +1500,97 @@ export class RoomScene implements Scene, ScriptHost {
     const actions = handler[held] ?? handler['default'];
     if (actions) this.runScript(actions);
     else this.runLine(wrongItemLine(heldName, hotspot.name));
+  }
+
+  // -------------------------------------------------------------------------
+  // Radial verb menu: firing + the WALK approach affordance
+  // -------------------------------------------------------------------------
+
+  /** Fire a radial pick: same dispatch as the top-bar flow. */
+  private fireRadial(verb: RadialVerb): void {
+    const target = this.radialTarget;
+    this.radial.dismiss();
+    if (!target) return;
+    console.info(`[radial] fire: ${verb} -> ${target.kind}:${target.def.id}`);
+    audio.playSfx('sfx_verb');
+    this.activeVerb = verb; // the bar reflects the LAST verb invoked
+    if (verb === 'walk') {
+      this.walkToRadialTarget(target);
+      return;
+    }
+    if (target.kind === 'exit') {
+      this.runLine(unhandledLine(verb, 'EXIT'));
+      return;
+    }
+    const actions = target.def.verbs[verb];
+    if (actions) this.runScript(actions);
+    else this.runLine(unhandledLine(verb, target.def.name));
+  }
+
+  private hotspotBounds(def: HotspotDef): Rect {
+    if (def.rect) return def.rect;
+    const pts = def.polygon ?? [];
+    if (pts.length === 0) return { x: 0, y: 0, w: 0, h: 0 };
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+  }
+
+  /**
+   * WALK from the radial: approach the target. Exits are walked into (the
+   * normal arrival transition fires); hotspots get the nearest reachable
+   * point just outside their bounds, then Carl turns to face them.
+   */
+  private walkToRadialTarget(
+    target: { kind: 'hotspot'; def: HotspotDef } | { kind: 'exit'; def: ExitDef },
+  ): void {
+    const room = this.room;
+    const player = this.player;
+    if (!room || !player) return;
+    if (target.kind === 'exit') {
+      const r = target.def.rect;
+      const path = findPath(room.grid, player.feet, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
+      if (path) {
+        this.mover.speed = 55;
+        this.mover.start(path);
+      }
+      return;
+    }
+    const r = this.hotspotBounds(target.def);
+    const cx = Math.round(r.x + r.w / 2);
+    const cy = Math.round(r.y + r.h / 2);
+    const clampP = (p: Point): Point => ({
+      x: Math.max(4, Math.min(LOGICAL_W - 4, Math.round(p.x))),
+      y: Math.max(4, Math.min(LOGICAL_H - 4, Math.round(p.y))),
+    });
+    // Just-outside candidates: below the bounds first (hotspots usually sit
+    // on walls/furniture), then beside them, then level with the player.
+    const candidates: Point[] = [
+      { x: cx, y: r.y + r.h + 4 },
+      { x: cx, y: r.y + r.h + 12 },
+      { x: r.x - 6, y: Math.max(r.y + r.h + 2, player.feet.y) },
+      { x: r.x + r.w + 6, y: Math.max(r.y + r.h + 2, player.feet.y) },
+      { x: cx, y: player.feet.y },
+    ];
+    for (const c of candidates) {
+      const p = clampP(c);
+      if (!room.grid.isWalkablePoint(p.x, p.y)) continue;
+      if (!findPath(room.grid, player.feet, p)) continue;
+      const dir = dominantFacing(cx - p.x, cy - p.y);
+      this.runScript([
+        { type: 'walkPlayerTo', x: p.x, y: p.y },
+        { type: 'facePlayer', dir },
+      ]);
+      return;
+    }
+    // Nothing adjacent is reachable: plain walk toward it (may stop short).
+    const path = findPath(room.grid, player.feet, { x: cx, y: cy });
+    if (path) {
+      this.mover.speed = 55;
+      this.mover.start(path);
+    }
   }
 
   /**
@@ -1500,9 +1709,13 @@ export class RoomScene implements Scene, ScriptHost {
         drawPixelText(ctx, label, LOGICAL_W - w + 6, y + 2, '#ffd9d9');
       }
       this.toasts.render(ctx);
-      if (!this.narrator.active && !this.dialogue.active && isTop) {
+      if (!this.narrator.active && !this.dialogue.active && isTop && this.radial.hidden) {
         if (this.hover) this.drawHoverLabel(ctx, this.hover.name);
         else if (this.hoverExit) this.drawHoverLabel(ctx, 'EXIT');
+      }
+      // Radial verb menu: above the reveal overlay and the hover chip.
+      if (!this.radial.hidden && this.cursors && isTop) {
+        this.radial.render(ctx, this.cursors);
       }
     }
 
@@ -1557,8 +1770,14 @@ export class RoomScene implements Scene, ScriptHost {
       const img = heldIcon ?? this.cursors[this.activeVerb];
       const half = Math.floor(img.width / 2);
       // Over an interactable, frame the cursor with pixel corner brackets so
-      // the hit reads instantly, before the name label registers.
-      if ((this.hover || this.hoverExit) && !this.narrator.active && !this.dialogue.active) {
+      // the hit reads instantly, before the name label registers. (Skipped
+      // while the radial is up - the wheel already marks the target.)
+      if (
+        (this.hover || this.hoverExit) &&
+        !this.narrator.active &&
+        !this.dialogue.active &&
+        this.radial.hidden
+      ) {
         const s = half + 3;
         ctx.strokeStyle = this.hover ? '#3fd9ff' : '#ffd166';
         ctx.lineWidth = 1;
@@ -1632,9 +1851,19 @@ export class RoomScene implements Scene, ScriptHost {
     ctx.translate(-Math.round(this.cameraX), 0);
     ctx.lineWidth = 1;
 
+    // The radial shows its own name chip; skip the reveal chip for that
+    // hotspot so the two overlays don't stack the same label.
+    const radialHotspotId =
+      !this.radial.hidden && this.radialTarget?.kind === 'hotspot'
+        ? this.radialTarget.def.id
+        : null;
+
     for (const def of room.def.hotspots) {
       if (!this.state.isHotspotEnabled(room.def.id, def)) continue;
       const color = bright ? '#3fd9ff' : '#2a93b3';
+      if (def.id === radialHotspotId) {
+        continue; // outline + chip both yield to the radial cluster
+      }
       if (def.polygon && def.polygon.length >= 3) {
         ctx.strokeStyle = color;
         ctx.beginPath();
