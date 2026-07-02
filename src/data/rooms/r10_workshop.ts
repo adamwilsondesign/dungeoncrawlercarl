@@ -1,5 +1,5 @@
 /**
- * R10 — the workshop interior: the chain-reaction puzzle (the demo's
+ * R10 - the workshop interior: the chain-reaction puzzle (the demo's
  * centerpiece). Recipe: fuse_wick + black_powder -> powder_charge;
  * powder_charge + chopper_grease -> primed_charge (combines system); then
  * PLACE: primed_charge on the coal cart, HAND the cart to roll it down the

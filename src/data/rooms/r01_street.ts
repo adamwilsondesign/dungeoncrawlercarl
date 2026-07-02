@@ -1,5 +1,5 @@
 /**
- * R01 — Frozen Seattle street, minutes after the collapse. Opening cutscene
+ * R01 - Frozen Seattle street, minutes after the collapse. Opening cutscene
  * plays on entry (New Game), then the player gets LOOK/HAND practice and the
  * staircase down. One-way: the stairs are the only exit.
  */

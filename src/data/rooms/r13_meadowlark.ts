@@ -1,5 +1,5 @@
 /**
- * R13 — Meadow Lark: the drawbridge encampment and the recruitment hub. No
+ * R13 - Meadow Lark: the drawbridge encampment and the recruitment hub. No
  * combat. Five named crew members with dialogue trees; the drawbridge gate
  * musters the raid once all four fighters are committed (nested ifFlag
  * chain -> raid:formed + achievement + east exit opens). Rest booth echoes
@@ -51,6 +51,16 @@ export const r13_meadowlark: RoomDef = {
   walkmaskPath: 'masks/r13_meadowlark.png',
   playerSpawn: { x: 30, y: 162, facing: 'right' },
   onEnter: [
+    // First-visit establishing beat (P10: Act III's hub opens here).
+    ifFlag(
+      'seen:r13',
+      [],
+      [
+        setFlag('seen:r13', true),
+        narrate('The corridor ends at a moat, a raised drawbridge, and - of all the things this floor could have built - a camp that smells like soup. Cook fires. Laundry lines. Someone laughing, on purpose, out loud.'),
+        narrate('This is Meadow Lark: a whole elderly-care home\'s worth of survivors, brought down the stairs by the night-shift workers who refused to leave them. They have held this bridge since the first night. The stairs to Floor Two are somewhere past it - and something out there is keeping every one of these people penned in.'),
+      ],
+    ),
     ifFlag('raid:formed', [enableExit('east')], [disableExit('east')]),
   ],
   exits: [

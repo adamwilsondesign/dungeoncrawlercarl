@@ -2,7 +2,7 @@
  * Encounter registry (looked up by startCombat(id)). The junk golem is the
  * boss-phase demo: its phase table keeps enemy damage-taken at 25% until the
  * flag r00.golem_core is set (simulated here by the beforeTurn hook at round
- * three — real bosses set their flags from environmental puzzle actions).
+ * three - real bosses set their flags from environmental puzzle actions).
  */
 
 import {
@@ -81,7 +81,7 @@ const firstBlood: EncounterDef = {
 };
 
 // ---------------------------------------------------------------------------
-// Act II part 1 — the maze
+// Act II part 1 - the maze
 // ---------------------------------------------------------------------------
 
 // Mandatory fight 1 (gates the R05 east door)
@@ -92,7 +92,8 @@ const mazeRats: EncounterDef = {
   backdropLabel: 'THE MAZE',
   backdropMood: 'dungeon',
   introText: 'TWO RATS. ONE CAT. THE MATH FAVORS THE CAT.',
-  rewards: { xp: 60, gold: 10 },
+  // P10 rebalance: xp 60 -> 70 (L2 lands with margin on the mandatory path).
+  rewards: { xp: 70, gold: 10 },
   victoryScript: [
     disableHotspot('mob1'),
     enableExit('east'),
@@ -109,7 +110,8 @@ const mazePack: EncounterDef = {
   backdropLabel: 'THE MAZE',
   backdropMood: 'dungeon',
   introText: 'THE HEAP WAS OCCUPIED. IT IS ABOUT TO BE VACANT.',
-  rewards: { xp: 60, gold: 10 },
+  // P10 rebalance: xp 60 -> 70.
+  rewards: { xp: 70, gold: 10 },
   victoryScript: [
     disableHotspot('mob2'),
     enableExit('east'),
@@ -132,9 +134,9 @@ const mazeNest: EncounterDef = {
 };
 
 /**
- * THE HOARDER — the first combat-puzzle hybrid, and the authoring template
+ * THE HOARDER - the first combat-puzzle hybrid, and the authoring template
  * for the War Chieftain (P8) and the Ball (P9):
- * - Base phase: enemyDamageTakenMult 0.15 — attacking blind barely scratches.
+ * - Base phase: enemyDamageTakenMult 0.15 - attacking blind barely scratches.
  * - Gated phase: when flag 'hoarder:baited' is set (by USING the polished
  *   hubcap on her treasure midden in R06, pre-fight), damage is full.
  * - beforeTurn nags the hint from round 3 if the player charged in unbaited.
@@ -180,7 +182,7 @@ const hoarderLair: EncounterDef = {
 };
 
 // ---------------------------------------------------------------------------
-// Act II part 2 — the goblin workshop
+// Act II part 2 - the goblin workshop
 // ---------------------------------------------------------------------------
 
 // Optional yard skirmish. Skippable entirely by asking Kivvi to wave the
@@ -202,7 +204,7 @@ const goblinPatrol: EncounterDef = {
 };
 
 /**
- * THE WAR CHIEFTAIN — puzzle-as-kill, authored as option (a): the DETONATION
+ * THE WAR CHIEFTAIN - puzzle-as-kill, authored as option (a): the DETONATION
  * cutscene kills him outright and grants all rewards by script; there is no
  * cleanup fight. This encounter exists ONLY as the head-on deterrent - the
  * phase table (Hoarder template) keeps him at 10% damage taken with the
@@ -247,7 +249,7 @@ const warChieftainLair: EncounterDef = {
 };
 
 // ---------------------------------------------------------------------------
-// Act III — the gym and the ring
+// Act III - the gym and the ring
 // ---------------------------------------------------------------------------
 
 // Mandatory gym fight 1: Brandon and Yolanda ride along (4-member combat).
@@ -285,7 +287,7 @@ const gymRacks: EncounterDef = {
 };
 
 /**
- * THE BALL — borough boss, the third boss pattern: TIME/PLACEMENT unlock.
+ * THE BALL - borough boss, the third boss pattern: TIME/PLACEMENT unlock.
  * Phase-gated like the Hoarder (flag phase) and the Chieftain (deterrent),
  * but the flag 'ball:derailed' is set by the act3_derail cutscene, which the
  * R16 bend hotspot only fires when the player has BOTH placed the rigged

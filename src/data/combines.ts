@@ -3,7 +3,7 @@
  * the two item ids in sorted order joined with '+', so a+b and b+a resolve
  * identically. A match either runs its `script` through the normal
  * ScriptRunner (full DSL access: narrates, flags, even killPlayer for
- * catastrophic chemistry), or — when only `result` is given — the scene
+ * catastrophic chemistry), or - when only `result` is given - the scene
  * runs the default script: takeItem(a) + takeItem(b) + giveItem(result).
  * No match: the scene shows an in-voice "those don't combine" line.
  */

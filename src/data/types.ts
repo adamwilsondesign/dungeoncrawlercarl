@@ -1,6 +1,6 @@
 /**
  * Shared data-shape definitions for rooms, actors, sprites and placeholders.
- * This module is pure types — it must not import engine code.
+ * This module is pure types - it must not import engine code.
  */
 
 import type { ScriptAction } from './script';
@@ -388,7 +388,7 @@ export interface RoomDef {
   scaleBands: ScaleBand[];
   /**
    * Runs through the script runner every time the room is entered (after
-   * the fade-in). Use playCutscene(id) inside it for once-only intros —
+   * the fade-in). Use playCutscene(id) inside it for once-only intros  -
    * playCutscene itself is guarded by the scene:<id>:played flag.
    */
   onEnter?: ScriptAction[];

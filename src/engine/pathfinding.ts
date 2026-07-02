@@ -283,10 +283,13 @@ export function findPath(grid: WalkGrid, from: Point, to: Point): Point[] | null
 // Mover
 // ---------------------------------------------------------------------------
 
-function dominantFacing(dx: number, dy: number): Facing {
+export function dominantFacing(dx: number, dy: number): Facing {
   if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? 'left' : 'right';
   return dy < 0 ? 'up' : 'down';
 }
+
+/** Logical px/sec at depth scale 1.0 — shared by click-walk and key-walk. */
+export const PLAYER_WALK_SPEED = WALK_SPEED;
 
 /**
  * Drives an actor along a waypoint list at 55 px/sec multiplied by the

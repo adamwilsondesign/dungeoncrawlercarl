@@ -42,12 +42,9 @@ const SPECS: readonly ButtonSpec[] = [
 
 export class IconBar {
   static readonly HEIGHT = 22;
-  private static readonly SLIDE_MS = 150;
-  private static readonly TRIGGER_Y = 12;
 
   private readonly buttons: Button[];
-  private progress = 0; // 0 = hidden, 1 = fully shown
-  private open = false;
+  private progress = 1; // pinned fully shown (P10 fix)
 
   constructor() {
     const total = SPECS.length * BUTTON_W + (SPECS.length - 1) * BUTTON_GAP;
@@ -75,16 +72,12 @@ export class IconBar {
   }
 
   update(dtMs: number, mouse: Point): void {
-    const inX = mouse.x >= 0 && mouse.x < LOGICAL_W;
-    const overBar = inX && mouse.y >= 0 && mouse.y <= IconBar.HEIGHT;
-    const inTrigger = inX && mouse.y >= 0 && mouse.y <= IconBar.TRIGGER_Y;
-    // Hysteresis: opens from the narrow trigger strip, stays while over the bar.
-    this.open = this.open ? overBar : inTrigger;
-
-    const step = dtMs / IconBar.SLIDE_MS;
-    this.progress = this.open
-      ? Math.min(1, this.progress + step)
-      : Math.max(0, this.progress - step);
+    // P10 fix: the bar is pinned — always visible, no hover slide. The old
+    // trigger/hysteresis behavior is retired; the fields stay for the
+    // geometry math (progress locked at 1).
+    void mouse;
+    void dtMs;
+    this.progress = 1;
   }
 
   /** True when the sliding bar currently covers this point (blocks world clicks). */

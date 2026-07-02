@@ -254,12 +254,8 @@ function makeBackgroundPlaceholder(spec: { label: string; mood: Mood }): HTMLCan
   ctx.fillStyle = shade(pal.floor, 1.12);
   ctx.fillRect(0, BG_HORIZON + 1, BG_W, 1);
 
-  // Room label centered at top, on a dark backing bar for legibility
-  const scale = pixelTextWidth(spec.label, 2) <= 300 ? 2 : 1;
-  const textW = pixelTextWidth(spec.label, scale);
-  ctx.fillStyle = shade(pal.wall, 0.6);
-  ctx.fillRect(Math.round(BG_W / 2 - textW / 2) - 4, 4, textW + 8, 5 * scale + 6);
-  drawPixelText(ctx, spec.label, BG_W / 2, 7, pal.text, scale, 'center');
+  // P10 fix: no more big baked-in room title — the scene draws a compact
+  // room-name chip in the HUD instead. (spec.label still names the log line.)
 
   // Thin accent border
   ctx.strokeStyle = pal.accent;

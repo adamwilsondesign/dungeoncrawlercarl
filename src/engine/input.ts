@@ -13,6 +13,7 @@ export class Input {
 
   private readonly clicks: Point[] = [];
   private readonly pressed = new Set<string>();
+  private readonly held = new Set<string>();
   private rightClicks = 0;
 
   constructor(target: HTMLElement, toLogical: (clientX: number, clientY: number) => Point) {
@@ -31,7 +32,17 @@ export class Input {
     });
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (!e.repeat) this.pressed.add(e.code);
+      this.held.add(e.code);
     });
+    window.addEventListener('keyup', (e: KeyboardEvent) => {
+      this.held.delete(e.code);
+    });
+    window.addEventListener('blur', () => this.held.clear());
+  }
+
+  /** True while the physical key is held (continuous movement, P10 fix). */
+  isDown(code: string): boolean {
+    return this.held.has(code);
   }
 
   /** Take the most recent queued left-click (draining the queue), or null. */

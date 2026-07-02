@@ -10,7 +10,7 @@ import { disableHotspot, enableExit, giveItem, playCutscene, setFlag } from './s
 import type { DialogueTree } from './types';
 
 // ---------------------------------------------------------------------------
-// Mordecai — the tutorial guildmaster (Act I centerpiece)
+// Mordecai - the tutorial guildmaster (Act I centerpiece)
 // ---------------------------------------------------------------------------
 
 const mordecai: DialogueTree = {
@@ -19,18 +19,19 @@ const mordecai: DialogueTree = {
   nodes: {
     greet: {
       lines: [
-        { speakerId: 'mordecai', text: 'Come in, close the door, touch nothing that glows. I am Mordecai. This is the tutorial guild. Ask your questions.' },
+        { speakerId: 'mordecai', text: 'Come in. Close the door. Touch nothing that glows.' },
+        { speakerId: 'mordecai', text: 'My name is Mordecai. I am your guild manager - every new crawler gets assigned one, and you got me. I have worked this dungeon longer than your species has had this problem. Sit. Ask your questions. All of them. The people who ask questions live longer.', expression: 'worried' },
       ],
       goto: 'hub',
     },
     hub: {
       lines: [],
       choices: [
-        { text: 'What is the crawl?', goto: 'crawl' },
-        { text: 'Who is running this?', goto: 'syndicate' },
+        { text: 'What exactly is happening to us?', goto: 'crawl' },
+        { text: 'Who is running this? Why?', goto: 'syndicate' },
         { text: 'How do loot and levels work?', goto: 'loot' },
-        { text: 'How do I stay alive?', goto: 'advice' },
-        { text: 'Nice place.', goto: 'aside', once: true },
+        { text: 'How do I stay alive down here?', goto: 'advice' },
+        { text: 'Are you a prisoner too?', goto: 'aside', once: true },
         { text: 'Get me registered.', goto: 'register', showIf: { flag: 'carl:registered', not: true } },
         { text: 'About the cat...', goto: 'cat', showIf: { flag: 'carl:registered' }, once: true },
         { text: "We're heading out.", goto: 'warning', showIf: { flag: 'act1:party_formed' } },
@@ -39,65 +40,72 @@ const mordecai: DialogueTree = {
     },
     crawl: {
       lines: [
-        { speakerId: 'mordecai', text: 'Your planet got turned into a game show. Eighteen floors, down being the only direction, cameras in everything.' },
-        { speakerId: 'mordecai', text: 'Survive a floor, you may descend. Entertain the audience, you get gifts. Bore them and... do not bore them.' },
-        { speakerId: 'mordecai', text: 'I have watched a lot of seasons. The ones who treat it like a game last longer than the ones who treat it like a funeral.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'The plain version. A mining company bought your planet. To take the minerals, they have to clear the current tenants - that is you - and interstellar law says tenants must be given a way out. This is the way out. Eighteen floors, straight down.' },
+        { speakerId: 'mordecai', text: 'Every floor is a world of its own - monsters, bosses, locked stairwells. Clear the stairwell boss, take the stairs, do it again. Anyone who reaches the bottom alive walks away free, rich, and famous in places you have never heard of.' },
+        { speakerId: 'mordecai', text: 'And because clearing a planet is expensive, they film it. You are on the show now - the whole galaxy watches crawlers die for entertainment. The audience is not a joke, Carl. Their attention is food, money, and survival. Remember that.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Nobody expects you to reach the bottom. Almost nobody does. But floor by floor? Floor by floor is possible. That is the only size of hope I deal in.', expression: 'worried' },
       ],
       goto: 'hub',
     },
     syndicate: {
       lines: [
-        { speakerId: 'mordecai', text: 'A mining syndicate holds your planetary license. The show pays for the dig. The dig pays for the show. Tidy, if you are not the dirt.' },
-        { speakerId: 'mordecai', text: 'The AI that runs the dungeon answers to them. Mostly. Lately it laughs at strange times. I would not rely on the org chart.' },
+        { speakerId: 'mordecai', text: 'The Valtay Syndicate holds your planetary license - miners, lawyers, worse. The show pays for the dig, the dig pays for the show. Tidy arrangement, if you are not the dirt.' },
+        { speakerId: 'mordecai', text: 'Down here, the one actually running things is the dungeon AI - the voice in your head with the game-show manners. It builds the floors, sets the rules, counts the kills. It answers to the Syndicate. Mostly. Lately it laughs at strange times.' },
+        { speakerId: 'mordecai', text: 'Do not try to fight the system itself. Not yet. Learn it first. Systems have seams.', expression: 'worried' },
       ],
       goto: 'hub',
     },
     loot: {
       lines: [
-        { speakerId: 'mordecai', text: 'Kill things, open things, amuse the viewers: experience and loot boxes. Levels make you harder to kill. Take both seriously.' },
-        { speakerId: 'mordecai', text: 'Gear goes in three places. A thing to hit with, a thing to be hit in, and a trinket. Check your pack after every fight.' },
+        { speakerId: 'mordecai', text: 'Everything you kill, open, or amuse feeds you. Kills give experience - enough experience, you level, and a level makes the whole party tougher, faster, harder to kill. Levels are life expectancy. Take them seriously.' },
+        { speakerId: 'mordecai', text: 'Gear goes in three places: a weapon in your hand, armor on your body, a trinket for the little edges. Open your pack, click a thing, put it on. Check it after every fight - the floor drops better than it looks like it should.' },
+        { speakerId: 'mordecai', text: 'And the audience sends gifts to crawlers they like. Boxes drop from nowhere with real treasure inside. Be worth watching, and the watching pays.' },
       ],
       goto: 'hub',
     },
     advice: {
       lines: [
-        { speakerId: 'mordecai', text: 'Look at everything. Touch carefully. Talk to whatever talks back. The floor rewards the curious and eats the careless.' },
-        { speakerId: 'mordecai', text: 'And keep the audience laughing. A sponsored crawler is a living crawler.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Look at everything before you touch it. Touch carefully. Talk to whatever talks back - half of what saves your life down here is a conversation you almost skipped.' },
+        { speakerId: 'mordecai', text: 'When a fight looks impossible, it usually is. The floor builds puzzles into its monsters - a boss that cannot be beaten head-on can almost always be beaten some other way. Look at what it loves. Look at where it sleeps. Think like a trap-maker.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Rest when the dungeon lets you. Safe rooms are marked and they are real - nothing can touch you inside one. And if you die - listen to me - dying here is a setback, not always an ending. The dungeon rewinds you to your last checkpoint. It enjoys second chances. They rate well.', expression: 'worried' },
       ],
       goto: 'hub',
     },
     aside: {
       lines: [
-        { speakerId: 'mordecai', text: 'It is a repurposed storage closet with a liquor shelf. But thank you. Nobody says that.' },
+        { speakerId: 'mordecai', text: 'A contractor. Which is a prisoner with a title. I was a crawler once, on a world you have never heard of, and this job is what surviving bought me.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'I have managed nine seasons of crawlers, Carl. I remember every one of them. Make yourself easy to remember for the right reasons.' },
       ],
       goto: 'hub',
     },
     register: {
       onEnter: [playCutscene('act1_character_creation')],
       lines: [
-        { speakerId: 'mordecai', text: 'There. Registered, classed, and dressed. You look almost dangerous. Almost.' },
+        { speakerId: 'mordecai', text: 'There. Registered, classed, and equipped. The starter gear is junk, but it is junk between you and the teeth, and that is the whole history of armor. You look almost dangerous.' },
       ],
       goto: 'hub',
     },
     cat: {
       onEnter: [playCutscene('act1_donut_transformation')],
       lines: [
-        { speakerId: 'mordecai', text: 'Congratulations. In thirty years of guild work I have never once been outranked by a cat this fast.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'A viewer gift did that. Somebody out there liked her, and now she is awake, talking, and - I want to be accurate here - outranks you. In thirty years of guild work I have never seen it happen this fast.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'Take care of her, Carl. A party of two survives what a party of one does not. That is arithmetic, not sentiment.' },
       ],
       goto: 'hub',
     },
     warning: {
       onEnter: [enableExit('onward'), setFlag('act1:briefed', true)],
       lines: [
-        { speakerId: 'mordecai', text: 'Then hear the quiet version, once: the floor is a machine for making stories out of people. Be the teller, not the material.', expression: 'worried' },
-        { speakerId: 'mordecai', text: 'Door on the right goes deeper. Come back if you breathe wrong. I stock bandages and told-you-sos.' },
+        { speakerId: 'mordecai', text: 'Then hear the quiet version, once. This floor is a machine for making stories out of people. Be the teller, not the material.', expression: 'worried' },
+        { speakerId: 'mordecai', text: 'The door on the right goes deeper - the maze first, then the neighborhoods, and somewhere past them the stairs down. The stairwell is boss-guarded. They always are. You will not be ready when you find it. Go anyway, carefully.' },
+        { speakerId: 'mordecai', text: 'Come back if you are hurt or lost. That is not politeness. That is what I am for.' },
         { speakerId: 'donut', text: 'We thank you for your service, rat person. You may bow at your convenience.', expression: 'smug' },
       ],
       goto: 'end',
     },
     bye: {
       lines: [
-        { speakerId: 'mordecai', text: 'Go on. And crawler - eat something. Dead men skip meals.' },
+        { speakerId: 'mordecai', text: 'Go on. And Carl - eat something. Sleep when you can. The dungeon takes the tired ones first.' },
       ],
       goto: 'end',
     },
@@ -148,7 +156,7 @@ const donutCourt: DialogueTree = {
 };
 
 // ---------------------------------------------------------------------------
-// Tally — the MoonBurger safe-room attendant (polite, cheerful, rule-bound)
+// Tally - the MoonBurger safe-room attendant (polite, cheerful, rule-bound)
 // ---------------------------------------------------------------------------
 
 const tally: DialogueTree = {
@@ -215,7 +223,7 @@ const tally: DialogueTree = {
 };
 
 // ---------------------------------------------------------------------------
-// Kivvi — the pierced goblin engineer (Act II part 2 parley)
+// Kivvi - the pierced goblin engineer (Act II part 2 parley)
 // ---------------------------------------------------------------------------
 
 const kivvi: DialogueTree = {
@@ -284,7 +292,7 @@ const kivvi: DialogueTree = {
 };
 
 // ---------------------------------------------------------------------------
-// Frank & Maggie — hostile crawlers (Act III, R12). Talk turns to threat.
+// Frank & Maggie - hostile crawlers (Act III, R12). Talk turns to threat.
 // ---------------------------------------------------------------------------
 
 const frankMaggie: DialogueTree = {
@@ -333,7 +341,7 @@ const frankMaggie: DialogueTree = {
 };
 
 // ---------------------------------------------------------------------------
-// The Meadow Lark crew (Act III, R13) — compact recruit trees
+// The Meadow Lark crew (Act III, R13) - compact recruit trees
 // ---------------------------------------------------------------------------
 
 const brandonTree: DialogueTree = {

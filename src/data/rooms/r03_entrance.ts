@@ -1,5 +1,5 @@
 /**
- * R03 — Floor 1 entrance corridor: the diegetic verb tutorial. LOOK gags,
+ * R03 - Floor 1 entrance corridor: the diegetic verb tutorial. LOOK gags,
  * a HAND puzzlelet (jammed locker), a trivially easy first fight, and the
  * way to the guild. Autosave fires on entry like every room.
  */
@@ -23,6 +23,19 @@ export const r03_entrance: RoomDef = {
   backgroundMood: 'dungeon',
   walkmaskPath: 'masks/r03_entrance.png',
   playerSpawn: { x: 36, y: 160, facing: 'right' },
+  onEnter: [
+    // First-visit establishing beat (P10: scene-setting for newcomers).
+    ifFlag(
+      'seen:r03',
+      [],
+      [
+        setFlag('seen:r03', true),
+        narrate('The bottom of the stairs opens into a corridor that was never meant to fool anyone: poured stone, fresh tool marks, cables stapled along the ceiling like the level was finished on a deadline. Somewhere far off, water drips with great patience.'),
+        narrate('Other staircases fed this floor too. Distant doors. Footsteps. One long argument, already going. Millions of survivors came down tonight, and the corridor swallows the sound of every one of them.'),
+        narrate('At the end of the hall, a painted lantern sign glows over a door: GUILD. The first thing on this floor that wants you to walk in. That deserves suspicion. Or hope. Down here they come as a set.'),
+      ],
+    ),
+  ],
   exits: [
     {
       id: 'guild',

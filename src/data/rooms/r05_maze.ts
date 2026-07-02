@@ -1,5 +1,5 @@
 /**
- * R05 — The maze, west half. First real combat (mandatory fight #1 gates the
+ * R05 - The maze, west half. First real combat (mandatory fight #1 gates the
  * east door), a gold pickup, and LOOK/HAND gags. Autosave on entry as always.
  */
 
@@ -24,6 +24,16 @@ export const r05_maze: RoomDef = {
   walkmaskPath: 'masks/r05_maze.png',
   playerSpawn: { x: 30, y: 162, facing: 'right' },
   onEnter: [
+    // First-visit establishing beat (P10: Act II opens here).
+    ifFlag(
+      'seen:r05',
+      [],
+      [
+        setFlag('seen:r05', true),
+        narrate('Past the guild door, the dungeon stops pretending to be a hallway. This is the maze: mine tunnels braided into mine tunnels, chalk marks from crawlers who came through ahead of you, and a darkness up ahead with a texture to it.'),
+        narrate('This is the part Mordecai warned you about. Things live in the walls out here, and the way east goes through them, not around. Weapons out, Crawler. The tutorial is over and the show has been waiting for this.'),
+      ],
+    ),
     // Reconcile on re-entry/load: the east door opens once the rats are dealt with.
     ifFlag(
       'combat:maze_rats:result',

@@ -1,5 +1,5 @@
 /**
- * R16 — the ring corridor: THE BALL, the borough boss, in two phases.
+ * R16 - the ring corridor: THE BALL, the borough boss, in two phases.
  * PHASE 1 (derail puzzle, timing + placement): LOOK the Ball to learn its
  * lap rhythm (r16.timed), combine barbell + det_cord (from the maintenance
  * chest) into the rigged barbell, place it on THE BEND (not the straight -
@@ -49,6 +49,16 @@ export const r16_ring: RoomDef = {
   walkmaskPath: 'masks/r16_ring.png',
   playerSpawn: { x: 30, y: 162, facing: 'right' },
   onEnter: [
+    // First-visit establishing beat (P10: the final boss arena).
+    ifFlag(
+      'seen:r16',
+      [],
+      [
+        setFlag('seen:r16', true),
+        narrate('You feel it before you see it: a rhythm in the floor, like a train that never arrives. The tunnel opens onto an old transit ring - a platform, a rail loop, and the stairwell doors on the far side, shut tight.'),
+        narrate('Then it comes around the curve. THE BALL: a rolling fortress of fused armor, tusks, and momentum, lapping the ring without slowing. This is the borough boss. It has been circling between these people and the stairs for a season. Nothing that fast can be fought. So it will have to be stopped.'),
+      ],
+    ),
     ifFlag(
       'combat:ball_ring:result',
       [

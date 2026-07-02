@@ -1,5 +1,5 @@
 /**
- * R02 — The staircase of light. Transitional: the descent cutscene plays and
+ * R02 - The staircase of light. Transitional: the descent cutscene plays and
  * hands off to R03. A fallback exit exists in case the scene was already
  * played (no dead ends, ever).
  */

@@ -145,12 +145,13 @@ export const skills: Record<string, SkillDef> = {
     description: 'A hammer the size of a door, applied like a stamp.',
   },
   // --- The Hoarder ---
+  // P10 rebalance: trash_slam power 7 -> 6, garbage_avalanche 4 -> 3.
   trash_slam: {
     id: 'trash_slam',
     name: 'TRASH SLAM',
     cooldown: 2,
     target: 'enemy',
-    power: 7,
+    power: 6,
     scaling: 'str',
     description: 'A compacted century of garbage, applied directly.',
   },
@@ -159,7 +160,7 @@ export const skills: Record<string, SkillDef> = {
     name: 'GARBAGE AVALANCHE',
     cooldown: 4,
     target: 'allEnemies',
-    power: 4,
+    power: 3,
     scaling: 'str',
     description: 'The pile fights back. All of it. At once.',
   },

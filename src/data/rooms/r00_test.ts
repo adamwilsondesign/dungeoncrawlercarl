@@ -1,5 +1,5 @@
 /**
- * r00_test — engine proving ground: irregular walkable area, a blocked pillar
+ * r00_test - engine proving ground: irregular walkable area, a blocked pillar
  * mid-room, a narrow corridor along the right that climbs above the floor
  * line, looping edge exits, one NPC, 0.6→1.0 depth scale bands, and a set of
  * hotspots exercising the full P2 interface surface (LOOK-only, two-verb

@@ -1,8 +1,8 @@
 /**
- * R17 — the stairwell to Floor 2: the finale. act3_finale plays on entry
+ * R17 - the stairwell to Floor 2: the finale. act3_finale plays on entry
  * (loot ceremony, the crew, Agatha's cart payoff, completion achievement);
  * the STAIRS DOWN hotspot then plays act3_credits, which ends the demo and
- * unwinds to the title screen. No Floor 2 content — this is the closer.
+ * unwinds to the title screen. No Floor 2 content - this is the closer.
  */
 
 import { ifFlag, narrate, playCutscene, say } from '../script';

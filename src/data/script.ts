@@ -2,7 +2,7 @@
  * The script DSL: a declarative ScriptAction union plus tiny builder
  * functions for authoring. All game content (hotspot responses, dialogue,
  * cutscenes) is expressed as ScriptAction[] and executed by the engine's
- * ScriptRunner. This module is pure data constructors — no engine imports —
+ * ScriptRunner. This module is pure data constructors - no engine imports  -
  * so room definitions can use it freely.
  */
 

@@ -1,6 +1,6 @@
 /**
  * Cutscene registry (looked up by playCutscene(id), like rooms and dialogue
- * trees). Cutscenes are plain ScriptAction[] with the cinematic actions —
+ * trees). Cutscenes are plain ScriptAction[] with the cinematic actions  -
  * skippable with Esc, and once-only via the scene:<id>:played flag.
  *
  * All prose here is original writing in the demo's house voice.
@@ -51,7 +51,7 @@ export const donutSheet: SpriteSheetDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R01 — the collapse (opening cinematic, ~60-90s watched)
+// R01 - the collapse (opening cinematic, ~60-90s watched)
 // ---------------------------------------------------------------------------
 
 const act1Intro: CutsceneDef = {
@@ -61,32 +61,37 @@ const act1Intro: CutsceneDef = {
     setLetterbox(true),
     musicCue('act1_collapse_theme'),
     fadeIn(700),
-    narrate('SEATTLE. 2:23 AM. Nine degrees below comfortable. Nobody sensible is outside.'),
-    narrate("Carl is outside. Boxer shorts. Winter jacket. His ex's pink Crocs. The cat got out again, and the cat is her cat, which makes it his problem."),
+    narrate('SEATTLE. WINTER. 2:23 IN THE MORNING. The street is empty, the cold is personal, and every window on the block is dark except one - yours, standing open, exactly the way a cat leaves it.'),
+    narrate('This is Carl. Late twenties, works with his hands, sleeps badly. Ten minutes ago he was on the couch. Now he is on the sidewalk in boxer shorts, a winter jacket, and a pair of pink Crocs that belong to an ex-girlfriend who is out of the country.'),
+    narrate("So does the cat. Princess Donut: a purebred show cat, four-time regional champion, the single most pampered living creature Carl has ever met. She got out. She is HER cat. Tonight, that makes her Carl's whole world."),
     moveActor('player', 120, 165),
-    say('carl', 'Donut. It is two in the morning. I am wearing foam shoes. Come down.'),
+    say('carl', 'Donut. It is two in the morning. I am wearing foam shoes in the snow. Come down from the car.'),
     moveActor('donut_cat', 250, 118, { speed: 80 }),
     narrate('The cat relocates two car lengths further away and sits, radiating the serenity of a creature with zero stake in human dignity.'),
     sfxCue('deep_rumble'),
     wait(400),
-    narrate('Then the ground hums. Not an earthquake. A throat being cleared.'),
+    narrate('Then the ground hums. Not an earthquake - steadier than that. More like a public-address system the size of the sky, clearing its throat.'),
     musicCue('system_sting'),
-    narrate('GOOD MORNING, EARTH. THIS PLANET HAS BEEN RECERTIFIED FOR DEVELOPMENT. YOUR STRUCTURES WERE FILED AS DEBRIS. FILING IS NOW COMPLETE.'),
+    narrate('GOOD MORNING, EARTH. THIS IS A COURTESY ANNOUNCEMENT. YOUR PLANET HAS BEEN PURCHASED FOR MINERAL DEVELOPMENT BY THE VALTAY SYNDICATE. YOUR SPECIES FILED NO OBJECTION, LARGELY BECAUSE YOUR SPECIES WAS NOT ASKED.'),
+    narrate('ALL SURFACE STRUCTURES HAVE BEEN RECLASSIFIED AS DEBRIS. RECLAMATION BEGINS... NOW.'),
     sfxCue('city_collapse'),
     fadeOut(200),
     fadeIn(250),
-    narrate('The skyline folds. Quietly. Politely. Like the buildings had been asked in advance and were embarrassed about the noise.'),
-    say('carl', 'Okay.'),
-    narrate('Where each block used to be, a staircase of white light punches down into the earth. One per neighborhood. Yours is conveniently close.'),
-    narrate('SURFACE CONDITIONS WILL BECOME UNSUITABLE FOR RESIDENTS. THE STAIRS ARE PROVIDED FREE OF CHARGE. WE ARE TOLD THIS IS GENEROUS.'),
-    say('carl', 'Right. Cat first. Existential dread second.'),
+    narrate('The skyline folds. Quietly. Politely. Every building on Earth, collapsing at once into neat gravel, like the world had been asked in advance and was embarrassed about the noise. Everyone still indoors goes with them. Carl is outside because of a cat.'),
+    say('carl', 'Okay. Okay. That is... the whole city.'),
+    narrate('Where each block used to be, a staircase of white light punches down into the earth. One per neighborhood, humming, patient. Yours is conveniently close. None of this is a coincidence.'),
+    narrate('SURVIVORS: THE SURFACE WILL BE UNINHABITABLE WITHIN HOURS. BENEATH YOU, EIGHTEEN LEVELS OF HABITAT HAVE BEEN PREPARED FOR YOUR CONVENIENCE. REACH THE BOTTOM AND YOU KEEP YOUR PLANET. DIE, AND - WELL. THE DUNGEON DOES NOT WISH TO SPOIL THE SHOW.'),
+    narrate('THAT IS THE OTHER THING, EARTH. YOU ARE A SHOW NOW. THE GALAXY IS WATCHING. SMILE.'),
+    say('carl', 'A show. The end of the world is a show, and the stairs are the only way off the surface.'),
+    say('carl', 'Fine. Cat first. Apocalypse second.'),
+    narrate('That is the situation, Crawler: get the cat, get to the stairs, get underground before the cold or the sky finishes the job. Everything else can be screamed about later.'),
     setFlag('act1:intro_seen', true),
     setLetterbox(false),
   ],
 };
 
 // ---------------------------------------------------------------------------
-// R02 — the descent (short transitional cinematic)
+// R02 - the descent (short transitional cinematic)
 // ---------------------------------------------------------------------------
 
 const act1Descent: CutsceneDef = {
@@ -96,10 +101,12 @@ const act1Descent: CutsceneDef = {
     musicCue('descent_drone'),
     awardAchievement('first_steps'),
     moveActor('player', 160, 120, { speed: 30 }),
-    narrate('The stairs go down. The cold peels away a step at a time, replaced by warm air that smells like stone, oil, and a business plan.'),
-    narrate('WELCOME, CRAWLER. YOU ARE ENTRANT 4,437,102. YOUR WAIVER WAS SIGNED ON YOUR BEHALF. IT WAS EASIER FOR EVERYONE.'),
-    narrate('NOW ENTERING: FLOOR ONE. EIGHTEEN LEVELS BELOW YOU. ONE RULE ABOVE ALL: THE STAIRS ONLY GO DOWN.'),
-    say('carl', 'Noted. Terms and conditions: apocalyptic.'),
+    narrate('The stairs go down. And down. The cold peels away a step at a time, replaced by warm air that smells like cut stone, machine oil, and somebody else\'s business plan.'),
+    narrate('WELCOME, CRAWLER. YES - CRAWLER. THAT IS YOUR JOB TITLE NOW. YOU ARE ENTRANT 4,437,102 IN THIS SEASON OF THE GALAXY\'S MOST-WATCHED SURVIVAL PROGRAM. YOUR WAIVER WAS SIGNED ON YOUR BEHALF. IT WAS EASIER FOR EVERYONE.'),
+    narrate('THE RULES, ONCE, FOR THE CHEAP SEATS: EIGHTEEN FLOORS. EACH ONE BIGGER, STRANGER, AND HUNGRIER THAN THE LAST. CLEAR A FLOOR AND THE STAIRS TO THE NEXT ONE OPEN. REACH THE BOTTOM ALIVE AND YOU WIN - YOUR LIFE, YOUR FREEDOM, AND A TRULY OBSCENE AMOUNT OF PRIZE MONEY.'),
+    narrate('ONE RULE ABOVE ALL THE OTHERS, CRAWLER, SO LISTEN: THE STAIRS ONLY GO DOWN. THERE IS NO BACK. THERE IS NO UP. THE SURFACE YOU LEFT NO LONGER EXISTS IN ANY FORM YOU WOULD RECOGNIZE.'),
+    narrate('KILL THINGS AND YOU GROW STRONGER. ENTERTAIN THE AUDIENCE AND THEY WILL SEND YOU GIFTS. BORE THEM AND... DO NOT BORE THEM.'),
+    say('carl', 'Down the stairs, clear the floor, keep the cat alive, do not bore the aliens. Noted. Terms and conditions: apocalyptic.'),
     fadeOut(400),
     setLetterbox(false),
     gotoRoom('r03_entrance'),
@@ -108,7 +115,7 @@ const act1Descent: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R04 — cinematic character creation (the demo dramatizes the stat menu)
+// R04 - cinematic character creation (the demo dramatizes the stat menu)
 // ---------------------------------------------------------------------------
 
 const act1CharacterCreation: CutsceneDef = {
@@ -119,9 +126,10 @@ const act1CharacterCreation: CutsceneDef = {
     sfxCue('ui_scan'),
     narrate('REGISTERING CRAWLER. HOLD STILL. THIS SCAN IS PAINLESS, WHICH WE MENTION BECAUSE MOST THINGS HERE ARE NOT.'),
     facePlayer('down'),
-    narrate('SPECIES: HUMAN. BUILD: FORMER LINE COOK, CURRENT INSOMNIAC. FOOTWEAR: FLAGGED FOR AUDIENCE ENGAGEMENT.'),
+    narrate('Light crawls over you, cataloguing. It reads your teeth, your debts, your search history. It lingers, judgmentally, at ankle height.'),
+    narrate('SPECIES: HUMAN. BUILD: FORMER LINE COOK, CURRENT INSOMNIAC. NOTABLE ASSETS: GOOD HANDS, WORSE TEMPER. FOOTWEAR: FLAGGED FOR AUDIENCE ENGAGEMENT.'),
     say('carl', 'The shoes are temporary.'),
-    narrate('CLASS ASSIGNED: SURVIVOR, PROVISIONAL. IT MEANS THE SYSTEM HAS NOT DECIDED WHAT YOU ARE YET. NEITHER HAVE YOU.'),
+    narrate('THE FOOTAGE IS FOREVER, CRAWLER. CLASS ASSIGNED: SURVIVOR, PROVISIONAL. IT MEANS THE SYSTEM HAS NOT DECIDED WHAT YOU ARE YET. NEITHER HAVE YOU. THE AUDIENCE ENJOYS A MYSTERY.'),
     setFlag('carl:registered', true),
     setFlag('carl:class', 'SURVIVOR (PROVISIONAL)'),
     narrate('STARTER KIT APPROVED. CONTENTS: ONE BLUNT INSTRUMENT, ONE JACKET YOU ALREADY OWNED, ONE PAIR OF GLOVES MISSING THE IMPORTANT HALVES.'),
@@ -138,7 +146,7 @@ const act1CharacterCreation: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R04 — Donut's transformation (the Act I hinge)
+// R04 - Donut's transformation (the Act I hinge)
 // ---------------------------------------------------------------------------
 
 const act1DonutTransformation: CutsceneDef = {
@@ -146,11 +154,12 @@ const act1DonutTransformation: CutsceneDef = {
   actions: [
     setLetterbox(true),
     musicCue('lootbox_fanfare'),
-    narrate('UNCLAIMED REWARD DETECTED. RECIPIENT: THE CAT. THE SYSTEM DOES NOT MAKE MISTAKES. THE SYSTEM IS AS SURPRISED AS YOU ARE.'),
+    narrate('UNCLAIMED REWARD DETECTED. A VIEWER GIFT, CRAWLER - THE AUDIENCE SENDS PRESENTS TO CONTESTANTS IT LIKES. THIS ONE IS NOT ADDRESSED TO YOU.'),
+    narrate('RECIPIENT: THE CAT. THE SYSTEM DOES NOT MAKE MISTAKES. THE SYSTEM IS AS SURPRISED AS YOU ARE.'),
     sfxCue('lootbox_open'),
     fadeOut(180),
     fadeIn(220),
-    narrate('Light pours over the cat. Her fur goes incandescent. Somewhere, a stat called CHARISMA breaks something it should not be able to reach.'),
+    narrate('Light pours over the cat. Her fur goes incandescent. Somewhere, a stat called CHARISMA breaks something it should not be able to reach. And then - she stands up wrong. On purpose. Like she has been waiting years for the room to be worth it.'),
     despawnActor('donut_cat'),
     spawnActor('donut', donutSheet, 200, 128, { facing: 'down' }),
     disableHotspot('cat'),
@@ -172,7 +181,7 @@ const act1DonutTransformation: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R07 — the show premiere (the Views counter becomes meaningful)
+// R07 - the show premiere (the Views counter becomes meaningful)
 // ---------------------------------------------------------------------------
 
 const act2Premiere: CutsceneDef = {
@@ -198,7 +207,7 @@ const act2Premiere: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R08 — Donut learns to fight with claws
+// R08 - Donut learns to fight with claws
 // ---------------------------------------------------------------------------
 
 const act2DonutClaws: CutsceneDef = {
@@ -224,8 +233,8 @@ const act2DonutClaws: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R10 — THE DETONATION (Act II's showpiece; also the War Chieftain's death.
-// Puzzle-as-kill, option (a): no cleanup fight — rewards granted here.)
+// R10 - THE DETONATION (Act II's showpiece; also the War Chieftain's death.
+// Puzzle-as-kill, option (a): no cleanup fight - rewards granted here.)
 // ---------------------------------------------------------------------------
 
 const act2Detonation: CutsceneDef = {
@@ -268,7 +277,7 @@ const act2Detonation: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R11 — the aftermath (tonal beat: the System gloats, the room does not)
+// R11 - the aftermath (tonal beat: the System gloats, the room does not)
 // ---------------------------------------------------------------------------
 
 const act2Aftermath: CutsceneDef = {
@@ -294,7 +303,7 @@ const act2Aftermath: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R12 — the reverse-trap pays off (restraint: the System confirms nothing)
+// R12 - the reverse-trap pays off (restraint: the System confirms nothing)
 // ---------------------------------------------------------------------------
 
 const act3Trap: CutsceneDef = {
@@ -321,7 +330,7 @@ const act3Trap: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R15 — the training montage (game-show flair; the crew becomes a unit)
+// R15 - the training montage (game-show flair; the crew becomes a unit)
 // ---------------------------------------------------------------------------
 
 const act3Montage: CutsceneDef = {
@@ -349,7 +358,7 @@ const act3Montage: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R16 — the derail (phase 1 payoff; combat starts from the hotspot script)
+// R16 - the derail (phase 1 payoff; combat starts from the hotspot script)
 // ---------------------------------------------------------------------------
 
 const act3Derail: CutsceneDef = {
@@ -375,7 +384,7 @@ const act3Derail: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
-// R17 — the finale: loot ceremony, the crew, the stairs, Donut and Carl
+// R17 - the finale: loot ceremony, the crew, the stairs, Donut and Carl
 // ---------------------------------------------------------------------------
 
 const act3Finale: CutsceneDef = {

@@ -1,8 +1,8 @@
 /**
- * R09 — the workshop approach: recon and parley. Kivvi the goblin engineer
+ * R09 - the workshop approach: recon and parley. Kivvi the goblin engineer
  * seeds the chain-reaction puzzle (kegs + fuel line + the coal rail past the
  * boss door) and hands out the flint striker; the yard supplies the fuse
- * wick and grease. The patrol skirmish is optional — fight it or have Kivvi
+ * wick and grease. The patrol skirmish is optional - fight it or have Kivvi
  * whistle it off via dialogue.
  */
 
@@ -39,6 +39,16 @@ export const r09_approach: RoomDef = {
   walkmaskPath: 'masks/r09_approach.png',
   playerSpawn: { x: 30, y: 162, facing: 'right' },
   onEnter: [
+    // First-visit establishing beat (P10: Act II part 2 opens here).
+    ifFlag(
+      'seen:r09',
+      [],
+      [
+        setFlag('seen:r09', true),
+        narrate('The tunnel opens onto a yard of noise and copper: steam-bikes on blocks, tool racks, chimney smoke. Goblins - a whole working clan of them - and beyond the yard, a workshop the size of a church, breathing forge-light through its seams.'),
+        narrate('This is goblin territory, and their WAR CHIEFTAIN holds the far door of that workshop. He is between you and everything east of here. The patrols have not seen you yet. The engineer at the bench has, and has not raised an alarm. Interesting.'),
+      ],
+    ),
     // Reconcile the optional patrol: gone if fought, gone if Kivvi covered.
     ifFlag('combat:goblin_patrol:result', [disableHotspot('patrol')], [], 'victory'),
     ifFlag('goblin:covered', [disableHotspot('patrol')], []),

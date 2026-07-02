@@ -45,7 +45,7 @@ import { IconBar } from './iconbar';
 import { InventoryScreen } from './inventory';
 import { AchievementsScene, ListMenuScene } from './menus';
 import { NarratorBox, wrapText } from './narrator';
-import { findPath, Mover, WalkGrid } from './pathfinding';
+import { dominantFacing, findPath, Mover, PLAYER_WALK_SPEED, WalkGrid } from './pathfinding';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import {
   formatPlaytime,
@@ -279,6 +279,7 @@ export class RoomScene implements Scene, ScriptHost {
   private readonly invScreen = new InventoryScreen();
   private readonly toasts = new ToastManager();
   private readonly runner = new ScriptRunner(this);
+  private keyWalking = false;
   private transition: Transition = { kind: 'loading' };
 
   private activeVerb: Verb = 'walk';
@@ -1056,6 +1057,31 @@ export class RoomScene implements Scene, ScriptHost {
       else this.handleWorldClick(this.toWorld(click));
     }
 
+    // P10: continuous keyboard walking (arrows + WASD). Shares the walkmask
+    // and speed with click-to-walk; gated by the same blocks above (scripts,
+    // inventory, transitions). A key move cancels any active click path.
+    const kx =
+      (input.isDown('ArrowRight') || input.isDown('KeyD') ? 1 : 0) -
+      (input.isDown('ArrowLeft') || input.isDown('KeyA') ? 1 : 0);
+    const ky =
+      (input.isDown('ArrowDown') || input.isDown('KeyS') ? 1 : 0) -
+      (input.isDown('ArrowUp') || input.isDown('KeyW') ? 1 : 0);
+    if (kx !== 0 || ky !== 0) {
+      this.mover.stop();
+      const norm = kx !== 0 && ky !== 0 ? Math.SQRT1_2 : 1;
+      const step = PLAYER_WALK_SPEED * room.scaleAt(player.y) * (dtMs / 1000) * norm;
+      const nx = player.x + kx * step;
+      const ny = player.y + ky * step;
+      if (kx !== 0 && room.grid.isWalkablePoint(nx, player.y)) player.x = nx;
+      if (ky !== 0 && room.grid.isWalkablePoint(player.x, ny)) player.y = ny;
+      player.facing = dominantFacing(kx, ky);
+      player.play('walk');
+      this.keyWalking = true;
+    } else if (this.keyWalking) {
+      this.keyWalking = false;
+      if (!this.mover.active) player.play('idle');
+    }
+
     this.stepMovers(dtMs);
 
     const exit = room.exitAt(player.feet);
@@ -1298,15 +1324,25 @@ export class RoomScene implements Scene, ScriptHost {
 
       this.narrator.render(ctx);
       this.dialogue.render(ctx);
+      // Compact room-name chip, tucked under the pinned icon bar (P10 fix:
+      // replaces the old full-width title baked into the background art).
+      const roomName = this.room?.def.label;
+      if (roomName) {
+        const w = pixelTextWidth(roomName) + 6;
+        ctx.fillStyle = 'rgba(10,17,32,0.7)';
+        ctx.fillRect(2, IconBar.HEIGHT + 2, w, 9);
+        drawPixelText(ctx, roomName, 5, IconBar.HEIGHT + 4, '#8fa3c4');
+      }
       // Diegetic score: broadcast viewer count, once the show has premiered.
       if (this.state.views > 0) {
         const label = `LIVE ${this.state.views}`;
         const w = pixelTextWidth(label) + 9;
+        const y = IconBar.HEIGHT + 2;
         ctx.fillStyle = 'rgba(10,17,32,0.85)';
-        ctx.fillRect(LOGICAL_W - w - 2, 2, w, 9);
+        ctx.fillRect(LOGICAL_W - w - 2, y, w, 9);
         ctx.fillStyle = '#ff5a5a';
-        ctx.fillRect(LOGICAL_W - w + 1, 5, 3, 3);
-        drawPixelText(ctx, label, LOGICAL_W - w + 6, 4, '#ffd9d9');
+        ctx.fillRect(LOGICAL_W - w + 1, y + 3, 3, 3);
+        drawPixelText(ctx, label, LOGICAL_W - w + 6, y + 2, '#ffd9d9');
       }
       this.toasts.render(ctx);
       if (this.hover && !this.narrator.active && !this.dialogue.active && isTop) {

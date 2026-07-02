@@ -1,5 +1,5 @@
 /**
- * R04 — The tutorial guild (Mordecai). Act I centerpiece: the briefing tree,
+ * R04 - The tutorial guild (Mordecai). Act I centerpiece: the briefing tree,
  * cinematic character creation, Donut's transformation, and the onward door
  * (locked until the party is formed). onEnter reconciles cat-vs-Donut actor
  * state and the exit lock against the flags, so saves/re-entry stay correct.
@@ -13,6 +13,7 @@ import {
   enableExit,
   ifFlag,
   narrate,
+  setFlag,
   spawnActor,
   startDialogue,
 } from '../script';
@@ -28,6 +29,16 @@ export const r04_guild: RoomDef = {
   playerSpawn: { x: 34, y: 162, facing: 'right' },
   onEnter: [
     awardAchievement('guild_member'),
+    // First-visit establishing beat (P10: scene-setting for newcomers).
+    ifFlag(
+      'seen:r04',
+      [],
+      [
+        setFlag('seen:r04', true),
+        narrate('Inside, the guild is smaller and warmer than it has any right to be: a repurposed storeroom with a desk, a liquor shelf, a wall of maps in a language you cannot read, and a fire that has clearly been kept burning for someone like you.'),
+        narrate('Behind the desk sits a broad, whiskered creature in a waistcoat - part rat, part uncle, entirely unbothered by your species. He looks up like he has been expecting you specifically, and is already tired of the paperwork.'),
+      ],
+    ),
     // Reconcile persistent state: transformed Donut replaces the cat, and
     // the onward door only opens for a formed party.
     ifFlag(

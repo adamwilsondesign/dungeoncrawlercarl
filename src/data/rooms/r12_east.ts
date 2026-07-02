@@ -1,5 +1,5 @@
 /**
- * R12 — the east corridors: Frank & Maggie's confrontation and the
+ * R12 - the east corridors: Frank & Maggie's confrontation and the
  * reverse-trap. The pair telegraph their ambush at the narrow cut; the
  * player reuses the R10 explosive grammar (trip cord + powder pouch ->
  * tripline charge, placed at the chokepoint) and springs it on THEM via

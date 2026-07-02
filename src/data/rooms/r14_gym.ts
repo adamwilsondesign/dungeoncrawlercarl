@@ -1,5 +1,5 @@
 /**
- * R14 — the gym lobby: two mandatory troglodyte fights (each with a
+ * R14 - the gym lobby: two mandatory troglodyte fights (each with a
  * different pair of allies riding along via partyOverride, proving 4-member
  * combat) and the gym-gear loot that feeds both Carl's weapon upgrade and
  * the Ball derail kit (the barbell).

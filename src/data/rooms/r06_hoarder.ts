@@ -1,10 +1,10 @@
 /**
- * R06 — The Hoarder's lair: the first combat-puzzle hybrid. THE BAIT: use
+ * R06 - The Hoarder's lair: the first combat-puzzle hybrid. THE BAIT: use
  * the polished hubcap (ITEM verb) on her treasure midden to set
  * 'hoarder:baited'; the encounter's phase table keeps her at 15% damage
  * taken until that flag is true. Charging in unbaited is survivable-but-
  * hopeless, with warnings first and a mid-fight hint; death restores the
- * room-entry autosave (bait resets with it — re-bait and go again).
+ * room-entry autosave (bait resets with it - re-bait and go again).
  */
 
 import {

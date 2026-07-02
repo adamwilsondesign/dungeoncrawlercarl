@@ -81,33 +81,37 @@ export const combatants: Record<string, CombatantDef> = {
     xpReward: 30,
     ai: 'basic',
   },
+  // P10 rebalance: hp 10 -> 8, str 3 -> 2 (mandatory fights forgiving).
   tunnel_rat: {
     id: 'tunnel_rat',
     name: 'TUNNEL RAT',
     color: '#8f8073',
     sprite: 'sprites/tunnel_rat.png',
-    stats: { maxHp: 10, hp: 10, str: 3, dex: 3, con: 2, int: 1, spd: 5 },
+    stats: { maxHp: 8, hp: 8, str: 2, dex: 3, con: 2, int: 1, spd: 5 },
     skills: [],
     xpReward: 30,
     ai: 'basic',
   },
-  // Neighborhood boss: near-invulnerable until baited (phase table on the encounter)
+  // Neighborhood boss: near-invulnerable until baited (phase table on the
+  // encounter). P10 rebalance: hp 70 -> 52, str 9 -> 8, con 9 -> 8 - once
+  // baited the fight resolves in ~4-5 rounds instead of grinding.
   hoarder: {
     id: 'hoarder',
     name: 'THE HOARDER',
     color: '#7a9a5a',
     sprite: 'sprites/hoarder.png',
-    stats: { maxHp: 70, hp: 70, str: 9, dex: 3, con: 9, int: 2, spd: 3 },
+    stats: { maxHp: 52, hp: 52, str: 8, dex: 3, con: 8, int: 2, spd: 3 },
     skills: ['trash_slam', 'garbage_avalanche'],
     xpReward: 120,
     ai: 'boss',
   },
+  // P10 rebalance: hp 14 -> 12, str 4 -> 3.
   scuttler: {
     id: 'scuttler',
     name: 'SCUTTLER',
     color: '#b0d06a',
     sprite: 'sprites/scuttler.png',
-    stats: { maxHp: 14, hp: 14, str: 4, dex: 4, con: 3, int: 1, spd: 6 },
+    stats: { maxHp: 12, hp: 12, str: 3, dex: 4, con: 3, int: 1, spd: 6 },
     skills: [],
     xpReward: 40,
     ai: 'basic',

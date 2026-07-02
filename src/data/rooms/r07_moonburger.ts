@@ -1,5 +1,5 @@
 /**
- * R07 — MoonBurger safe room: Tally the Bopca attendant, the REST booth
+ * R07 - MoonBurger safe room: Tally the Bopca attendant, the REST booth
  * (heal-by-fiat narration + autosave checkpoint), and the show-premiere
  * cutscene that switches on the Views counter. No combat can start here.
  */
@@ -7,7 +7,7 @@
 import { autosave, narrate, playCutscene, say, startDialogue } from '../script';
 import type { RoomDef, SpriteSheetDef } from '../types';
 
-/** Tally is small — about knee-height on Carl. */
+/** Tally is small - about knee-height on Carl. */
 const tallySheet: SpriteSheetDef = {
   path: 'sprites/tally.png',
   frameW: 18,

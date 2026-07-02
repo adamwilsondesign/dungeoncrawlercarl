@@ -1,5 +1,5 @@
 /**
- * R15 — the training floor: the montage cutscene plays on entry (Views
+ * R15 - the training floor: the montage cutscene plays on entry (Views
  * spike + the raid-readiness level bump via giveXp), then a rest booth and
  * a couple of warm gags before the ring. Safe room conventions apply.
  */

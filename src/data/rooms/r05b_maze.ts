@@ -1,5 +1,5 @@
 /**
- * R05b — The maze, east half. Mandatory fight #2 gates the way to the
+ * R05b - The maze, east half. Mandatory fight #2 gates the way to the
  * Hoarder; the demolition crate holds Carl's dynamite; the hubcap is the
  * Hoarder bait; the humming nest is the optional, repeatable over-level
  * fight.
