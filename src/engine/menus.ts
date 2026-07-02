@@ -7,6 +7,7 @@
 
 import type { AchievementDef, Point } from '../data/types';
 import { drawPixelText, outlinedPanel } from './assets';
+import { audio } from './audio';
 import type { Game, Scene } from './game';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import type { GameState } from './state';
@@ -107,7 +108,10 @@ export class ListMenuScene implements Scene {
     if (input.consumePress('ArrowDown')) this.move(1);
     if (input.consumePress('Enter') || input.consumePress('Space')) {
       const item = this.spec.items[this.selected];
-      if (item && !item.disabled) this.spec.onPick(this.selected);
+      if (item && !item.disabled) {
+        audio.playSfx('sfx_ui_click');
+        this.spec.onPick(this.selected);
+      }
       return;
     }
 
@@ -129,7 +133,10 @@ export class ListMenuScene implements Scene {
       const row = rows.findIndex(
         (r) => click.x >= x + 4 && click.x < x + w - 4 && click.y >= r.y && click.y < r.y + r.h,
       );
-      if (row >= 0 && !this.spec.items[row].disabled) this.spec.onPick(row);
+      if (row >= 0 && !this.spec.items[row].disabled) {
+        audio.playSfx('sfx_ui_click');
+        this.spec.onPick(row);
+      }
     }
   }
 
@@ -259,6 +266,7 @@ export class TitleScene implements Scene {
   }
 
   private pick(i: number): void {
+    audio.playSfx('sfx_ui_click');
     if (i === 0) this.handlers.onNewGame();
     else if (i === 1) this.handlers.onContinue();
     else this.handlers.onSettings();
@@ -266,6 +274,9 @@ export class TitleScene implements Scene {
 
   update(dtMs: number): void {
     this.blinkMs += dtMs;
+    // Same-id calls no-op, so this simply keeps the title theme current
+    // whenever the title screen is active (incl. after the credits unwind).
+    audio.playMusic('music_title');
     const input = this.game.input;
     const items = this.items();
     input.clearRightClicks();

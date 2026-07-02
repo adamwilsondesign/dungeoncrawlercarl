@@ -12,6 +12,7 @@ import {
   enableExit,
   giveItem,
   narrate,
+  playCutscene,
   setFlag,
 } from './script';
 import type { EncounterDef } from './types';
@@ -64,6 +65,24 @@ const junkGolemLair: EncounterDef = {
   ],
 };
 
+/**
+ * P15 set-piece: the digging-machine ambush outside the guild. The MACHINE
+ * IS NOT A COMBATANT - it is spectacle in the intro text and the bracketing
+ * cutscenes; a stat-check machine would wall a bare-handed level-1 Carl.
+ * Two whelps, tuned to fall in 2-4 turns with no gear and no items.
+ */
+const goblinDiggers: EncounterDef = {
+  id: 'goblin_diggers',
+  enemies: ['goblin_whelp', 'goblin_whelp'],
+  partyOverride: ['carl'],
+  backdrop: 'backgrounds/combat_entrance.png',
+  backdropLabel: 'FLOOR 1 CORRIDOR',
+  backdropMood: 'dungeon',
+  introText: 'THE MACHINE CIRCLES, SPIKES CHEWING WALL. ITS ESCORTS WANT THE KILL FOR THEMSELVES.',
+  rewards: { xp: 30 },
+  victoryScript: [playCutscene('act1_machine_wreck')],
+};
+
 // Act I tutorial fight: Carl solo, bare hands, unmissable-easy. The intro
 // text doubles as the combat UI lesson.
 const firstBlood: EncounterDef = {
@@ -92,8 +111,10 @@ const mazeRats: EncounterDef = {
   backdropLabel: 'THE MAZE',
   backdropMood: 'dungeon',
   introText: 'TWO RATS. ONE CAT. THE MATH FAVORS THE CAT.',
-  // P10 rebalance: xp 60 -> 70 (L2 lands with margin on the mandatory path).
-  rewards: { xp: 70, gold: 10 },
+  // P15 rebalance: 70 -> 55. The digging-machine fight adds +30 mandatory
+  // xp in R03, so both maze fights shed 15 to keep every downstream level
+  // breakpoint exactly where it was (140 total before the Hoarder).
+  rewards: { xp: 55, gold: 10 },
   victoryScript: [
     disableHotspot('mob1'),
     enableExit('east'),
@@ -110,8 +131,8 @@ const mazePack: EncounterDef = {
   backdropLabel: 'THE MAZE',
   backdropMood: 'dungeon',
   introText: 'THE HEAP WAS OCCUPIED. IT IS ABOUT TO BE VACANT.',
-  // P10 rebalance: xp 60 -> 70.
-  rewards: { xp: 70, gold: 10 },
+  // P15 rebalance: 70 -> 55 (see maze_rats).
+  rewards: { xp: 55, gold: 10 },
   victoryScript: [
     disableHotspot('mob2'),
     enableExit('east'),
@@ -159,13 +180,15 @@ const hoarderLair: EncounterDef = {
       announce: 'HER BACK IS TO THE TREASURE. NOW, CRAWLER. NOW.',
     },
     {
-      enemyDamageTakenMult: 0.15,
+      // P15: 0.15 -> 0.25 - grinding head-on is slow but no longer a wall.
+      enemyDamageTakenMult: 0.25,
       announce: 'SHE BARELY NOTICES YOU. HER EYES NEVER LEAVE THE PILE.',
     },
   ],
   beforeTurn: (ctx) => {
-    if (ctx.round >= 3 && !ctx.state.getFlag('hoarder:baited')) {
-      return 'DONUT: CARL. SHE ONLY CARES ABOUT SHINY THINGS. USE YOUR HEAD.';
+    // P15: the hint fires from ROUND ONE if the player charged in unbaited.
+    if (ctx.round >= 1 && !ctx.state.getFlag('hoarder:baited')) {
+      return 'DONUT: CARL. STOP HITTING IT. She only cares about SHINY things. Put something shiny on that pile and she will turn her back.';
     }
   },
   rewards: { xp: 120, gold: 40, items: ['healing_salve'] },
@@ -338,6 +361,7 @@ export const encounters: Record<string, EncounterDef> = {
   [scrapPit.id]: scrapPit,
   [junkGolemLair.id]: junkGolemLair,
   [firstBlood.id]: firstBlood,
+  [goblinDiggers.id]: goblinDiggers,
   [mazeRats.id]: mazeRats,
   [mazePack.id]: mazePack,
   [mazeNest.id]: mazeNest,

@@ -37,6 +37,7 @@ import type {
   StatusEffect,
 } from '../data/types';
 import { drawPixelText, loadImage, outlinedPanel, pixelTextWidth, type LoadedImage } from './assets';
+import { audio } from './audio';
 import type { Game, Scene } from './game';
 import { drawMenuCursor } from './menus';
 import { wrapText } from './narrator';
@@ -254,6 +255,9 @@ export class CombatScene implements Scene {
     );
 
     const scene = new CombatScene(deps, encounter, backdrop, party, enemies);
+    // Boss rooms get the boss theme; everything else the combat theme. The
+    // room's music is restored when the scene finishes.
+    audio.playMusic(encounter.backdropMood === 'boss' ? 'music_boss' : 'music_combat');
     scene.pushLog(encounter.introText ?? 'AN ENCOUNTER BEGINS.');
     return scene;
   }
@@ -475,6 +479,7 @@ export class CombatScene implements Scene {
   private doAttack(attacker: Combatant, target: Combatant): void {
     const hitChance = clamp(0.85 + 0.03 * (attacker.stats.dex - target.stats.dex), 0.6, 0.98);
     if (Math.random() > hitChance) {
+      audio.playSfx('sfx_miss');
       this.pushFloat(target, 'MISS', '#8fa3c4');
       this.pushLog(`${attacker.name} ATTACKS ${target.name}: MISS.`);
       this.afterAction(attacker);
@@ -485,6 +490,7 @@ export class CombatScene implements Scene {
       Math.round(this.attackBase(attacker) * rand(0.85, 1.15)) - this.defenseOf(target),
     );
     const dealt = this.applyDamage(target, raw);
+    audio.playSfx('sfx_hit');
     this.pushLog(`${attacker.name} ATTACKS ${target.name}: ${dealt} DMG.`);
     this.afterAction(attacker);
   }
@@ -526,11 +532,13 @@ export class CombatScene implements Scene {
         parts.push(`${target.name} ${skill.effect.name}`);
       }
     }
+    audio.playSfx('sfx_cast');
     this.pushLog(`${user.name} USES ${skill.name}: ${parts.join(', ') || 'NO EFFECT'}.`);
     this.afterAction(user);
   }
 
   private doItem(user: Combatant, item: ItemDef, use: CombatUseDef, targets: Combatant[]): void {
+    audio.playSfx(use.target === 'allEnemies' ? 'sfx_explosion' : 'sfx_pickup');
     this.deps.state.removeItem(item.id); // consumed from the SHARED inventory
     const parts: string[] = [];
     for (const target of targets) {
@@ -674,11 +682,13 @@ export class CombatScene implements Scene {
         }
       }
     }
+    audio.playSfx(gained > 0 ? 'sfx_levelup' : 'sfx_victory');
     console.info(`[combat] victory (+${xpGain} xp, level ${state.level})`);
     this.mode = { kind: 'victory', lines };
   }
 
   private doDefeat(): void {
+    audio.playSfx('sfx_defeat');
     this.pushLog('THE PARTY FALLS.');
     console.info('[combat] defeat');
     this.mode = { kind: 'ending', t: 0, result: 'defeat' };
@@ -687,6 +697,7 @@ export class CombatScene implements Scene {
   private finish(result: CombatResult): void {
     if (this.finished) return;
     this.finished = true;
+    audio.restorePreviousMusic();
     this.deps.game.popScene();
     this.onFinish?.(result);
   }

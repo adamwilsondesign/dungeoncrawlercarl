@@ -122,6 +122,46 @@ const act1Descent: CutsceneDef = {
 };
 
 // ---------------------------------------------------------------------------
+// R03 - the digging machine (P15 set-piece: stakes beat before the guild)
+// ---------------------------------------------------------------------------
+
+const act1Diggers: CutsceneDef = {
+  id: 'act1_diggers',
+  actions: [
+    setLetterbox(true),
+    musicCue('silence'),
+    sfxCue('machine_roar'),
+    narrate('The far end of the corridor lights up orange. Something is coming around the bend - iron wheels studded with digging spikes, steam screaming out of every seam, chewing the floor as it rolls.'),
+    narrate('Riding its wake: goblins. Small, green, armed with scrap, and visibly delighted. One of them points at you and says something that needs no translation.'),
+    say('carl', 'A steamroller. They built a steamroller with teeth, and it is pointed at me, and I am in my underwear.'),
+    musicCue('system_sting'),
+    narrate("CRAWLERS AND VIEWERS - THE SEASON'S FIRST REAL BLOODSPORT. ONE UNARMED HUMAN. ONE DIG ENGINE, LOVINGLY ASSEMBLED. THE ODDS BOARD IS OPEN AND FRANKLY INSULTING."),
+    narrate('The machine is too wide to dodge and too dumb to aim. The goblins are neither. Deal with the escorts before the driver lines up a second pass.'),
+    setFlag('act1:diggers_seen', true),
+    setLetterbox(false),
+  ],
+};
+
+const act1MachineWreck: CutsceneDef = {
+  id: 'act1_machine_wreck',
+  actions: [
+    setLetterbox(true),
+    sfxCue('machine_roar'),
+    narrate('The escorts are down - and the machine keeps going. Nobody is steering it now. It clips a support column, ricochets, and takes the long wall at full boil.'),
+    sfxCue('machine_wreck'),
+    fadeOut(90),
+    fadeIn(160),
+    narrate('Spikes shear off in a fan of sparks. The boiler lets go with a sound like a kicked cathedral. What remains grinds itself into the corner, twitches once, and dies as steam.'),
+    say('carl', 'Their own machine. I did not even touch it. I want that noted somewhere official.'),
+    narrate('NOTED, CRAWLER. CAUSE OF DESTRUCTION: UNSUPERVISED ENTHUSIASM. THE AUDIENCE AWARDS STYLE POINTS FOR STANDING STILL WHILE IT HAPPENED.'),
+    awardAchievement('traffic_incident'),
+    enableExit('guild'),
+    disableHotspot('commotion'),
+    setLetterbox(false),
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // R04 - cinematic character creation (the demo dramatizes the stat menu)
 // ---------------------------------------------------------------------------
 
@@ -443,6 +483,8 @@ const act3Credits: CutsceneDef = {
 export const cutscenes: Record<string, CutsceneDef> = {
   [act1Intro.id]: act1Intro,
   [act1Descent.id]: act1Descent,
+  [act1Diggers.id]: act1Diggers,
+  [act1MachineWreck.id]: act1MachineWreck,
   [act1CharacterCreation.id]: act1CharacterCreation,
   [act1DonutTransformation.id]: act1DonutTransformation,
   [act2Premiere.id]: act2Premiere,

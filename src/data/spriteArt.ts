@@ -129,6 +129,15 @@ export const spriteDesigns: Record<string, SpriteDesign> = {
     feet: '#33280e',
     weapon: 'wrench',
   },
+  'sprites/goblin_whelp.png': {
+    plan: 'small',
+    skin: '#9aba62',
+    hairStyle: 'bald',
+    ears: 'goblin',
+    torso: '#6b5a40',
+    legs: '#4a3a24',
+    feet: '#2c231a',
+  },
   'sprites/goblin_scrapper.png': {
     plan: 'small',
     skin: '#8fb05a',

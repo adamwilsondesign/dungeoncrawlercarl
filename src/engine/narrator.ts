@@ -10,6 +10,7 @@
  */
 
 import { drawPixelText, pixelTextWidth } from './assets';
+import { audio } from './audio';
 import { LOGICAL_W } from './renderer';
 
 export function wrapText(text: string, maxChars: number): string[] {
@@ -114,6 +115,7 @@ export class NarratorBox {
   private readonly queue: Message[] = [];
   private current: Message | null = null;
   private readonly tw: Typewriter;
+  private lastBlipAt = 0;
 
   constructor(charsPerSec = 40) {
     this.tw = new Typewriter(charsPerSec);
@@ -133,7 +135,11 @@ export class NarratorBox {
 
   private next(): void {
     this.current = this.queue.shift() ?? null;
-    if (this.current) this.tw.set(this.current.text, MAX_CHARS);
+    this.lastBlipAt = 0;
+    if (this.current) {
+      this.tw.set(this.current.text, MAX_CHARS);
+      audio.playSfx('sfx_chime');
+    }
   }
 
   /** Instantly dismiss the current and all queued messages (cutscene skip). */
@@ -156,7 +162,14 @@ export class NarratorBox {
   }
 
   update(dtMs: number): void {
-    if (this.current) this.tw.update(dtMs);
+    if (!this.current) return;
+    this.tw.update(dtMs);
+    // Typewriter blip: one soft tick per few revealed characters.
+    const revealed = this.tw.revealedChars();
+    if (revealed >= this.lastBlipAt + 4 && !this.tw.fullyRevealed) {
+      this.lastBlipAt = revealed;
+      audio.playSfx('sfx_blip');
+    }
   }
 
   render(ctx: CanvasRenderingContext2D): void {

@@ -7,6 +7,7 @@
  * render "what is currently used" (including procedural art) to a canvas.
  */
 
+import { allAudioIds } from './audio';
 import { spriteDesigns } from './spriteArt';
 import type {
   CharacterDef,
@@ -172,8 +173,20 @@ export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
     });
   }
 
-  // Audio: no audio system yet - music/sfx cue ids will slot in here with
-  // the same resolution order once one exists.
+  // Audio: every music loop and one-shot from the audio registry. A real
+  // file (Blob override or bundled at src/assets/audio/<id>.ogg|mp3|wav)
+  // beats the synth, exactly like the art tiers.
+  for (const id of allAudioIds()) {
+    const isMusic = id.startsWith('music_');
+    add({
+      id: `audio/${id}.ogg`,
+      category: 'audio',
+      label: id.replace(/^(music|sfx)_/, '').replace(/_/g, ' ') + (isMusic ? ' (music)' : ' (sfx)'),
+      spec: isMusic
+        ? 'OGG/MP3/WAV seamless loop (overrides the synth track)'
+        : 'OGG/MP3/WAV one-shot (overrides the synth effect)',
+    });
+  }
 
   return out;
 }

@@ -89,6 +89,18 @@ export const combatants: Record<string, CombatantDef> = {
     ai: 'basic',
   },
   // P10 rebalance: hp 10 -> 8, str 3 -> 2 (mandatory fights forgiving).
+  // Escorts for the digging machine (P15 set-piece): tuned for a bare-handed
+  // solo level-1 Carl - two of them fall in 2-4 turns with no items.
+  goblin_whelp: {
+    id: 'goblin_whelp',
+    name: 'GOBLIN WHELP',
+    color: '#9aba62',
+    sprite: 'sprites/goblin_whelp.png',
+    stats: { maxHp: 7, hp: 7, str: 2, dex: 3, con: 1, int: 2, spd: 4 },
+    skills: [],
+    xpReward: 15,
+    ai: 'basic',
+  },
   tunnel_rat: {
     id: 'tunnel_rat',
     name: 'TUNNEL RAT',
@@ -100,14 +112,15 @@ export const combatants: Record<string, CombatantDef> = {
     ai: 'basic',
   },
   // Neighborhood boss: near-invulnerable until baited (phase table on the
-  // encounter). P10 rebalance: hp 70 -> 52, str 9 -> 8, con 9 -> 8 - once
-  // baited the fight resolves in ~4-5 rounds instead of grinding.
+  // encounter). P15 nerf (player report): hp 52 -> 32, str 8 -> 5,
+  // con 8 -> 6 - a baited L2 party with starter gear wins in 4-6 rounds
+  // taking moderate damage, and even the unbaited grind is finishable.
   hoarder: {
     id: 'hoarder',
     name: 'THE HOARDER',
     color: '#7a9a5a',
     sprite: 'sprites/hoarder.png',
-    stats: { maxHp: 52, hp: 52, str: 8, dex: 3, con: 8, int: 2, spd: 3 },
+    stats: { maxHp: 32, hp: 32, str: 5, dex: 3, con: 6, int: 2, spd: 3 },
     skills: ['trash_slam', 'garbage_avalanche'],
     xpReward: 120,
     ai: 'boss',

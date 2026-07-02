@@ -401,6 +401,8 @@ export interface RoomDef {
   label: string;
   backgroundPath: string;
   backgroundMood: Mood;
+  /** Optional per-room music track id; defaults to the mood's theme. */
+  musicId?: string;
   /**
    * Rooms authored wider than 320 can be panned with cameraPan; walkmasks
    * and pathfinding remain 320x200, so wide rooms are cinematic-only for

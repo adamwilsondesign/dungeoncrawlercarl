@@ -68,6 +68,11 @@ export async function initAssetOverrides(): Promise<void> {
   }
 }
 
+/** The active Blob-override URL for an asset id, if any (audio + CMS). */
+export function overrideUrl(path: string): string | undefined {
+  return blobOverrides.get(path);
+}
+
 /** Where an asset id currently resolves from (CMS display). */
 export function assetSource(path: string): 'override' | 'bundled' | 'procedural' {
   if (blobOverrides.has(path)) return 'override';

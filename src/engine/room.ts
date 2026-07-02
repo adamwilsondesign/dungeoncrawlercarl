@@ -56,6 +56,7 @@ import {
   writeSave,
   type SaveSlot,
 } from './saves';
+import { audio } from './audio';
 import { ScriptAbort, ScriptRunner, type ScriptHost } from './script';
 import type { GameState } from './state';
 import { ToastManager } from './toasts';
@@ -390,6 +391,8 @@ export class RoomScene implements Scene, ScriptHost {
     this.transition = { kind: 'loading' };
     await this.ensureUiLoaded();
     await this.loadRoom(roomId, spawn ?? def.playerSpawn);
+    // Per-room music: explicit musicId or the mood default, crossfaded.
+    audio.playRoomMusic(def.backgroundMood, def.musicId);
     this.transition = { kind: 'fade-in', t: 0 };
   }
 
@@ -663,6 +666,7 @@ export class RoomScene implements Scene, ScriptHost {
     this.state.setFlag(key, true);
     const def = this.content.achievements[id];
     if (!def) console.warn(`[achievements] unknown achievement "${id}"`);
+    audio.playSfx('sfx_achievement');
     this.toasts.push('ACHIEVEMENT UNLOCKED', def?.name ?? id.toUpperCase());
   }
 
@@ -670,6 +674,7 @@ export class RoomScene implements Scene, ScriptHost {
     if (this.dying) return;
     this.dying = true;
     this.mover.stop();
+    audio.playSfx('sfx_death');
     this.awardAchievement('first_death');
     void this.scriptFadeForDeath().then(() => this.openDeathDialog(reason));
   }
@@ -1121,6 +1126,7 @@ export class RoomScene implements Scene, ScriptHost {
     if (exit && this.state.isExitEnabled(room.def.id, exit)) {
       this.mover.stop();
       player.play('idle');
+      audio.playSfx('sfx_door');
       this.transition = { kind: 'fade-out', t: 0, exit };
     }
   }
@@ -1215,6 +1221,7 @@ export class RoomScene implements Scene, ScriptHost {
   private handleBarClick(p: Point): void {
     const action = this.iconBar.actionAt(p);
     if (!action) return;
+    audio.playSfx(action.kind === 'verb' ? 'sfx_verb' : 'sfx_ui_click');
     if (action.kind === 'verb') this.activeVerb = action.verb;
     else if (action.kind === 'inventory') this.invScreen.show();
     else this.openSettingsMenu();

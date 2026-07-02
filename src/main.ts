@@ -29,6 +29,7 @@ import { skills } from './data/skills';
 import { buildAssetCatalog } from './data/assetCatalog';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { initAssetOverrides } from './engine/assets';
+import { audio } from './engine/audio';
 import { CmsScene } from './engine/cms';
 import { Game } from './engine/game';
 import { AchievementsScene, ListMenuScene, TitleScene } from './engine/menus';
@@ -95,6 +96,10 @@ async function boot(): Promise<void> {
   // Hosted-asset overrides (the CMS tier): fetched once; never throws, and
   // without a reachable API the game runs on bundled + procedural art.
   await initAssetOverrides();
+
+  // Audio wakes on the first user gesture (autoplay policy); cues fired
+  // before that are remembered and start once the context unlocks.
+  audio.installUnlock();
 
   const game = new Game(canvas);
   const state = new GameState();
@@ -167,11 +172,12 @@ async function boot(): Promise<void> {
       game.pushScene(
         new ListMenuScene(game, {
           title: 'SETTINGS',
-          items: [{ label: 'LOAD GAME' }, { label: 'ACHIEVEMENTS' }, { label: 'BACK' }],
+          items: [{ label: 'LOAD GAME' }, { label: 'AUDIO' }, { label: 'ACHIEVEMENTS' }, { label: 'BACK' }],
           footer: 'ESC: BACK',
           onPick: (i) => {
             if (i === 0) openTitleLoadMenu();
-            else if (i === 1) game.pushScene(new AchievementsScene(game, achievements, state));
+            else if (i === 1) openAudioMenu();
+            else if (i === 2) game.pushScene(new AchievementsScene(game, achievements, state));
             else game.popScene();
           },
           onCancel: () => game.popScene(),
@@ -179,6 +185,37 @@ async function boot(): Promise<void> {
       );
     },
   });
+
+  // Volume rows cycle 100 -> 75 -> 50 -> 25 -> 0 -> 100; the menu is rebuilt
+  // after each pick so the labels track the persisted values.
+  function openAudioMenu(): void {
+    const pct = (v: number): string => `${Math.round(v * 100)}%`;
+    game.pushScene(
+      new ListMenuScene(game, {
+        title: 'AUDIO',
+        items: [
+          { label: `MASTER: ${pct(audio.volumes.master)}` },
+          { label: `MUSIC: ${pct(audio.volumes.music)}` },
+          { label: `SFX: ${pct(audio.volumes.sfx)}` },
+          { label: 'BACK' },
+        ],
+        footer: 'PICK A ROW TO CYCLE ITS VOLUME',
+        onPick: (i) => {
+          const kinds = ['master', 'music', 'sfx'] as const;
+          if (i < 3) {
+            const kind = kinds[i];
+            const next = audio.volumes[kind] - 0.25;
+            audio.setVolume(kind, next < -0.01 ? 1 : Math.max(0, next));
+            game.popScene();
+            openAudioMenu();
+          } else {
+            game.popScene();
+          }
+        },
+        onCancel: () => game.popScene(),
+      }),
+    );
+  }
 
   game.pushScene(titleScene);
   game.start();

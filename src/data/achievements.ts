@@ -27,6 +27,11 @@ export const achievements: Record<string, AchievementDef> = {
     name: 'THE ROYAL COURT',
     description: 'Party formed. Leadership structure: contested. Cat: in charge.',
   },
+  traffic_incident: {
+    id: 'traffic_incident',
+    name: 'TRAFFIC INCIDENT',
+    description: 'Survived a dig engine by outliving its driver. The machine filed no complaint.',
+  },
   blooded: {
     id: 'blooded',
     name: 'PROPERLY BLOODED',

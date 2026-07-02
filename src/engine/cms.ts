@@ -64,7 +64,7 @@ export class CmsScene implements Scene {
     });
     const catSel = document.createElement('select');
     catSel.style.cssText = 'background:#101826;color:#d8ecff;border:1px solid #39465e;padding:4px';
-    for (const c of ['all', 'backgrounds', 'masks', 'sprites', 'portraits', 'items', 'ui']) {
+    for (const c of ['all', 'backgrounds', 'masks', 'sprites', 'portraits', 'items', 'ui', 'audio']) {
       const opt = document.createElement('option');
       opt.value = c;
       opt.textContent = c;
@@ -180,6 +180,7 @@ export class CmsScene implements Scene {
   }
 
   private async dimensionWarning(entry: CatalogEntry, file: File): Promise<string | null> {
+    if (entry.category === 'audio') return null; // not an image; no pixel check
     if (!entry.expectW || !entry.expectH) return null;
     try {
       const bmp = await createImageBitmap(file);
@@ -236,7 +237,7 @@ export class CmsScene implements Scene {
     const uploadBtn = this.button('UPLOAD REPLACEMENT', () => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = 'image/*';
+      input.accept = entry.category === 'audio' ? 'audio/*,.ogg,.mp3,.wav' : 'image/*';
       input.addEventListener('change', () => {
         const f = input.files?.[0];
         if (f) void this.upload(entry, f);
@@ -328,6 +329,19 @@ export class CmsScene implements Scene {
           ? ` <span style="color:#ffb46a">(expected ${entry.expectW}x${entry.expectH})</span>`
           : '');
     };
+    if (entry.category === 'audio') {
+      // Sound has no pixels: draw a note glyph + how it currently resolves.
+      ctx.fillStyle = '#7de08a';
+      ctx.font = '26px monospace';
+      ctx.fillText('♪', 38, 34);
+      ctx.fillStyle = '#7d90b0';
+      ctx.font = '10px monospace';
+      ctx.fillText(assetSource(entry.id) === 'procedural' ? 'synth' : 'file', 36, 50);
+      if (sizeLine instanceof HTMLElement) {
+        sizeLine.innerHTML = '<span style="color:#5c7090">size:</span> n/a (audio)';
+      }
+      return;
+    }
     if (entry.category === 'masks' && assetSource(entry.id) === 'procedural') {
       ctx.fillStyle = '#7d90b0';
       ctx.font = '10px monospace';
@@ -352,6 +366,19 @@ export class CmsScene implements Scene {
 
   /** Download the asset currently in use (procedural art rendered to PNG). */
   private async download(entry: CatalogEntry): Promise<void> {
+    if (entry.category === 'audio') {
+      // Synth output has no file form; only file-backed audio downloads.
+      const url = await this.audioUrl(entry.id);
+      if (!url) {
+        this.renderBanner(`${entry.id} is synthesized in code - nothing to download until a file overrides it.`);
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = entry.id.split('/').pop() ?? 'audio.ogg';
+      a.click();
+      return;
+    }
     invalidateAsset(entry.id);
     const img = await loadImage(entry.id, entry.placeholder);
     const canvas = document.createElement('canvas');
@@ -372,6 +399,12 @@ export class CmsScene implements Scene {
     } catch {
       this.renderBanner(`Could not export ${entry.id} (cross-origin image without CORS).`);
     }
+  }
+
+  /** The URL an audio slot currently resolves to, if it is file-backed. */
+  private async audioUrl(id: string): Promise<string | null> {
+    const remote = this.remote.get(id);
+    return remote ? remote.url : null;
   }
 
   // --- chrome ----------------------------------------------------------------

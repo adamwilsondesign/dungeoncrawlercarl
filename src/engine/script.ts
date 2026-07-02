@@ -21,6 +21,7 @@ import type {
   SpriteSheetDef,
 } from '../data/types';
 import type { GameState } from './state';
+import { audio } from './audio';
 import { acquiredLine, goldLine, xpLine } from './verbs';
 
 /** Thrown by killPlayer to unwind the running script cleanly. */
@@ -161,6 +162,7 @@ export class ScriptRunner {
         const def = host.getItemDef(action.id);
         if (!def) console.warn(`[script] giveItem: unknown item "${action.id}"`);
         const count = state.addItem(action.id, def?.stackable === true);
+        audio.playSfx('sfx_pickup');
         await host.narrate(acquiredLine(def?.name ?? action.id.toUpperCase(), count));
         break;
       }
@@ -225,10 +227,10 @@ export class ScriptRunner {
         host.setLetterbox(action.on);
         break;
       case 'musicCue':
-        console.info(`[audio] music cue "${action.id}" (audio system pending)`);
+        audio.musicCue(action.id);
         break;
       case 'sfxCue':
-        console.info(`[audio] sfx cue "${action.id}" (audio system pending)`);
+        audio.sfxCue(action.id);
         break;
       case 'playCutscene': {
         const def = host.getCutscene(action.id);
@@ -277,6 +279,7 @@ export class ScriptRunner {
         state.addXp(action.amount);
         await host.narrate(xpLine(action.amount));
         if (state.level > before) {
+          audio.playSfx('sfx_levelup');
           await host.narrate(`LEVEL UP! PARTY REACHES LEVEL ${state.level}. Try to act like this was the plan.`);
         }
         break;

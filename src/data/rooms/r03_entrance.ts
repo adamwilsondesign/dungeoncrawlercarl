@@ -5,9 +5,13 @@
  */
 
 import {
+  disableExit,
+  disableHotspot,
+  enableExit,
   giveItem,
   ifFlag,
   narrate,
+  playCutscene,
   say,
   setFlag,
   startCombat,
@@ -35,6 +39,14 @@ export const r03_entrance: RoomDef = {
         narrate('At the end of the hall, a painted lantern sign glows over a door: GUILD. The first thing on this floor that wants you to walk in. That deserves suspicion. Or hope. Down here they come as a set.'),
       ],
     ),
+    // P15 set-piece gate: the guild passage stays blocked until the digging
+    // machine and its escorts are dealt with (reconciled on re-entry/load).
+    ifFlag(
+      'combat:goblin_diggers:result',
+      [enableExit('guild'), disableHotspot('commotion')],
+      [disableExit('guild')],
+      'victory',
+    ),
   ],
   exits: [
     {
@@ -47,6 +59,20 @@ export const r03_entrance: RoomDef = {
   ],
   actors: [],
   hotspots: [
+    {
+      id: 'commotion',
+      name: 'GRINDING COMMOTION',
+      rect: { x: 288, y: 88, w: 32, h: 70 },
+      verbs: {
+        look: [
+          narrate('The passage toward the guild is shaking. Something heavy is working the tunnel beyond - iron on stone, steam hissing, and small voices cheering it on. It is getting closer.'),
+        ],
+        hand: [
+          playCutscene('act1_diggers'),
+          startCombat('goblin_diggers'),
+        ],
+      },
+    },
     {
       id: 'graffiti',
       name: 'WALL GRAFFITI',

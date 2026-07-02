@@ -13,6 +13,7 @@ import {
   disableHotspot,
   enableExit,
   ifFlag,
+  ifItem,
   moveActor,
   narrate,
   say,
@@ -47,7 +48,26 @@ export const r06_hoarder: RoomDef = {
     ifFlag(
       'combat:hoarder_lair:result',
       [despawnActor('hoarder'), disableHotspot('hoarder'), enableExit('east')],
-      [disableExit('east')],
+      [
+        disableExit('east'),
+        // P15: forced first-visit beat - Donut states the bait idea outright
+        // so the puzzle is unmissable. Repeats never (seen flag), and the
+        // flag rides the room-entry autosave like everything else.
+        ifFlag(
+          'seen:r06',
+          [],
+          [
+            setFlag('seen:r06', true),
+            narrate('The lair opens into a canyon of garbage, stacked to the ceiling. In the middle of it: the Hoarder, hunched over her treasure pile, counting.'),
+            say('donut', 'Carl. Look at her. She has not taken her eyes off that pile once. Not when we came in. Not NOW.'),
+            ifItem(
+              'polished_hubcap',
+              [say('donut', 'And YOU are carrying the shiniest thing in this maze. Put the hubcap ON HER PILE, and she will forget we exist. Then we strike.')],
+              [say('donut', 'A creature like that only wants SHINY. There was a gleaming hubcap back in the maze - fetch it, put it on her pile, and she will forget we exist.')],
+            ),
+          ],
+        ),
+      ],
       'victory',
     ),
   ],
@@ -108,8 +128,8 @@ export const r06_hoarder: RoomDef = {
                 ],
                 [
                   setFlag('hoarder:warned', true),
-                  narrate('You square up. She does not even turn. WARNING: FRONTAL ASSAULT POLLS AT TWO PERCENT SURVIVAL. Perhaps study what she loves first.'),
-                  say('donut', 'Carl. The pile. She guards the PILE. Even you can finish this thought.'),
+                  narrate('You square up. She does not even turn. WARNING: THIS CREATURE IS COMPLETELY DISTRACTED BY ITS HOARD. SOMETHING SHINY, PLACED ON THE PILE, WOULD LURE IT AWAY. FIGHTING IT HEAD-ON WILL HURT.'),
+                  say('donut', 'The dungeon is spelling it out for you, Carl. Shiny thing. On the pile. THEN claws.'),
                 ],
               ),
             ],
