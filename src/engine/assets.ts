@@ -30,7 +30,61 @@ function assetUrl(path: string): string | undefined {
 
 /** True when a real file exists for this asset path. */
 export function hasAsset(path: string): boolean {
+  return blobOverrides.has(path) || assetUrl(path) !== undefined;
+}
+
+/** True only for files bundled into the build (import.meta.glob). */
+export function hasBundledAsset(path: string): boolean {
   return assetUrl(path) !== undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Hosted overrides (the asset CMS): a top resolution tier fetched once from
+// /api/manifest at boot. Resolution order per asset id:
+//   Blob override -> bundled file (import.meta.glob) -> procedural generator.
+// Any failure (offline, plain `npm run dev`, Blob unprovisioned) degrades to
+// the previous behavior with zero errors.
+// ---------------------------------------------------------------------------
+
+const blobOverrides = new Map<string, string>();
+
+/** Fetch the override manifest once at boot. Never throws. */
+export async function initAssetOverrides(): Promise<void> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const res = await fetch('/api/manifest', { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return;
+    const body = (await res.json()) as { overrides?: Record<string, string> };
+    for (const [id, url] of Object.entries(body.overrides ?? {})) {
+      if (typeof url === 'string') blobOverrides.set(id, url);
+    }
+    if (blobOverrides.size > 0) {
+      console.info(`[assets] ${blobOverrides.size} hosted override(s) active`);
+    }
+  } catch {
+    // API unreachable: bundled + procedural art only.
+  }
+}
+
+/** Where an asset id currently resolves from (CMS display). */
+export function assetSource(path: string): 'override' | 'bundled' | 'procedural' {
+  if (blobOverrides.has(path)) return 'override';
+  if (assetUrl(path) !== undefined) return 'bundled';
+  return 'procedural';
+}
+
+/** The CMS applies/removes an override live and busts the loader cache. */
+export function setAssetOverride(path: string, url: string | null): void {
+  if (url) blobOverrides.set(path, url);
+  else blobOverrides.delete(path);
+  cache.delete(path);
+}
+
+/** Drop a cached asset so the next load re-resolves it (CMS refresh). */
+export function invalidateAsset(path: string): void {
+  cache.delete(path);
 }
 
 const loggedPlaceholders = new Set<string>();
@@ -52,10 +106,14 @@ export function loadImage(path: string, spec?: PlaceholderSpec): Promise<LoadedI
   const cached = cache.get(path);
   if (cached) return cached;
 
-  const url = assetUrl(path);
+  // Resolution order: hosted override -> bundled file -> procedural.
+  const url = blobOverrides.get(path) ?? assetUrl(path);
   const promise: Promise<LoadedImage> = url
     ? new Promise((resolve) => {
         const img = new Image();
+        // Blob overrides are cross-origin; anonymous keeps them drawable to
+        // canvas (thumbnails, downloads). Ignored for same-origin bundles.
+        img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
         img.onerror = () => resolve(makePlaceholder(path, spec));
         img.src = url;

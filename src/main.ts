@@ -26,7 +26,10 @@ import { r15_training } from './data/rooms/r15_training';
 import { r16_ring } from './data/rooms/r16_ring';
 import { r17_stairs } from './data/rooms/r17_stairs';
 import { skills } from './data/skills';
+import { buildAssetCatalog } from './data/assetCatalog';
 import type { RoomDef, SpriteSheetDef } from './data/types';
+import { initAssetOverrides } from './engine/assets';
+import { CmsScene } from './engine/cms';
 import { Game } from './engine/game';
 import { AchievementsScene, ListMenuScene, TitleScene } from './engine/menus';
 import { RoomScene } from './engine/room';
@@ -85,9 +88,13 @@ const rooms: Record<string, RoomDef> = {
   [r00_test.id]: r00_test,
 };
 
-function boot(): void {
+async function boot(): Promise<void> {
   const canvas = document.querySelector<HTMLCanvasElement>('#game');
   if (!canvas) throw new Error('Missing #game canvas');
+
+  // Hosted-asset overrides (the CMS tier): fetched once; never throws, and
+  // without a reachable API the game runs on bundled + procedural art.
+  await initAssetOverrides();
 
   const game = new Game(canvas);
   const state = new GameState();
@@ -151,6 +158,11 @@ function boot(): void {
         if (!ok) void roomScene.startNewGame();
       });
     },
+    onOpenCms: () => {
+      game.pushScene(
+        new CmsScene(game, buildAssetCatalog({ rooms, encounters, characters, items })),
+      );
+    },
     onSettings: () => {
       game.pushScene(
         new ListMenuScene(game, {
@@ -172,4 +184,4 @@ function boot(): void {
   game.start();
 }
 
-boot();
+void boot();

@@ -232,6 +232,8 @@ export interface TitleHandlers {
   onNewGame: () => void;
   onContinue: () => void;
   onSettings: () => void;
+  /** Hidden asset-CMS entry (unlabeled hotspot, bottom-right corner). */
+  onOpenCms?: () => void;
 }
 
 export class TitleScene implements Scene {
@@ -292,6 +294,11 @@ export class TitleScene implements Scene {
     }
     const click = input.consumeClick();
     if (click) {
+      // Hidden, unlabeled CMS hotspot: the bottom-right corner of the title.
+      if (click.x >= LOGICAL_W - 22 && click.y >= LOGICAL_H - 14) {
+        this.handlers.onOpenCms?.();
+        return;
+      }
       items.forEach((item, i) => {
         const r = this.rowRect(i);
         if (!item.disabled && click.x >= r.x && click.x < r.x + r.w && click.y >= r.y && click.y < r.y + r.h) {
