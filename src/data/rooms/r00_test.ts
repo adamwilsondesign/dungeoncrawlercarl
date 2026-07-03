@@ -290,7 +290,7 @@ export const r00_test: RoomDef = {
           walkPlayerTo(52, 176),
           facePlayer('left'),
           announce(
-            "WELCOME BACK to the only show where the intermission can eat you! I'm JUBILEE, your host, your judge, and legally your landlord. Say hi to Crawler 4,122, folks - he just touched the test card like it owed him money.",
+            'WELCOME BACK to the only show where the intermission can eat you! Your host: the Crawl AI - your judge, and legally your landlord. Say hi to Crawler 4,122, folks - he just touched the test card like it owed him money.',
           ),
           announce(
             'For our new viewers at home: everything on this floor is a prop, a prize, or a predator. Sometimes all three! Audience participation is mandatory and, per the waiver you did not read, retroactive.',

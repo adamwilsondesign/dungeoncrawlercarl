@@ -2,7 +2,7 @@
  * The narration message boxes, placed where the KQ5 narrator lived (bottom
  * third). One queue, three distinct voice channels (see
  * src/data/VOICE_BIBLE.md):
- * - announce: JUBILEE's live broadcast - widest box, amber, ON AIR tally.
+ * - announce: The Crawl AI's live broadcast - widest box, amber, ON AIR tally.
  * - notify:   dungeon-interface pops - compact, right-anchored, cold green,
  *             machine-fast typewriter.
  * - describe: the ambient narrator - full-width, muted bone, no plate.
@@ -117,8 +117,8 @@ const BOX_BOTTOM = 192;
 const PAD = 6;
 const LINE_H = 7;
 
-/** The dungeon AI's broadcast persona (plate name on every announce() box). */
-export const AI_NAME = 'JUBILEE';
+/** The broadcast speaker plate on every announce() box. */
+export const AI_NAME = 'THE CRAWL AI';
 
 interface ChannelStyle {
   /** Horizontal margin from the screen edges. */

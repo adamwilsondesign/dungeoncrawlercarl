@@ -5,15 +5,15 @@ non-dialogue text in the game belongs to exactly one of them. The script DSL
 builders are `announce()`, `notify()`, and `describe()` (in
 `src/data/script.ts`); the legacy `narrate()` is an alias for `describe()`.
 
-The dungeon AI's broadcast persona is named **JUBILEE** — a celebration-brand
-mascot name stapled onto a meat grinder, which is exactly the joke: the
-friendlier the name sounds, the worse the fine print. JUBILEE refers to
-itself by name on air. The name renders on every `announce()` plate
-(`AI_NAME` in `src/engine/narrator.ts`).
+The dungeon AI has no persona name — it is simply **The Crawl AI**, and
+that is what renders on every `announce()` plate (`AI_NAME` in
+`src/engine/narrator.ts`). On air it may call itself "your host" or "the
+Crawl AI," never anything cuter; the horror is that the thing running the
+show never needed a stage name.
 
 ---
 
-## 1. `announce()` — JUBILEE, live broadcast
+## 1. `announce()` — The Crawl AI, live broadcast
 
 **Who:** The dungeon AI performing as a game-show host, addressing the
 galactic audience *and* Carl simultaneously. It is glib, theatrical,
@@ -47,7 +47,7 @@ flourishes with spectacle value, anything performative.
 7. "That scream was brought to you by MoonBurger. MoonBurger: it is
    technically food."
 8. "One floor down, eighteen to go! Renew those subscriptions, folks —
-   JUBILEE loves you, and JUBILEE's love is measured quarterly."
+   the Crawl loves you, and its love is measured quarterly."
 
 ## 2. `notify()` — the dungeon interface
 
@@ -91,7 +91,7 @@ than is told.
 - Understatement over exclamation. Never addresses the audience.
 - May carry Carl's interiority ("he decides not to think about it") but in
   third person — this voice watches him, it is not him speaking.
-- Rueful is fine. Theatrical is a bug: hand those lines to JUBILEE.
+- Rueful is fine. Theatrical is a bug: hand those lines to the Crawl AI.
 
 **Example lines:**
 1. "The tunnel smells like a parking garage that learned about mildew and
@@ -115,15 +115,15 @@ than is told.
 
 ## Boundary calls (the ones authors get wrong)
 
-- **Achievement moments:** the unlock itself is `notify()`; JUBILEE may
+- **Achievement moments:** the unlock itself is `notify()`; the Crawl AI may
   *also* riff on it with an `announce()` when it's spectacle ("He touched
   the hatch, folks!"). Two boxes, two voices, in that order.
 - **Rules and tutorials:** if it reads like a broadcast segment, it's
   `announce()`. If it reads like a terms-of-service excerpt, it's
   `notify()`. There is no third option; `describe()` never explains rules.
-- **Death:** the sting is `announce()` (JUBILEE loves a death), the
+- **Death:** the sting is `announce()` (the Crawl AI loves a death), the
   respawn/penalty bookkeeping is `notify()`, and what the room looks like
   afterward is `describe()`.
 - **When in doubt:** if removing all personality kills the line, it's
-  JUBILEE's. If removing all warmth kills it, it's `describe()`. If neither
+  the Crawl AI's. If removing all warmth kills it, it's `describe()`. If neither
   changes anything, it was `notify()` all along.

@@ -12,7 +12,7 @@ export type FlagValue = boolean | number | string;
 
 /**
  * Narration voice channels (contracts + example lines: src/data/VOICE_BIBLE.md).
- * - announce: JUBILEE, the dungeon AI as live-broadcast game-show host.
+ * - announce: The Crawl AI as live-broadcast game-show host.
  * - notify:   the cold, corporate dungeon-interface voice (HUD-style pops).
  * - describe: the ambient narrator - Carl's-eye prose, dry and human.
  */

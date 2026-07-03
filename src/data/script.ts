@@ -87,7 +87,7 @@ export type ScriptAction =
  */
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
 
-/** JUBILEE live broadcast: theatrical, audience-facing, delighted by peril. */
+/** The Crawl AI live broadcast: theatrical, audience-facing, delighted by peril. */
 export const announce = (text: string): ScriptAction => ({
   type: 'narrate',
   text,
