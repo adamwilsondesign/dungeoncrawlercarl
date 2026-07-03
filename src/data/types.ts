@@ -10,6 +10,14 @@ export type Facing = 'up' | 'down' | 'left' | 'right';
 /** Value type stored in GameState flags. */
 export type FlagValue = boolean | number | string;
 
+/**
+ * Narration voice channels (contracts + example lines: src/data/VOICE_BIBLE.md).
+ * - announce: JUBILEE, the dungeon AI as live-broadcast game-show host.
+ * - notify:   the cold, corporate dungeon-interface voice (HUD-style pops).
+ * - describe: the ambient narrator - Carl's-eye prose, dry and human.
+ */
+export type VoiceChannel = 'announce' | 'notify' | 'describe';
+
 /** Verbs that hotspots can respond to (WALK never targets hotspots). */
 export type ActionVerb = 'look' | 'hand' | 'talk' | 'item';
 

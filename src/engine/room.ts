@@ -26,6 +26,7 @@ import type {
   SkillDef,
   SpawnPoint,
   SpriteSheetDef,
+  VoiceChannel,
 } from '../data/types';
 import { CombatScene, type CombatResult } from './combat';
 import { Actor } from './actor';
@@ -513,13 +514,13 @@ export class RoomScene implements Scene, ScriptHost {
     return this.room?.def.id ?? this.state.currentRoom;
   }
 
-  narrate(text: string, speakerId?: string): Promise<void> {
+  narrate(text: string, speakerId?: string, channel?: VoiceChannel): Promise<void> {
     if (this.runner.skipping) return Promise.resolve();
     const speaker =
       speakerId === undefined
         ? undefined
         : this.room?.findActor(speakerId)?.label ?? speakerId.toUpperCase();
-    return this.narrator.show(text, speaker);
+    return this.narrator.show(text, speaker, channel);
   }
 
   sayLine(actorId: string, text: string): Promise<void> {

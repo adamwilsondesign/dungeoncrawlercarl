@@ -6,10 +6,10 @@
  * so room definitions can use it freely.
  */
 
-import type { Facing, FlagValue, SpawnPoint, SpriteSheetDef } from './types';
+import type { Facing, FlagValue, SpawnPoint, SpriteSheetDef, VoiceChannel } from './types';
 
 export type ScriptAction =
-  | { type: 'narrate'; text: string }
+  | { type: 'narrate'; text: string; channel?: VoiceChannel }
   /** A one-line dialogue box: portrait + name plate, no choices. */
   | { type: 'say'; actorId: string; text: string }
   /** Play a registered DialogueTree from its entry node until it routes to 'end'. */
@@ -80,7 +80,33 @@ export type ScriptAction =
   /** End of demo: unwind to the title screen (P9 gap; credits only). */
   | { type: 'quitToTitle' };
 
+/**
+ * Legacy narration alias: untagged lines render on the ambient DESCRIBE
+ * channel. Prefer the explicit voices below for new content
+ * (see src/data/VOICE_BIBLE.md).
+ */
 export const narrate = (text: string): ScriptAction => ({ type: 'narrate', text });
+
+/** JUBILEE live broadcast: theatrical, audience-facing, delighted by peril. */
+export const announce = (text: string): ScriptAction => ({
+  type: 'narrate',
+  text,
+  channel: 'announce',
+});
+
+/** Cold dungeon-interface notification: terse, operational, machine. */
+export const notify = (text: string): ScriptAction => ({
+  type: 'narrate',
+  text,
+  channel: 'notify',
+});
+
+/** Ambient narrator: Carl's-eye description of the world, dry and human. */
+export const describe = (text: string): ScriptAction => ({
+  type: 'narrate',
+  text,
+  channel: 'describe',
+});
 
 export const say = (actorId: string, text: string): ScriptAction => ({ type: 'say', actorId, text });
 

@@ -19,6 +19,7 @@ import type {
   ItemDef,
   SpawnPoint,
   SpriteSheetDef,
+  VoiceChannel,
 } from '../data/types';
 import type { GameState } from './state';
 import { audio } from './audio';
@@ -36,8 +37,11 @@ export class ScriptAbort extends Error {
 export interface ScriptHost {
   readonly state: GameState;
   currentRoomId(): string;
-  /** Show a narrator box (speaker tag optional); resolves on dismissal. */
-  narrate(text: string, speakerId?: string): Promise<void>;
+  /**
+   * Show a narration box on a voice channel (default 'describe'); an
+   * optional speaker tag overrides the channel plate. Resolves on dismissal.
+   */
+  narrate(text: string, speakerId?: string, channel?: VoiceChannel): Promise<void>;
   /** One-line portrait dialogue (the say() action); resolves on advance. */
   sayLine(actorId: string, text: string): Promise<void>;
   /** Play a registered DialogueTree to 'end'. */
@@ -138,7 +142,8 @@ export class ScriptRunner {
     const { state } = host;
     switch (action.type) {
       case 'narrate':
-        await host.narrate(action.text);
+        // Untagged legacy narrate() lines ride the ambient DESCRIBE channel.
+        await host.narrate(action.text, undefined, action.channel ?? 'describe');
         break;
       case 'say':
         await host.sayLine(action.actorId, action.text);
@@ -167,7 +172,7 @@ export class ScriptRunner {
         if (!def) console.warn(`[script] giveItem: unknown item "${action.id}"`);
         const count = state.addItem(action.id, def?.stackable === true);
         audio.playSfx('sfx_pickup');
-        await host.narrate(acquiredLine(def?.name ?? action.id.toUpperCase(), count));
+        await host.narrate(acquiredLine(def?.name ?? action.id.toUpperCase(), count), undefined, 'notify');
         break;
       }
       case 'takeItem':
@@ -276,7 +281,7 @@ export class ScriptRunner {
         break;
       case 'giveGold':
         state.gold += action.amount;
-        await host.narrate(goldLine(action.amount));
+        await host.narrate(goldLine(action.amount), undefined, 'notify');
         break;
       case 'addViews':
         state.views += action.amount;
@@ -287,10 +292,14 @@ export class ScriptRunner {
       case 'giveXp': {
         const before = state.level;
         state.addXp(action.amount);
-        await host.narrate(xpLine(action.amount));
+        await host.narrate(xpLine(action.amount), undefined, 'notify');
         if (state.level > before) {
           audio.playSfx('sfx_levelup');
-          await host.narrate(`LEVEL UP! PARTY REACHES LEVEL ${state.level}. Try to act like this was the plan.`);
+          await host.narrate(
+            `LEVEL UP! PARTY REACHES LEVEL ${state.level}. Try to act like this was the plan.`,
+            undefined,
+            'notify',
+          );
         }
         break;
       }

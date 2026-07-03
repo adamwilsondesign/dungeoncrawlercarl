@@ -8,13 +8,16 @@
  */
 
 import {
+  announce,
   awardAchievement,
+  describe,
   enableHotspot,
   facePlayer,
   giveItem,
   ifFlag,
   killPlayer,
   narrate,
+  notify,
   playCutscene,
   say,
   setFlag,
@@ -269,6 +272,45 @@ export const r00_test: RoomDef = {
       verbs: {
         look: [narrate('Another crawler. Still alive, which around here counts as a personality.')],
         talk: [startDialogue('npc_survivor')],
+      },
+    },
+    // Voice sampler: one hotspot that demos all three narration channels
+    // (announce/notify/describe) for evaluation. See src/data/VOICE_BIBLE.md.
+    {
+      id: 'test_card',
+      name: 'BROADCAST TEST CARD',
+      rect: { x: 26, y: 156, w: 26, h: 20 },
+      verbs: {
+        look: [
+          describe(
+            'A dusty color-bar test card, propped where nobody sane would broadcast from. Someone has drawn a smiley face on it. The smile has too many teeth.',
+          ),
+        ],
+        hand: [
+          walkPlayerTo(52, 176),
+          facePlayer('left'),
+          announce(
+            "WELCOME BACK to the only show where the intermission can eat you! I'm JUBILEE, your host, your judge, and legally your landlord. Say hi to Crawler 4,122, folks - he just touched the test card like it owed him money.",
+          ),
+          announce(
+            'For our new viewers at home: everything on this floor is a prop, a prize, or a predator. Sometimes all three! Audience participation is mandatory and, per the waiver you did not read, retroactive.',
+          ),
+          announce(
+            'Sponsor break! This dismemberment is brought to you by MoonBurger. MoonBurger: it is technically food.',
+          ),
+          notify('Broadcast diagnostic complete. Channels: 3 of 3 responding.'),
+          notify('Viewership +12. Retention: acceptable. Continue producing content.'),
+          notify('Reminder: unspent achievement rewards expire at floor close.'),
+          describe(
+            'The test card hums with the specific static of a camera that never blinks. Carl wipes his hand on his jacket. It does not help with the feeling.',
+          ),
+          describe(
+            'Somewhere overhead, something enormous shifts to get a better view. The dust that falls is the politest thing this dungeon has done all day.',
+          ),
+          describe(
+            'He decides, not for the first time, that being interesting is the most dangerous job on Earth. Then he goes back to being interesting.',
+          ),
+        ],
       },
     },
   ],
