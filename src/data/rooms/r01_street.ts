@@ -8,7 +8,9 @@
  */
 
 import {
+  announce,
   awardAchievement,
+  describe,
   disableExit,
   disableHotspot,
   enableExit,
@@ -249,7 +251,8 @@ export const r01_street: RoomDef = {
           narrate('Your city, refiled as gravel. The dust is still deciding where to settle. Somewhere under there is your apartment and, worse, your good boots.'),
         ],
         hand: [
-          narrate('You pat a fallen skyscraper. It does not pat back. THE DEBRIS IS NOT A COLLECTIBLE, CRAWLER.'),
+          describe('You pat a fallen skyscraper. It does not pat back.'),
+          announce('The debris is not a collectible, Crawler. Everything under it is, technically, but we do not recommend the excavation.'),
         ],
       },
     },
@@ -259,11 +262,13 @@ export const r01_street: RoomDef = {
       rect: { x: 216, y: 60, w: 34, h: 44 },
       verbs: {
         look: [
-          narrate('A surviving shop window shows the whole outfit: boxers, jacket, bare legs, pink Crocs. HUMANITY SENDS ITS CHAMPION.'),
+          describe('A surviving shop window shows the whole outfit: boxers, jacket, bare legs, pink Crocs.'),
+          announce('And there he is, viewers - humanity sends its champion! The wardrobe department swears it had nothing to do with this.'),
           awardAchievement('fashion_victim'),
         ],
         hand: [
-          narrate('You adjust the jacket. The Crocs remain the loudest thing in the apocalypse.'),
+          describe('You adjust the jacket. The Crocs remain the loudest thing in the apocalypse.'),
+          describe('His hand finds the half-pack of cigarettes in the inside pocket and stops there a moment. Not now. Later, maybe, when the world is done ending. It is a strange thing to save for a special occasion, but it is his.'),
         ],
       },
     },
@@ -297,7 +302,10 @@ export const r01_street: RoomDef = {
           ifFlag(
             'r01.cat_chased',
             [narrate('White light, going down, humming like a fridge full of bees. The cat is already sitting on the top step. Of course she is.')],
-            [narrate('White light, going down. It hums. THE STAIRS CLOSE AT DAWN, says nothing and everything about your options.')],
+            [
+              describe('White light, going down. It hums, patient as a meter running.'),
+              announce('The stairs close at dawn, Crawler. We mention this once, free of charge, because the audience hates a slow start.'),
+            ],
           ),
         ],
         hand: [

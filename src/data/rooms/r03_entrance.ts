@@ -5,12 +5,15 @@
  */
 
 import {
+  announce,
+  describe,
   disableExit,
   disableHotspot,
   enableExit,
   giveItem,
   ifFlag,
   narrate,
+  notify,
   playCutscene,
   say,
   setFlag,
@@ -34,9 +37,11 @@ export const r03_entrance: RoomDef = {
       [],
       [
         setFlag('seen:r03', true),
-        narrate('The bottom of the stairs opens into a corridor that was never meant to fool anyone: poured stone, fresh tool marks, cables stapled along the ceiling like the level was finished on a deadline. Somewhere far off, water drips with great patience.'),
-        narrate('Other staircases fed this floor too. Distant doors. Footsteps. One long argument, already going. Millions of survivors came down tonight, and the corridor swallows the sound of every one of them.'),
-        narrate('At the end of the hall, a painted lantern sign glows over a door: GUILD. The first thing on this floor that wants you to walk in. That deserves suspicion. Or hope. Down here they come as a set.'),
+        describe('The bottom of the stairs opens into a corridor that was never meant to fool anyone: poured stone, fresh tool marks, cables stapled along the ceiling like the level was finished on a deadline. Somewhere far off, water drips with great patience.'),
+        describe('Other staircases fed this floor too. Distant doors. Footsteps. One long argument, already going. Millions of survivors came down tonight, and the corridor swallows the sound of every one of them.'),
+        describe('Carl notices it here for the first time: a faint shimmer that settles on things as he looks at them. The graffiti. A locker. A door. The dungeon underlines whatever can be read or used, like a helpful librarian in a building made of teeth.'),
+        notify('Guidance layer active. Highlighted objects can be examined, used, or taken.'),
+        describe('At the end of the hall, a painted lantern sign glows over a door: GUILD. The first thing on this floor that wants you to walk in. That deserves suspicion. Or hope. Down here they come as a set.'),
       ],
     ),
     // P15 set-piece gate: the guild passage stays blocked until the digging
@@ -92,7 +97,8 @@ export const r03_entrance: RoomDef = {
       rect: { x: 132, y: 128, w: 34, h: 26 },
       verbs: {
         look: [
-          narrate('A very former crawler, weeks gone, posed mid-sprint. Whatever they were running from was faster. LESSON ONE IS FREE, says the room.'),
+          describe('A very former crawler, weeks gone, posed mid-sprint. Whatever they were running from was faster.'),
+          announce('Lesson one is free, Crawler: the floor was here first, and it practices. Our condolences to Entrant 2,209,415. His highlight reel remains available on demand.'),
         ],
         hand: [
           ifFlag(

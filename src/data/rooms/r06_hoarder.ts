@@ -8,6 +8,8 @@
  */
 
 import {
+  announce,
+  describe,
   despawnActor,
   disableExit,
   disableHotspot,
@@ -16,6 +18,7 @@ import {
   ifItem,
   moveActor,
   narrate,
+  notify,
   say,
   setFlag,
   sfxCue,
@@ -58,7 +61,9 @@ export const r06_hoarder: RoomDef = {
           [],
           [
             setFlag('seen:r06', true),
-            narrate('The lair opens into a canyon of garbage, stacked to the ceiling. In the middle of it: the Hoarder, hunched over her treasure pile, counting.'),
+            describe('The lair opens into a canyon of garbage, stacked to the ceiling. In the middle of it: the Hoarder, hunched over her treasure pile, counting.'),
+            announce("Viewers, say hello to the neighborhood's leading lady: THE HOARDER! Nine feet of troll matron, undefeated this season, and the proud curator of Floor One's largest private collection. Sixteen crawlers have entered this lair intending to browse. The collection now includes sixteen sets of boots."),
+            describe('She counts the pile the way some people pray - the same items, in the same order, over and over. There is something in the shape of it that is not monstrous at all. Something that used to live in a house, and could not throw anything away, and was somebody\'s neighbor. Carl looks away first.'),
             say('donut', 'Carl. Look at her. She has not taken her eyes off that pile once. Not when we came in. Not NOW.'),
             ifItem(
               'polished_hubcap',
@@ -123,12 +128,13 @@ export const r06_hoarder: RoomDef = {
               ifFlag(
                 'hoarder:warned',
                 [
-                  narrate('Very well. THE DUNGEON LOGS THIS AS INFORMED CONSENT.'),
+                  announce('Very well, Crawler! The dungeon logs this as informed consent, and the audience logs it as CONTENT.'),
                   startCombat('hoarder_lair'),
                 ],
                 [
                   setFlag('hoarder:warned', true),
-                  narrate('You square up. She does not even turn. WARNING: THIS CREATURE IS COMPLETELY DISTRACTED BY ITS HOARD. SOMETHING SHINY, PLACED ON THE PILE, WOULD LURE IT AWAY. FIGHTING IT HEAD-ON WILL HURT.'),
+                  describe('You square up. She does not even turn.'),
+                  notify('Warning: target is fixated on its hoard. A sufficiently shiny object, placed on the pile, would redirect its attention. Frontal assault: not recommended.'),
                   say('donut', 'The dungeon is spelling it out for you, Carl. Shiny thing. On the pile. THEN claws.'),
                 ],
               ),
@@ -160,7 +166,8 @@ export const r06_hoarder: RoomDef = {
             say('donut', 'NOW, Carl. Before she names it.'),
           ],
           default: [
-            narrate('You could throw it, but she would not care. Only true SHINE moves her. THE DUNGEON SUGGESTS INVENTORY REVIEW.'),
+            describe('You could throw it, but she would not care. Only true SHINE moves her.'),
+            notify('Hint: review inventory for reflective items.'),
           ],
         },
       },

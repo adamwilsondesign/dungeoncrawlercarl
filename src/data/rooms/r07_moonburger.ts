@@ -4,7 +4,7 @@
  * cutscene that switches on the Views counter. No combat can start here.
  */
 
-import { autosave, narrate, playCutscene, say, startDialogue } from '../script';
+import { autosave, describe, narrate, notify, playCutscene, say, startDialogue } from '../script';
 import type { RoomDef, SpriteSheetDef } from '../types';
 
 /** Tally is small - about knee-height on Carl. */
@@ -83,7 +83,8 @@ export const r07_moonburger: RoomDef = {
           narrate('A corner booth with clean cushions and a RESERVED FOR SURVIVORS placard. It is the safest furniture within eighteen floors.'),
         ],
         hand: [
-          narrate('You fold into the booth. The party breathes. Wounds close with a sound like an apology. PROGRESS RECORDED.'),
+          describe('You fold into the booth. The party breathes. Wounds close with a sound like an apology.'),
+          notify('Progress recorded. Checkpoint: MOONBURGER.'),
           autosave(),
           say('donut', 'Wake me if anything interesting survives long enough to reach the door.'),
         ],
@@ -112,6 +113,22 @@ export const r07_moonburger: RoomDef = {
         ],
         hand: [
           narrate('You tap the screen. The progress bar flinches to 98, thinks better of it, and returns to 97. Character development.'),
+        ],
+      },
+    },
+    {
+      id: 'personal_door',
+      name: 'DOOR MARKED CARL',
+      rect: { x: 176, y: 56, w: 28, h: 46 },
+      verbs: {
+        look: [
+          describe('A plain door in the back wall that was not in the floor plan of any MoonBurger on Earth. The plate reads: CARL, 4,437,102. Underneath, smaller: PERSONAL SPACE. AUTHORIZED OCCUPANT ONLY.'),
+          notify('Personal space detected. One private room is provisioned per registered crawler, accessible from any safe room.'),
+          describe('Ask Tally about it. She lights up on the subject the way some people do about grandchildren.'),
+        ],
+        hand: [
+          describe('The handle turns for his hand and no other. Inside: a small, quiet room with a cot, a shelf, and no cameras - the first unbroadcast air he has breathed since the sky started talking. Carl stands in it for a full minute, doing absolutely nothing, on purpose.'),
+          say('donut', 'Mine has a CHAISE, Carl. And better lighting. But yours is very... rectangular. Well done.'),
         ],
       },
     },

@@ -296,7 +296,7 @@ export class ScriptRunner {
         if (state.level > before) {
           audio.playSfx('sfx_levelup');
           await host.narrate(
-            `LEVEL UP! PARTY REACHES LEVEL ${state.level}. Try to act like this was the plan.`,
+            `Level ${state.level}. All party stats +1. New skills may be available.`,
             undefined,
             'notify',
           );

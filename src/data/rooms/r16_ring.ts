@@ -11,6 +11,8 @@
  */
 
 import {
+  announce,
+  describe,
   despawnActor,
   disableExit,
   disableHotspot,
@@ -19,6 +21,7 @@ import {
   ifFlag,
   killPlayer,
   narrate,
+  notify,
   playCutscene,
   say,
   setFlag,
@@ -57,8 +60,9 @@ export const r16_ring: RoomDef = {
       [],
       [
         setFlag('seen:r16', true),
-        narrate('You feel it before you see it: a rhythm in the floor, like a train that never arrives. The tunnel opens onto an old transit ring - a platform, a rail loop, and the stairwell doors on the far side, shut tight.'),
-        narrate('Then it comes around the curve. THE BALL: a rolling fortress of fused armor, tusks, and momentum, lapping the ring without slowing. This is the borough boss. It has been circling between these people and the stairs for a season. Nothing that fast can be fought. So it will have to be stopped.'),
+        describe('You feel it before you see it: a rhythm in the floor, like a train that never arrives. The tunnel opens onto an old transit ring - a platform, a rail loop, and the stairwell doors on the far side, shut tight.'),
+        announce("AND HERE IT IS, ladies and gentlebeings - the main event of Floor One! THE BALL: forty tuskling knights and their ladies, fused into one rolling fortress of armor, momentum, and grudge. It has lapped this ring, day and night, for an entire season. It has never slowed down. It has never needed to. The stairwell is BEHIND it, Crawler, and the house record against this thing is zero and everyone."),
+        describe('It thunders past, close enough to taste the rust. Nothing that fast can be fought. So it will have to be stopped.'),
       ],
     ),
     ifFlag(
@@ -125,12 +129,13 @@ export const r16_ring: RoomDef = {
           ifFlag(
             'ball:warned',
             [
-              narrate('AS YOU INSIST. THE DUNGEON LOGS THIS AS A SPEED-DATING EVENT.'),
+              announce('As you insist, Crawler! The dungeon logs this as a speed-dating event. The audience has already voted on the outcome.'),
               startCombat('ball_ring'),
             ],
             [
               setFlag('ball:warned', true),
-              narrate('You square up to a rolling building. WARNING: IT LAPS THE RING IN TWELVE SECONDS. YOU LAP NOTHING. PERHAPS ENGINEER SOMETHING FIRST.'),
+              describe('You square up to a rolling building.'),
+              notify('Warning: target laps the ring in 12 seconds. Party ground speed: insufficient. Recommendation: engineering.'),
               say('donut', 'Carl. We DERAIL trains. We do not ARM-WRESTLE them. The plan, as drilled.'),
             ],
           ),

@@ -11,7 +11,9 @@
  */
 
 import {
+  announce,
   awardAchievement,
+  describe,
   disableExit,
   disableHotspot,
   enableExit,
@@ -22,6 +24,7 @@ import {
   killPlayer,
   moveActor,
   narrate,
+  notify,
   playCutscene,
   say,
   setFlag,
@@ -101,7 +104,8 @@ export const r10_workshop: RoomDef = {
         ],
         item: {
           flint_striker: [
-            narrate('You raise the striker to the keg wall for a closer look. In a powder room. THE AUDIENCE COVERS ITS EARS.'),
+            describe('You raise the striker to the keg wall for a closer look. In a powder room.'),
+            announce('The audience covers its ears, folks!'),
             sfxCue('detonation_1'),
             killPlayer('CAUSE OF DEATH: READING THE STENCIL AFTERWARD. It said NO EXCEPTIONS, Crawler. You were not one.'),
           ],
@@ -237,12 +241,13 @@ export const r10_workshop: RoomDef = {
           ifFlag(
             'chieftain:warned',
             [
-              narrate('Very well. THE DUNGEON LOGS THIS AS PERFORMANCE ART.'),
+              announce('Very well, Crawler! The dungeon logs this as performance art. The audience logs it as a rerun waiting to happen.'),
               startCombat('war_chieftain_lair'),
             ],
             [
               setFlag('chieftain:warned', true),
-              narrate('Your hand is on the latch. WARNING: THE OCCUPANT BENCH-PRESSES CARTS. POLLING SUGGESTS: BE THE DELIVERY, NOT THE MEAL.'),
+              describe('Your hand is on the latch.'),
+              notify('Warning: occupant strength class exceeds party rating. Frontal engagement: not recommended. Alternative routes exist.'),
               say('donut', 'Carl. The room is FULL of powder and you own a spark. Must the cat draw a diagram.'),
             ],
           ),

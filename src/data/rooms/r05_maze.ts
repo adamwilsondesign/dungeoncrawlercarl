@@ -4,6 +4,8 @@
  */
 
 import {
+  announce,
+  describe,
   disableExit,
   disableHotspot,
   enableExit,
@@ -30,8 +32,9 @@ export const r05_maze: RoomDef = {
       [],
       [
         setFlag('seen:r05', true),
-        narrate('Past the guild door, the dungeon stops pretending to be a hallway. This is the maze: mine tunnels braided into mine tunnels, chalk marks from crawlers who came through ahead of you, and a darkness up ahead with a texture to it.'),
-        narrate('This is the part Mordecai warned you about. Things live in the walls out here, and the way east goes through them, not around. Weapons out, Crawler. The tutorial is over and the show has been waiting for this.'),
+        describe('Past the guild door, the dungeon stops pretending to be a hallway. This is the maze: mine tunnels braided into mine tunnels, chalk marks from crawlers who came through ahead of you, and a darkness up ahead with a texture to it.'),
+        describe('This is the part Mordecai warned you about. Things live in the walls out here, and the way east goes through them, not around.'),
+        announce('And we are OUT of the tutorial, folks! Party of two, fresh gear, first real corridor. The audience has been very patient through the paperwork, Crawler. Weapons out. The show has been waiting for this.'),
       ],
     ),
     // Reconcile on re-entry/load: the east door opens once the rats are dealt with.

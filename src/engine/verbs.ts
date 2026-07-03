@@ -104,16 +104,16 @@ export function achievementLine(id: string): string {
   return `NEW ACHIEVEMENT: ${id.toUpperCase()}! Reward: our continued attention. Congratulations, Crawler.`;
 }
 
-/** giveGold confirmation line. */
+/** giveGold confirmation line (cold notify channel: no personality). */
 export function goldLine(amount: number): string {
-  return `ACQUIRED: ${amount} GOLD. Try to outlive the exchange rate.`;
+  return `Gold +${amount}.`;
 }
 
 /** giveItem confirmation, with the running count for stackables. */
 export function acquiredLine(name: string, count: number): string {
   return count > 1
-    ? `ACQUIRED: ${name.toUpperCase()} (X${count}). Hoarding already. The audience approves.`
-    : `ACQUIRED: ${name.toUpperCase()}. Try not to lose it immediately.`;
+    ? `Item acquired: ${name.toUpperCase()} (x${count}).`
+    : `Item acquired: ${name.toUpperCase()}.`;
 }
 
 /** Held item used on a hotspot with no matching handler and no default. */
@@ -140,7 +140,7 @@ export function cantCombineLine(nameA: string, nameB: string): string {
   ]);
 }
 
-/** giveXp confirmation (P8 gap: scripted rewards outside combat). */
+/** giveXp confirmation (cold notify channel: no personality). */
 export function xpLine(amount: number): string {
-  return `EXPERIENCE AWARDED: ${amount}. The dungeon acknowledges results, not methods.`;
+  return `Experience +${amount}.`;
 }

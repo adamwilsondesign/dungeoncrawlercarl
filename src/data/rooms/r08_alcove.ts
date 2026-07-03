@@ -5,7 +5,7 @@
  * brings.
  */
 
-import { giveItem, ifFlag, narrate, playCutscene, say, setFlag, walkPlayerTo } from '../script';
+import { announce, describe, giveItem, ifFlag, narrate, playCutscene, say, setFlag, walkPlayerTo } from '../script';
 import type { RoomDef } from '../types';
 
 export const r08_alcove: RoomDef = {
@@ -90,7 +90,8 @@ export const r08_alcove: RoomDef = {
           narrate('Someone balanced nine flat stones into a little tower. A marker, a memorial, or just proof a person was calm here once.'),
         ],
         hand: [
-          narrate('You add a tenth stone. It holds. THE DUNGEON DECLINES TO MOCK THIS ONE.'),
+          describe('You add a tenth stone. It holds.'),
+          announce('...The dungeon declines to mock this one. Back after these messages.'),
         ],
       },
     },

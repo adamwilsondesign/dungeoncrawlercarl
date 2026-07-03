@@ -7,6 +7,8 @@
  */
 
 import {
+  announce,
+  describe,
   disableHotspot,
   giveItem,
   ifFlag,
@@ -45,8 +47,9 @@ export const r09_approach: RoomDef = {
       [],
       [
         setFlag('seen:r09', true),
-        narrate('The tunnel opens onto a yard of noise and copper: steam-bikes on blocks, tool racks, chimney smoke. Goblins - a whole working clan of them - and beyond the yard, a workshop the size of a church, breathing forge-light through its seams.'),
-        narrate('This is goblin territory, and their WAR CHIEFTAIN holds the far door of that workshop. He is between you and everything east of here. The patrols have not seen you yet. The engineer at the bench has, and has not raised an alarm. Interesting.'),
+        describe('The tunnel opens onto a yard of noise and copper: steam-bikes on blocks, tool racks, chimney smoke. Goblins - a whole working clan of them - and beyond the yard, a workshop the size of a church, breathing forge-light through its seams.'),
+        announce("You have reached goblin country, Crawler, which means it is time to introduce this district's headliner: THE WAR CHIEFTAIN! Undefeated. Unsubtle. Nine hundred pounds of clan royalty who personally signs for every delivery and personally flattens every visitor. The betting line on a frontal assault is so lopsided we have stopped printing it."),
+        describe('He is between you and everything east of here. The patrols have not seen you yet. The engineer at the bench has, and has not raised an alarm. Interesting.'),
       ],
     ),
     // Reconcile the optional patrol: gone if fought, gone if Kivvi covered.

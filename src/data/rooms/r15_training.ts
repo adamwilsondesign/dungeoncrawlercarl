@@ -4,7 +4,7 @@
  * a couple of warm gags before the ring. Safe room conventions apply.
  */
 
-import { autosave, ifFlag, narrate, playCutscene, say } from '../script';
+import { autosave, describe, ifFlag, narrate, notify, playCutscene, say } from '../script';
 import type { RoomDef } from '../types';
 
 export const r15_training: RoomDef = {
@@ -69,7 +69,8 @@ export const r15_training: RoomDef = {
           narrate('Stacked gym mats and clean blankets: the last soft place before the ring. Yolanda inspected it. It passed, narrowly.'),
         ],
         hand: [
-          narrate('The raid sleeps in shifts around you. Nobody says tomorrow out loud. PROGRESS RECORDED.'),
+          describe('The raid sleeps in shifts around you. Nobody says tomorrow out loud. Outside the light, a cigarette glows once, briefly - Carl, taking five minutes that belong to nobody, not even the feed. He counts the pack. Three left. He is rationing them against the floors.'),
+          notify('Progress recorded. Checkpoint: TRAINING FLOOR.'),
           autosave(),
           say('donut', 'Tomorrow we are heroes, Carl. Tonight I require the warm corner of the mat. Move.'),
         ],

@@ -5,7 +5,7 @@
  * unwinds to the title screen. No Floor 2 content - this is the closer.
  */
 
-import { ifFlag, narrate, playCutscene, say } from '../script';
+import { announce, describe, ifFlag, narrate, playCutscene, say } from '../script';
 import type { RoomDef } from '../types';
 
 export const r17_stairs: RoomDef = {
@@ -63,7 +63,8 @@ export const r17_stairs: RoomDef = {
       rect: { x: 246, y: 84, w: 60, h: 70 },
       verbs: {
         look: [
-          narrate('The stairs to Floor Two, open at last, breathing warm air and worse promises. THE EXIT IS PROVIDED FREE OF CHARGE. WE REMAIN GENEROUS.'),
+          describe('The stairs to Floor Two, open at last, breathing warm air and worse promises.'),
+          announce('The exit is provided free of charge, Crawler. We remain generous. Floor Two remains hungry. Both of these facts were in the brochure.'),
         ],
         hand: [
           narrate('One floor down. Seventeen to go. The audience leans forward all at once, everywhere, like weather.'),
