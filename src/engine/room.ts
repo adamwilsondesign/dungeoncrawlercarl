@@ -1205,9 +1205,14 @@ export class RoomScene implements Scene, ScriptHost {
     if (!localStorage.getItem('dcc_hint_ui') && (this.room?.def.hotspots.length ?? 0) > 0) {
       localStorage.setItem('dcc_hint_ui', '1');
       localStorage.setItem('dcc_hint_reveal', '1'); // retire the old hint
-      this.runLine(
-        'A TIP FROM THE BOOTH, CRAWLER: hold TAB to see everything in a room worth touching - press H to keep it lit. And hover a thing to get the wheel: pick what to do from it. The dungeon hides nothing. It merely declines to point.',
-      );
+      // The AI addressing the Crawler directly: this rides the broadcast.
+      this.runScript([
+        {
+          type: 'narrate',
+          channel: 'announce',
+          text: 'A tip from the booth, Crawler: hold TAB to see everything in a room worth touching - press H to keep it lit. And hover a thing to get the wheel: pick what to do from it. The dungeon hides nothing. It merely declines to point.',
+        },
+      ]);
       return;
     }
 
