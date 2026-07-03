@@ -50,8 +50,8 @@ const PLAN_FRAMES: Record<string, [number, number]> = {
   machine: [48, 28],
 };
 
-const VERBS = ['walk', 'look', 'hand', 'talk', 'item'] as const;
-const BAR_GLYPHS = ['walk', 'look', 'hand', 'talk', 'item', 'inventory', 'settings'] as const;
+const VERBS = ['walk', 'look', 'hand', 'talk', 'item', 'magnify'] as const;
+const BAR_GLYPHS = ['inventory', 'party', 'settings'] as const;
 
 export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
   const out: CatalogEntry[] = [];
@@ -150,7 +150,9 @@ export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
       expectH: fh * 3,
       placeholder: {
         kind: 'actor',
-        label: path,
+        // NEVER the asset path: this label bakes into the cached placeholder
+        // sheet the game reuses (actors wear it under their sprite).
+        label: (path.split('/').pop() ?? path).replace(/\.png$/i, '').toUpperCase(),
         color: design.torso,
         frameW: fw,
         frameH: fh,
@@ -201,10 +203,10 @@ export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
       id: `ui/icon_${glyph}.png`,
       category: 'ui',
       label: `${glyph} bar button`,
-      spec: '40x18 PNG button',
-      expectW: 40,
+      spec: '52x18 PNG button',
+      expectW: 52,
       expectH: 18,
-      placeholder: { kind: 'icon', glyph, label: glyph.toUpperCase(), w: 40, h: 18 },
+      placeholder: { kind: 'icon', glyph, label: glyph.toUpperCase(), w: 52, h: 18 },
     });
   }
 

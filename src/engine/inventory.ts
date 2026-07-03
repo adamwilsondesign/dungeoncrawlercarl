@@ -1,14 +1,13 @@
 /**
  * Full-screen KQ5-ish inventory grid. Clicking a slot selects the item as
  * the held ITEM (the scene switches the cursor and closes the screen);
- * clicking with the LOOK verb shows the item's in-voice description instead.
- * Esc or the X button closes.
+ * right-clicking a slot shows the item's in-voice description (P19: the
+ * LOOK verb no longer exists as a mode). Esc or the X button closes.
  */
 
 import type { InventoryEntry, ItemDef, Point, Rect } from '../data/types';
 import { drawPixelText, ITEM_ICON_SIZE, outlinedPanel, type LoadedImage } from './assets';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
-import type { Verb } from './verbs';
 
 export type InventoryAction =
   | { kind: 'close' }
@@ -63,13 +62,14 @@ export class InventoryScreen {
   }
 
   /**
-   * Resolve a click into an action: LOOK verb examines; with an item already
-   * held, clicking a DIFFERENT slot is a combine intent (P8); equipment
-   * items EQUIP; anything else selects as the held ITEM.
+   * Resolve a click into an action: `examine` (right-click, P19) shows the
+   * in-voice description; with an item already held, clicking a DIFFERENT
+   * slot is a combine intent (P8); equipment items EQUIP; anything else
+   * selects as the held ITEM.
    */
   actionAt(
     p: Point,
-    verb: Verb,
+    examine: boolean,
     entries: readonly InventoryEntry[],
     defs: Record<string, ItemDef>,
     heldItem: string | null = null,
@@ -78,7 +78,7 @@ export class InventoryScreen {
     for (let i = 0; i < Math.min(entries.length, COLS * ROWS); i++) {
       if (inRect(p, slotRect(i))) {
         const id = entries[i].id;
-        if (verb === 'look') return { kind: 'look', id };
+        if (examine) return { kind: 'look', id };
         if (heldItem && heldItem === id) return { kind: 'unhold' };
         if (heldItem && heldItem !== id) return { kind: 'combine', a: heldItem, b: id };
         if (defs[id]?.equip) return { kind: 'equip', id };
@@ -152,7 +152,7 @@ export class InventoryScreen {
 
     drawPixelText(
       ctx,
-      'CLICK: TAKE/EQUIP - LOOK VERB: EXAMINE - ESC: CLOSE',
+      'CLICK: TAKE/EQUIP - RIGHT-CLICK: EXAMINE - ESC: CLOSE',
       LOGICAL_W / 2,
       PANEL.y + PANEL.h - 10,
       '#8fa3c4',

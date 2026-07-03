@@ -217,13 +217,12 @@ const act1CharacterCreation: CutsceneDef = {
     announce('PROVISIONAL, folks! It means the system has not decided what he is yet. Neither has he. The audience ADORES a mystery box - the betting pools are already open on what he becomes.'),
     setFlag('carl:registered', true),
     setFlag('carl:class', 'SURVIVOR (PROVISIONAL)'),
-    notify('Starter equipment authorized: 1 blunt instrument, 1 jacket (pre-owned), 1 pair fingerless gloves.'),
+    // P19: the jacket and Crocs are registered from the intro (starter
+    // equipment seeds at New Game); registration adds the weapon + gloves.
+    notify('Starter equipment authorized: 1 blunt instrument, 1 pair fingerless gloves. Jacket and footwear: already on file.'),
     giveItem('rusty_cudgel'),
-    giveItem('carls_jacket'),
     giveItem('fingerless_gloves'),
     equipItem('carl', 'rusty_cudgel'),
-    equipItem('carl', 'carls_jacket'),
-    equipItem('carl', 'fingerless_gloves'),
     sfxCue('equip_clank'),
     notify('Equipment bound. Loadout may be changed from the pack at any time.'),
     // The ratings board: the talk-show segment where the metrics debut.

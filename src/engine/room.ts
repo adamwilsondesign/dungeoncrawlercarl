@@ -66,17 +66,8 @@ import { audio } from './audio';
 import { ScriptAbort, ScriptRunner, type ScriptHost } from './script';
 import type { GameState } from './state';
 import { ToastManager } from './toasts';
-import {
-  cantCombineLine,
-  emptyClickLine,
-  itemOnNothingLine,
-  loadCursors,
-  nextVerb,
-  noItemLine,
-  unhandledLine,
-  wrongItemLine,
-  type Verb,
-} from './verbs';
+import { cantCombineLine, loadCursors, unhandledLine, wrongItemLine, type Verb } from './verbs';
+import { PartyScene } from './party';
 
 /** Default placeholder walkmask: everything below this y is walkable. */
 const PLACEHOLDER_FLOOR_Y = 110;
@@ -367,6 +358,8 @@ export interface GameContent {
   /** Item-combining recipes (P8), keyed by combineKey(a, b). */
   combines: Record<string, CombineDef>;
   startRoom: string;
+  /** Gear equipped silently at New Game (P19: the paper doll starts kitted). */
+  starterEquipment?: ReadonlyArray<{ member: string; item: string }>;
 }
 
 /** Callbacks up into the app shell (main.ts owns the title screen). */
@@ -433,8 +426,10 @@ export class RoomScene implements Scene, ScriptHost {
   private hoverExit: ExitDef | null = null;
   private transition: Transition = { kind: 'loading' };
 
-  private activeVerb: Verb = 'walk';
+  /** Radial disc glyphs (same slots the old verb cursors used). */
   private cursors: Record<Verb, LoadedImage> | null = null;
+  /** The always-on inspector's lens cursor (P19). */
+  private magnifier: LoadedImage | null = null;
   private readonly itemIcons = new Map<string, LoadedImage>();
   private hover: RuntimeProp | null = null;
   private readonly timers: Timer[] = [];
@@ -485,6 +480,14 @@ export class RoomScene implements Scene, ScriptHost {
 
   async startNewGame(): Promise<void> {
     this.state.reset();
+    // P19 starter gear: seeded directly (no acquisition narration) so the
+    // party screen's paper doll is dressed from the first frame of Act I.
+    for (const seed of this.content.starterEquipment ?? []) {
+      const def = this.content.items[seed.item];
+      if (!def?.equip) continue;
+      this.state.addItem(seed.item, def.stackable === true);
+      this.state.equipItem(seed.member, seed.item, def.equip.slot);
+    }
     this.resetOverlays();
     await this.enterRoom(this.content.startRoom);
   }
@@ -548,8 +551,14 @@ export class RoomScene implements Scene, ScriptHost {
 
   private async ensureUiLoaded(): Promise<void> {
     if (this.cursors) return;
-    const [cursors] = await Promise.all([loadCursors(), this.iconBar.load(), this.loadItemIcons()]);
+    const [cursors, magnifier] = await Promise.all([
+      loadCursors(),
+      loadImage('ui/cursor_magnify.png', { kind: 'cursor', glyph: 'magnify' }),
+      this.iconBar.load(),
+      this.loadItemIcons(),
+    ]);
     this.cursors = cursors;
+    this.magnifier = magnifier;
   }
 
   private async loadItemIcons(): Promise<void> {
@@ -1247,6 +1256,9 @@ export class RoomScene implements Scene, ScriptHost {
     // Dialogue box (lines or choices) owns input first.
     if (this.dialogue.active) {
       input.clearRightClicks();
+      const wheel = input.consumeWheel();
+      if (wheel !== 0) this.dialogue.scrollBy(wheel);
+      if (input.consumePress('Escape')) this.dialogue.cancel();
       if (input.consumePress('ArrowUp')) this.dialogue.moveSelection(-1);
       if (input.consumePress('ArrowDown')) this.dialogue.moveSelection(1);
       if (input.consumePress('Enter')) this.dialogue.confirm();
@@ -1273,15 +1285,30 @@ export class RoomScene implements Scene, ScriptHost {
       return;
     }
 
-    // Inventory screen: world paused; LOOK examines, other verbs select.
+    // Inventory screen: world paused; click takes/equips, right-click examines.
     if (this.invScreen.open) {
-      while (input.consumeRightClick()) this.activeVerb = nextVerb(this.activeVerb);
       if (input.consumePress('Escape')) this.invScreen.close();
+      let examined = false;
+      while (input.consumeRightClick()) {
+        if (examined) continue;
+        const action = this.invScreen.actionAt(
+          input.mouse,
+          true,
+          this.state.inventory,
+          this.content.items,
+          this.state.heldItem,
+        );
+        if (action?.kind === 'look') {
+          examined = true;
+          const def = this.content.items[action.id];
+          this.runLine(def?.description ?? `It's ${action.id}. The dungeon shrugs.`);
+        }
+      }
       const click = input.consumeClick();
       if (click) {
         const action = this.invScreen.actionAt(
           click,
-          this.activeVerb,
+          false,
           this.state.inventory,
           this.content.items,
           this.state.heldItem,
@@ -1289,11 +1316,9 @@ export class RoomScene implements Scene, ScriptHost {
         if (action?.kind === 'close') this.invScreen.close();
         else if (action?.kind === 'select') {
           this.state.heldItem = action.id;
-          this.activeVerb = 'item';
           this.invScreen.close();
         } else if (action?.kind === 'unhold') {
           this.state.heldItem = null;
-          this.activeVerb = 'walk';
         } else if (action?.kind === 'combine') {
           this.resolveCombine(action.a, action.b);
         } else if (action?.kind === 'equip') {
@@ -1318,8 +1343,20 @@ export class RoomScene implements Scene, ScriptHost {
       return;
     }
 
-    // Free play: each queued right-click advances one verb.
-    while (input.consumeRightClick()) this.activeVerb = nextVerb(this.activeVerb);
+    // Free play (P19): right-click is cancel/deselect - drop the held item
+    // and dismiss the radial. Arms the same re-pop cooldown as Escape so
+    // the wheel stays down until the cursor leaves the target.
+    while (input.consumeRightClick()) {
+      if (this.state.heldItem) this.state.heldItem = null;
+      if (this.radial.active) {
+        this.radial.dismiss();
+        this.radialCooldownKey = this.hover
+          ? `h:${this.hover.id}`
+          : this.hoverExit
+            ? `e:${this.hoverExit.id}`
+            : this.radialCooldownKey;
+      }
+    }
 
     // P18: the hidden admin room editor. Gated on the per-browser admin
     // flag (localStorage, never GameState) - players without it never see
@@ -1352,7 +1389,7 @@ export class RoomScene implements Scene, ScriptHost {
         {
           type: 'narrate',
           channel: 'announce',
-          text: 'A tip from the booth, Crawler: hold TAB to see everything in a room worth touching - press H to keep it lit. And hover a thing to get the wheel: pick what to do from it. The dungeon hides nothing. It merely declines to point.',
+          text: 'A tip from the booth, Crawler: hold TAB to see everything in a room worth touching - press H to keep it lit. Hover a thing and the wheel appears: pick from it, or tap S to look, W to grab, D to talk, A to walk over. The dungeon hides nothing. It merely declines to point.',
         },
       ]);
       return;
@@ -1369,7 +1406,7 @@ export class RoomScene implements Scene, ScriptHost {
     // --- Radial verb menu -------------------------------------------------
     // Hover an interactable for RADIAL_HOVER_MS and the wheel pops at the
     // cursor. Not in ITEM-held mode (a click there means "use item on it").
-    const itemHeld = this.activeVerb === 'item' && this.state.heldItem !== null;
+    const itemHeld = this.state.heldItem !== null;
     const hoverKey = this.hover ? `h:${this.hover.id}` : this.hoverExit ? `e:${this.hoverExit.id}` : null;
     if (this.radial.active) {
       // Dismiss when the cursor leaves both the shown target and the wheel.
@@ -1384,6 +1421,23 @@ export class RoomScene implements Scene, ScriptHost {
         this.radial.dismiss();
         this.radialCooldownKey = hoverKey;
       } else {
+        // P19 WASD verb shortcuts: fire immediately on the hovered target.
+        // S = LOOK (N disc), W = GRAB/hand (E), D = TALK (S), A = walk (W).
+        const shortcuts: ReadonlyArray<readonly [string, number]> = [
+          ['KeyS', 0],
+          ['KeyW', 1],
+          ['KeyD', 2],
+          ['KeyA', 3],
+        ];
+        for (const [code, disc] of shortcuts) {
+          if (input.consumePress(code)) {
+            this.radial.selected = disc;
+            this.fireRadial(this.radial.verb);
+            this.stepMovers(dtMs);
+            this.checkExitArrival();
+            return;
+          }
+        }
         if (input.consumePress('ArrowUp')) this.radial.selected = 0;
         if (input.consumePress('ArrowRight')) this.radial.selected = 1;
         if (input.consumePress('ArrowDown')) this.radial.selected = 2;
@@ -1453,15 +1507,11 @@ export class RoomScene implements Scene, ScriptHost {
       else this.handleWorldClick(this.toWorld(click));
     }
 
-    // P10: continuous keyboard walking (arrows + WASD). Shares the walkmask
-    // and speed with click-to-walk; gated by the same blocks above (scripts,
-    // inventory, transitions). A key move cancels any active click path.
-    const kx =
-      (input.isDown('ArrowRight') || input.isDown('KeyD') ? 1 : 0) -
-      (input.isDown('ArrowLeft') || input.isDown('KeyA') ? 1 : 0);
-    const ky =
-      (input.isDown('ArrowDown') || input.isDown('KeyS') ? 1 : 0) -
-      (input.isDown('ArrowUp') || input.isDown('KeyW') ? 1 : 0);
+    // Continuous keyboard walking - ARROWS ONLY (P19: WASD became the
+    // radial verb shortcuts). Shares the walkmask and speed with
+    // click-to-walk; a key move cancels any active click path.
+    const kx = (input.isDown('ArrowRight') ? 1 : 0) - (input.isDown('ArrowLeft') ? 1 : 0);
+    const ky = (input.isDown('ArrowDown') ? 1 : 0) - (input.isDown('ArrowUp') ? 1 : 0);
     if (kx !== 0 || ky !== 0) {
       this.mover.stop();
       const norm = kx !== 0 && ky !== 0 ? Math.SQRT1_2 : 1;
@@ -1584,55 +1634,63 @@ export class RoomScene implements Scene, ScriptHost {
   private handleBarClick(p: Point): void {
     const action = this.iconBar.actionAt(p);
     if (!action) return;
-    audio.playSfx(action.kind === 'verb' ? 'sfx_verb' : 'sfx_ui_click');
-    if (action.kind === 'verb') this.activeVerb = action.verb;
-    else if (action.kind === 'inventory') this.invScreen.show();
+    audio.playSfx('sfx_ui_click');
+    if (action.kind === 'inventory') this.invScreen.show();
+    else if (action.kind === 'party') this.openPartyScreen();
     else this.openSettingsMenu();
   }
 
+  private openPartyScreen(): void {
+    this.game.pushScene(
+      new PartyScene(this.game, {
+        state: this.state,
+        combatants: this.content.combatants,
+        items: this.content.items,
+        skills: this.content.skills,
+        itemIcons: this.itemIcons,
+      }),
+    );
+  }
+
+  /**
+   * P19 click model: a held item applies to the prop under the click; a
+   * bare click on an interactable pops the radial right there (no hover
+   * dwell needed); anything else - empty space, exits - walks Carl.
+   */
   private handleWorldClick(click: Point): void {
     const room = this.room;
     const player = this.player;
     if (!room || !player) return;
 
-    switch (this.activeVerb) {
-      case 'walk': {
-        const path = findPath(room.grid, player.feet, click);
-        if (path) {
-          this.mover.speed = 55;
-          this.mover.start(path);
-        }
-        break;
-      }
-      case 'item':
-        this.handleItemClick(click);
-        break;
-      default: {
-        const verb = this.activeVerb;
-        const prop = this.propUnderPoint(click);
-        if (!prop) {
-          this.runLine(emptyClickLine(verb));
-        } else {
-          const actions = prop.verbs[verb];
-          if (actions) this.runScript(actions);
-          else this.runLine(unhandledLine(verb, prop.name ?? 'THAT'));
-        }
-      }
+    // Clicks inside an enabled EXIT always walk (props may visually cover
+    // exits - the staircase beam - and walking is what an exit click means).
+    const exit = room.exitAt(click);
+    const exitEnabled = exit !== null && this.state.isExitEnabled(room.def.id, exit);
+    const prop = exitEnabled ? null : this.propUnderPoint(click);
+    if (this.state.heldItem && prop) {
+      this.handleItemClick(click);
+      return;
+    }
+    if (prop && !this.state.heldItem) {
+      this.radialTarget = { kind: 'prop', def: prop };
+      this.radial.show(this.game.input.mouse, prop.name ?? 'THAT');
+      console.info(`[radial] open: ${prop.name ?? 'THAT'}`);
+      return;
+    }
+    const path = findPath(room.grid, player.feet, click);
+    if (path) {
+      this.mover.speed = 55;
+      this.mover.start(path);
     }
   }
 
   private handleItemClick(click: Point): void {
     const held = this.state.heldItem;
-    if (!held) {
-      this.runLine(noItemLine());
-      return;
-    }
+    if (!held) return;
     const heldName = this.content.items[held]?.name ?? held.toUpperCase();
     const prop = this.propUnderPoint(click);
-    if (!prop) {
-      this.runLine(itemOnNothingLine(heldName));
-      return;
-    }
+    if (!prop) return; // caller walks instead
+
     const propName = prop.name ?? 'THAT';
     const handler = prop.verbs.item;
     if (!handler) {
@@ -1659,7 +1717,6 @@ export class RoomScene implements Scene, ScriptHost {
     if (!target) return;
     console.info(`[radial] fire: ${verb} -> ${target.kind}:${target.def.id}`);
     audio.playSfx('sfx_verb');
-    this.activeVerb = verb; // the bar reflects the LAST verb invoked
     if (verb === 'walk') {
       this.walkToRadialTarget(target);
       return;
@@ -1736,7 +1793,6 @@ export class RoomScene implements Scene, ScriptHost {
   private resolveCombine(a: string, b: string): void {
     this.invScreen.close();
     this.state.heldItem = null;
-    this.activeVerb = 'walk';
     const recipe = this.content.combines[combineKey(a, b)];
     const nameOf = (id: string): string => this.content.items[id]?.name ?? id.toUpperCase();
     if (!recipe) {
@@ -1780,6 +1836,29 @@ export class RoomScene implements Scene, ScriptHost {
         ctx.fillRect(Math.round(p.x), Math.round(p.y), p.age % 400 < 200 ? 2 : 1, 1);
       }
       ctx.globalAlpha = 1;
+      // P19 (bug 5): every art-less interactable gets a visible anchor - a
+      // small pulsing glint at its hit bounds - so legacy hotspots are never
+      // invisible surprises. Props with real art are their own affordance.
+      if (this.transition.kind === 'none' && !this.dying) {
+        const t = this.state.playtimeMs;
+        for (const prop of room.props) {
+          if (!prop.enabled || !prop.interactive || prop.hasArt) continue;
+          const b = prop.bounds;
+          if (b.w <= 0) continue;
+          const gx = Math.round(b.x + b.w / 2);
+          const gy = Math.round(b.y + b.h - 3);
+          let seed = 0;
+          for (let i = 0; i < prop.id.length; i++) seed += prop.id.charCodeAt(i);
+          const pulse = 0.45 + 0.3 * Math.sin(t / 420 + seed);
+          ctx.globalAlpha = Math.max(0.15, pulse);
+          ctx.fillStyle = '#ffe9a8';
+          ctx.fillRect(gx, gy - 2, 1, 5);
+          ctx.fillRect(gx - 2, gy, 5, 1);
+          ctx.globalAlpha = Math.max(0.1, pulse * 0.6);
+          ctx.fillRect(gx - 1, gy - 1, 3, 3);
+        }
+        ctx.globalAlpha = 1;
+      }
       this.debug.render(ctx, {
         grid: room.grid,
         path:
@@ -1808,7 +1887,7 @@ export class RoomScene implements Scene, ScriptHost {
       // (cutscenes, dialogue, inventory, transitions, other scenes on top).
       if (this.revealVisible(isTop)) this.drawReveal(ctx);
 
-      this.iconBar.render(ctx, this.activeVerb);
+      this.iconBar.render(ctx, this.room?.def.label ?? '', isTop ? mouse : undefined);
       this.invScreen.render(
         ctx,
         this.state.inventory,
@@ -1829,15 +1908,7 @@ export class RoomScene implements Scene, ScriptHost {
 
       this.narrator.render(ctx);
       this.dialogue.render(ctx);
-      // Compact room-name chip, tucked under the pinned icon bar (P10 fix:
-      // replaces the old full-width title baked into the background art).
-      const roomName = this.room?.def.label;
-      if (roomName) {
-        const w = pixelTextWidth(roomName) + 6;
-        ctx.fillStyle = 'rgba(10,17,32,0.7)';
-        ctx.fillRect(2, IconBar.HEIGHT + 2, w, 9);
-        drawPixelText(ctx, roomName, 5, IconBar.HEIGHT + 4, '#8fa3c4');
-      }
+      // (P19: the room-name chip moved into the top bar as AREA NAME.)
       // Diegetic score: broadcast viewer count, once the show has premiered.
       if (this.state.views > 0) {
         const label = `LIVE ${this.state.views}`;
@@ -1848,6 +1919,30 @@ export class RoomScene implements Scene, ScriptHost {
         ctx.fillStyle = '#ff5a5a';
         ctx.fillRect(LOGICAL_W - w + 1, y + 3, 3, 3);
         drawPixelText(ctx, label, LOGICAL_W - w + 6, y + 2, '#ffd9d9');
+      }
+      // P19 footer: non-interactive key reference, free-play only.
+      if (
+        isTop &&
+        this.transition.kind === 'none' &&
+        !this.runner.running &&
+        !this.narrator.active &&
+        !this.dialogue.active &&
+        !this.invScreen.open &&
+        !this.dying
+      ) {
+        ctx.fillStyle = 'rgba(8,12,22,0.78)';
+        ctx.fillRect(0, LOGICAL_H - 10, LOGICAL_W, 10);
+        const footer = 'ARROWS: MOVE  A: GO TO  W: GRAB  S: LOOK  D: TALK  TAB: REVEAL  H: PIN';
+        const fits = pixelTextWidth(footer) <= LOGICAL_W - 4;
+        drawPixelText(
+          ctx,
+          fits ? footer : 'ARROWS: MOVE  A: GO TO  W: GRAB  S: LOOK  D: TALK  TAB: REVEAL',
+          LOGICAL_W / 2,
+          LOGICAL_H - 8,
+          '#5c7090',
+          1,
+          'center',
+        );
       }
       this.toasts.render(ctx);
       if (!this.narrator.active && !this.dialogue.active && isTop && this.radial.hidden) {
@@ -1906,9 +2001,8 @@ export class RoomScene implements Scene, ScriptHost {
       mouse.y < LOGICAL_H
     ) {
       const held = this.state.heldItem;
-      const heldIcon =
-        this.activeVerb === 'item' && held ? this.itemIcons.get(held) : undefined;
-      const img = heldIcon ?? this.cursors[this.activeVerb];
+      const heldIcon = held ? this.itemIcons.get(held) : undefined;
+      const img = heldIcon ?? this.magnifier ?? this.cursors.look;
       const half = Math.floor(img.width / 2);
       // Over an interactable, frame the cursor with pixel corner brackets so
       // the hit reads instantly, before the name label registers. (Skipped

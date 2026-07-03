@@ -33,21 +33,32 @@ const BOX_W = 308;
 const BOX_H = 56;
 const BOX_Y = 134;
 const PAD = 6;
-const LINE_H = 7;
+const LINE_H = 9;
 /** Text column width beside the portrait. */
 const TEXT_MAX_CHARS = Math.floor((BOX_W - PORTRAIT_SIZE - PAD * 3 - 2) / 4);
+/** Wrapped text lines visible at once in line mode (bug 2: scroll the rest). */
+const LINE_VISIBLE = 4;
 const CHOICE_ROW_H = 9;
 const CHOICE_VISIBLE = 5;
+/** Story-advancing choices (advances: true) read green (bug 4). */
+const CHOICE_ADVANCE = '#7de08a';
+const CHOICE_ADVANCE_LIT = '#b6f7c8';
 
 const PANEL_BG = '#0d1322';
 const TEXT_COLOR = '#e6eeff';
 const CHOICE_DIM = '#8fa3c4';
 const CHOICE_LIT = '#ffe9a8';
 
+export interface ChoiceView {
+  text: string;
+  /** Renders green: this option moves the story forward (bug 4). */
+  advances: boolean;
+}
+
 type Mode =
   | { kind: 'idle' }
-  | { kind: 'line'; speaker: DialogueSpeaker; resolve: () => void }
-  | { kind: 'choices'; options: string[]; selected: number; scroll: number; resolve: (i: number) => void };
+  | { kind: 'line'; speaker: DialogueSpeaker; resolve: () => void; scroll: number; pinned: boolean }
+  | { kind: 'choices'; options: ChoiceView[]; selected: number; scroll: number; resolve: (i: number) => void };
 
 export class DialogueBox {
   private mode: Mode = { kind: 'idle' };
@@ -62,19 +73,66 @@ export class DialogueBox {
   showLine(speaker: DialogueSpeaker, text: string): Promise<void> {
     return new Promise((resolve) => {
       this.tw.set(text, TEXT_MAX_CHARS);
-      this.mode = { kind: 'line', speaker, resolve };
+      this.mode = { kind: 'line', speaker, resolve, scroll: 0, pinned: false };
     });
   }
 
-  /** Show a choice menu; resolves with the chosen option index. */
-  showChoices(options: string[]): Promise<number> {
+  /** Show a choice menu; resolves with the chosen option index (-2 = dismissed). */
+  showChoices(options: ChoiceView[]): Promise<number> {
     return new Promise((resolve) => {
       this.mode = { kind: 'choices', options, selected: 0, scroll: 0, resolve };
     });
   }
 
   update(dtMs: number): void {
-    if (this.mode.kind === 'line') this.tw.update(dtMs);
+    if (this.mode.kind !== 'line') return;
+    this.tw.update(dtMs);
+    // Auto-follow the reveal to the newest line unless the player scrolled.
+    if (!this.mode.pinned) {
+      this.mode.scroll = Math.max(0, this.revealedLines() - LINE_VISIBLE);
+    }
+  }
+
+  /** How many wrapped lines have at least one revealed character. */
+  private revealedLines(): number {
+    let remaining = this.tw.revealedChars();
+    let count = 0;
+    for (const line of this.tw.lines) {
+      if (remaining <= 0) break;
+      count++;
+      remaining -= line.length;
+    }
+    return count;
+  }
+
+  private maxLineScroll(): number {
+    return Math.max(0, this.tw.lines.length - LINE_VISIBLE);
+  }
+
+  /** Wheel/arrow scrolling (bug 2/3): lines pin, choices window-scroll. */
+  scrollBy(delta: number): void {
+    if (this.mode.kind === 'line') {
+      this.mode.scroll = Math.max(0, Math.min(this.maxLineScroll(), this.mode.scroll + delta));
+      this.mode.pinned = true;
+      return;
+    }
+    if (this.mode.kind === 'choices') {
+      const m = this.mode;
+      const max = Math.max(0, m.options.length - CHOICE_VISIBLE);
+      m.scroll = Math.max(0, Math.min(max, m.scroll + delta));
+    }
+  }
+
+  /**
+   * ESC / click-outside on a choice menu dismisses it (bug 6): resolves -2,
+   * which the player routes to the tree's end node. Line mode is untouched.
+   */
+  cancel(): boolean {
+    if (this.mode.kind !== 'choices') return false;
+    const { resolve } = this.mode;
+    this.mode = { kind: 'idle' };
+    resolve(-2);
+    return true;
   }
 
   /** Click/space in line mode: complete reveal, then advance. */
@@ -90,6 +148,10 @@ export class DialogueBox {
   }
 
   moveSelection(delta: number): void {
+    if (this.mode.kind === 'line') {
+      this.scrollBy(delta);
+      return;
+    }
     if (this.mode.kind !== 'choices') return;
     const m = this.mode;
     m.selected = Math.max(0, Math.min(m.options.length - 1, m.selected + delta));
@@ -127,7 +189,12 @@ export class DialogueBox {
       if (row !== null) {
         this.mode.selected = row;
         this.confirm();
+        return;
       }
+      // Click outside the panel dismisses the menu (bug 6).
+      const inside =
+        p.x >= BOX_X && p.x < BOX_X + BOX_W && p.y >= BOX_Y - 6 && p.y < BOX_Y + BOX_H;
+      if (!inside) this.cancel();
     }
   }
 
@@ -185,10 +252,17 @@ export class DialogueBox {
       const plateW = pixelTextWidth(speaker.name) + 6;
       const plateX = onLeft ? BOX_X + 4 : BOX_X + BOX_W - plateW - 4;
       ctx.fillStyle = speaker.color;
-      ctx.fillRect(plateX, BOX_Y - 4, plateW, 9);
-      drawPixelText(ctx, speaker.name, plateX + 3, BOX_Y - 2, '#081018');
+      ctx.fillRect(plateX, BOX_Y - 6, plateW, 12);
+      drawPixelText(ctx, speaker.name, plateX + 3, BOX_Y - 4, '#081018');
 
-      this.tw.drawText(ctx, tx, BOX_Y + 10, LINE_H, TEXT_COLOR);
+      const scroll = this.mode.scroll;
+      this.tw.drawText(ctx, tx, BOX_Y + 10, LINE_H, TEXT_COLOR, scroll, LINE_VISIBLE);
+      // Scroll indicators (bug 2): triangles when clipped above/below.
+      const arrowX = onLeft ? BOX_X + BOX_W - 10 : BOX_X + 4;
+      if (scroll > 0) this.drawArrow(ctx, arrowX, BOX_Y + 8, 'up', speaker.color);
+      if (scroll < this.maxLineScroll()) {
+        this.drawArrow(ctx, arrowX, BOX_Y + BOX_H - 14, 'down', speaker.color);
+      }
 
       if (this.tw.fullyRevealed && this.tw.blinkOn) {
         const ax = onLeft ? BOX_X + BOX_W - 9 : BOX_X + 6;
@@ -207,18 +281,43 @@ export class DialogueBox {
     for (let row = 0; row < CHOICE_VISIBLE; row++) {
       const index = m.scroll + row;
       if (index >= m.options.length) break;
+      const option = m.options[index];
       const selected = index === m.selected;
       const y = y0 + row * CHOICE_ROW_H;
       if (selected) {
-        ctx.fillStyle = 'rgba(255,233,168,0.12)';
+        ctx.fillStyle = option.advances ? 'rgba(125,224,138,0.12)' : 'rgba(255,233,168,0.12)';
         ctx.fillRect(BOX_X + 4, y - 1, BOX_W - 8, CHOICE_ROW_H);
-        drawPixelText(ctx, '>', BOX_X + 8, y, CHOICE_LIT);
+        drawPixelText(ctx, '>', BOX_X + 8, y, option.advances ? CHOICE_ADVANCE_LIT : CHOICE_LIT);
       }
-      drawPixelText(ctx, m.options[index], BOX_X + 16, y, selected ? CHOICE_LIT : CHOICE_DIM);
+      const color = option.advances
+        ? selected
+          ? CHOICE_ADVANCE_LIT
+          : CHOICE_ADVANCE
+        : selected
+          ? CHOICE_LIT
+          : CHOICE_DIM;
+      drawPixelText(ctx, option.text, BOX_X + 16, y, color);
     }
-    if (m.scroll > 0) drawPixelText(ctx, '-', BOX_X + BOX_W - 12, y0, CHOICE_DIM);
+    // Explicit scroll affordance (bug 3): triangles when options overflow.
+    if (m.scroll > 0) this.drawArrow(ctx, BOX_X + BOX_W - 10, y0, 'up', CHOICE_LIT);
     if (m.scroll + CHOICE_VISIBLE < m.options.length) {
-      drawPixelText(ctx, '-', BOX_X + BOX_W - 12, y0 + (CHOICE_VISIBLE - 1) * CHOICE_ROW_H, CHOICE_DIM);
+      this.drawArrow(ctx, BOX_X + BOX_W - 10, y0 + (CHOICE_VISIBLE - 1) * CHOICE_ROW_H + 2, 'down', CHOICE_LIT);
+    }
+  }
+
+  /** Tiny 5px triangle glyph used by both scroll affordances. */
+  private drawArrow(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    dir: 'up' | 'down',
+    color: string,
+  ): void {
+    ctx.fillStyle = color;
+    for (let i = 0; i < 3; i++) {
+      const w = dir === 'up' ? i * 2 + 1 : 5 - i * 2;
+      const off = dir === 'up' ? 2 - i : i;
+      ctx.fillRect(x + off, y + i, Math.max(1, w), 1);
     }
   }
 }
@@ -286,7 +385,14 @@ export class DialoguePlayer {
 
       // Skip mode never presents choices; route via the node's goto.
       if (visible.length > 0 && !this.deps.isSkipping()) {
-        const picked = await box.showChoices(visible.map((v) => v.choice.text));
+        const picked = await box.showChoices(
+          visible.map((v) => ({ text: v.choice.text, advances: v.choice.advances === true })),
+        );
+        if (picked === -2) {
+          // ESC / click-outside dismissal (bug 6): leave via the end node.
+          nodeId = 'end';
+          continue;
+        }
         if (picked < 0) {
           // Force-resolved mid-menu by a cutscene skip.
           nodeId = node.goto ?? 'end';

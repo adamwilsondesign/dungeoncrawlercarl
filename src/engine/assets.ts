@@ -15,6 +15,7 @@ import {
 } from '../data/spriteArt';
 import { EMPTY_PROP_ART, propDesigns } from '../data/propArt';
 import type { Mood, MoodPalette, PlaceholderOutfit, PlaceholderSpec, UiGlyph } from '../data/types';
+import { fontBaseline, fontCss, type GameFont } from './fonts';
 
 export type LoadedImage = HTMLImageElement | HTMLCanvasElement;
 
@@ -234,65 +235,38 @@ function shade(hex: string, factor: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tiny 3x5 pixel font — keeps placeholder text crisp at 320x200
+// Text rendering (P19): real fonts, legacy bitmap-font contract
+//
+// drawPixelText keeps its original semantics - y is the visual TOP of the
+// glyph row, ~6px tall at scale 1 - so every call site tuned against the old
+// 3x5 bitmap font lays out unchanged. The 'ui' font (Pixelify Sans) is the
+// game's human voice; the 'ai' font (VT323) is reserved for the Crawl AI
+// broadcast and interface channels. Both include full punctuation, which
+// retires the old uppercase-only, apostrophe-less glyph table.
 // ---------------------------------------------------------------------------
 
-const FONT: Record<string, number[]> = {
-  '0': [0b111, 0b101, 0b101, 0b101, 0b111],
-  '1': [0b010, 0b110, 0b010, 0b010, 0b111],
-  '2': [0b111, 0b001, 0b111, 0b100, 0b111],
-  '3': [0b111, 0b001, 0b111, 0b001, 0b111],
-  '4': [0b101, 0b101, 0b111, 0b001, 0b001],
-  '5': [0b111, 0b100, 0b111, 0b001, 0b111],
-  '6': [0b111, 0b100, 0b111, 0b101, 0b111],
-  '7': [0b111, 0b001, 0b001, 0b010, 0b010],
-  '8': [0b111, 0b101, 0b111, 0b101, 0b111],
-  '9': [0b111, 0b101, 0b111, 0b001, 0b111],
-  A: [0b010, 0b101, 0b111, 0b101, 0b101],
-  B: [0b110, 0b101, 0b110, 0b101, 0b110],
-  C: [0b011, 0b100, 0b100, 0b100, 0b011],
-  D: [0b110, 0b101, 0b101, 0b101, 0b110],
-  E: [0b111, 0b100, 0b110, 0b100, 0b111],
-  F: [0b111, 0b100, 0b110, 0b100, 0b100],
-  G: [0b011, 0b100, 0b101, 0b101, 0b011],
-  H: [0b101, 0b101, 0b111, 0b101, 0b101],
-  I: [0b111, 0b010, 0b010, 0b010, 0b111],
-  J: [0b001, 0b001, 0b001, 0b101, 0b010],
-  K: [0b101, 0b101, 0b110, 0b101, 0b101],
-  L: [0b100, 0b100, 0b100, 0b100, 0b111],
-  M: [0b101, 0b111, 0b111, 0b101, 0b101],
-  N: [0b111, 0b101, 0b101, 0b101, 0b101],
-  O: [0b111, 0b101, 0b101, 0b101, 0b111],
-  P: [0b111, 0b101, 0b111, 0b100, 0b100],
-  Q: [0b111, 0b101, 0b101, 0b111, 0b001],
-  R: [0b110, 0b101, 0b110, 0b101, 0b101],
-  S: [0b011, 0b100, 0b010, 0b001, 0b110],
-  T: [0b111, 0b010, 0b010, 0b010, 0b010],
-  U: [0b101, 0b101, 0b101, 0b101, 0b111],
-  V: [0b101, 0b101, 0b101, 0b101, 0b010],
-  W: [0b101, 0b101, 0b111, 0b111, 0b101],
-  X: [0b101, 0b101, 0b010, 0b101, 0b101],
-  Y: [0b101, 0b101, 0b010, 0b010, 0b010],
-  Z: [0b111, 0b001, 0b010, 0b100, 0b111],
-  ' ': [0b000, 0b000, 0b000, 0b000, 0b000],
-  '-': [0b000, 0b000, 0b111, 0b000, 0b000],
-  '.': [0b000, 0b000, 0b000, 0b000, 0b010],
-  ',': [0b000, 0b000, 0b000, 0b010, 0b100],
-  ':': [0b000, 0b010, 0b000, 0b010, 0b000],
-  '/': [0b001, 0b001, 0b010, 0b100, 0b100],
-  '_': [0b000, 0b000, 0b000, 0b000, 0b111],
-  '?': [0b111, 0b001, 0b011, 0b000, 0b010],
-  '!': [0b010, 0b010, 0b010, 0b000, 0b010],
-  '>': [0b100, 0b010, 0b001, 0b010, 0b100],
-  '<': [0b001, 0b010, 0b100, 0b010, 0b001],
-  '+': [0b000, 0b010, 0b111, 0b010, 0b000],
-};
+let measureCtx: CanvasRenderingContext2D | null = null;
 
-export function pixelTextWidth(text: string, scale = 1): number {
-  return text.length === 0 ? 0 : (text.length * 4 - 1) * scale;
+function measurer(): CanvasRenderingContext2D {
+  if (!measureCtx) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('2D canvas context unavailable');
+    measureCtx = ctx;
+  }
+  return measureCtx;
 }
 
-/** Draw crisp bitmap text (uppercase 3x5 glyphs, 1px letter spacing). */
+export function pixelTextWidth(text: string, scale = 1, font: GameFont = 'ui'): number {
+  if (text.length === 0) return 0;
+  const ctx = measurer();
+  ctx.font = fontCss(font, scale);
+  return Math.ceil(ctx.measureText(text).width);
+}
+
+/** Draw crisp game text. y is the TOP of the glyphs (legacy contract). */
 export function drawPixelText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -301,24 +275,17 @@ export function drawPixelText(
   color: string,
   scale = 1,
   align: 'left' | 'center' = 'left',
+  font: GameFont = 'ui',
 ): void {
-  const startX = align === 'center' ? Math.round(x - pixelTextWidth(text, scale) / 2) : x;
+  if (text.length === 0) return;
+  ctx.save();
+  ctx.font = fontCss(font, scale);
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  const startX = align === 'center' ? Math.round(x - pixelTextWidth(text, scale, font) / 2) : Math.round(x);
   ctx.fillStyle = color;
-  let cx = startX;
-  for (const ch of text.toUpperCase()) {
-    const glyph = FONT[ch];
-    if (glyph) {
-      for (let row = 0; row < 5; row++) {
-        const bits = glyph[row];
-        for (let col = 0; col < 3; col++) {
-          if ((bits >> (2 - col)) & 1) {
-            ctx.fillRect(cx + col * scale, y + row * scale, scale, scale);
-          }
-        }
-      }
-    }
-    cx += 4 * scale;
-  }
+  ctx.fillText(text, startX, Math.round(y) + fontBaseline(font, scale));
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -1415,6 +1382,22 @@ export function drawUiGlyph(
       ctx.fillStyle = color;
       r(5, 5, 2, 2);
       break;
+    case 'party': // two little crawlers, shoulder to shoulder
+      r(3, 2, 2, 2); // left head
+      r(2, 5, 4, 4); // left body
+      r(7, 3, 2, 2); // right head
+      r(6, 6, 4, 4); // right body
+      r(2, 10, 2, 1);
+      r(8, 10, 2, 1);
+      break;
+    case 'magnify': // the inspector's lens
+      outlineRect(ctx, ox + 2, oy + 2, 6, 6, color);
+      ctx.fillStyle = color;
+      r(3, 3, 1, 1); // glint
+      r(7, 7, 2, 1); // handle
+      r(8, 8, 2, 1);
+      r(9, 9, 2, 2);
+      break;
   }
 }
 
@@ -1438,14 +1421,10 @@ function makeIconPlaceholder(spec: {
   ctx.fillRect(0, 0, w, h);
   outlineRect(ctx, 0, 0, w, h, '#5f7392');
   drawUiGlyph(ctx, spec.glyph, 3, Math.floor((h - 12) / 2), '#cfe0ff');
-  const maxChars = Math.max(1, Math.floor((w - 18) / 4));
-  drawPixelText(
-    ctx,
-    spec.label.slice(0, maxChars),
-    17,
-    Math.floor((h - 5) / 2),
-    '#9fb4d8',
-  );
+  // Trim the label to the measured pixel budget (proportional font).
+  let label = spec.label;
+  while (label.length > 1 && pixelTextWidth(label) > w - 19) label = label.slice(0, -1);
+  drawPixelText(ctx, label, 17, Math.floor((h - 7) / 2), '#9fb4d8');
   return canvas;
 }
 

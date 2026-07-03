@@ -108,7 +108,10 @@ export class Actor {
 
     // Placeholder sheets carry a short label; render it beneath the actor at
     // screen scale so it stays crisp at any depth and never mirrors.
-    const label = placeholderActorLabel(this.image);
+    // Bug-1 hardening: the on-sprite tag is ALWAYS the actor's display
+    // label, never whatever string got baked into the cached placeholder
+    // sheet (the CMS once poisoned that cache with asset paths).
+    const label = placeholderActorLabel(this.image) !== undefined ? this.label : undefined;
     if (label !== undefined) {
       const lx = Math.round(this.x);
       const ly = Math.min(Math.round(this.y) + 2, 194);

@@ -29,6 +29,7 @@ import { skills } from './data/skills';
 import { buildAssetCatalog } from './data/assetCatalog';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { initAssetOverrides } from './engine/assets';
+import { loadFonts } from './engine/fonts';
 import { initLayouts } from './engine/layouts';
 import { audio } from './engine/audio';
 import { CmsScene } from './engine/cms';
@@ -96,6 +97,10 @@ async function boot(): Promise<void> {
 
   // Hosted-asset overrides (the CMS tier): fetched once; never throws, and
   // without a reachable API the game runs on bundled + procedural art.
+  // Fonts must be ready before ANY drawing - placeholder art bakes text
+  // labels at load time (P19: Pixelify Sans + VT323, self-hosted woff2).
+  await loadFonts();
+
   await initAssetOverrides();
 
   // Saved room layouts (P18, the admin editor's output): public index
@@ -126,6 +131,13 @@ async function boot(): Promise<void> {
       encounters,
       combines,
       startRoom: r01_street.id,
+      // P19: Carl steps onto the street already wearing his kit; Donut's
+      // collar waits in the equipment map for the moment she joins.
+      starterEquipment: [
+        { member: 'carl', item: 'leather_jacket' },
+        { member: 'carl', item: 'pink_crocs' },
+        { member: 'donut', item: 'jeweled_collar' },
+      ],
     },
     state,
     { quitToTitle: () => game.resetTo(titleScene) },

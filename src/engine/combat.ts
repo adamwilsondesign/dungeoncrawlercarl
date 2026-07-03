@@ -170,7 +170,7 @@ const rand = (lo: number, hi: number): number => lo + Math.random() * (hi - lo);
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
 /** Party growth per level above 1 (documented in the header). */
-function leveledStats(base: CombatantStats, level: number): CombatantStats {
+export function leveledStats(base: CombatantStats, level: number): CombatantStats {
   const up = level - 1;
   return {
     maxHp: base.maxHp + 6 * up,

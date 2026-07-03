@@ -17,25 +17,35 @@
 
 import type { VoiceChannel } from '../data/types';
 import { drawPixelText, pixelTextWidth } from './assets';
+import type { GameFont } from './fonts';
 import { audio } from './audio';
 import { LOGICAL_W } from './renderer';
 
-export function wrapText(text: string, maxChars: number): string[] {
+/**
+ * Wrap text to a width budget. The legacy unit is kept for call-site
+ * stability: maxChars is the old 4px-per-glyph bitmap budget, so the pixel
+ * budget is maxChars * 4 - now measured with the real font.
+ */
+export function wrapText(text: string, maxChars: number, font: GameFont = 'ui'): string[] {
+  const maxPx = maxChars * 4;
   const lines: string[] = [];
   let line = '';
+  const fits = (t: string): boolean => pixelTextWidth(t, 1, font) <= maxPx;
   for (const word of text.split(' ')) {
     let w = word;
     // Hard-break words that are longer than a full line.
-    while (w.length > maxChars) {
+    while (!fits(w)) {
+      let cut = w.length - 1;
+      while (cut > 1 && !fits(w.slice(0, cut))) cut--;
       if (line) {
         lines.push(line);
         line = '';
       }
-      lines.push(w.slice(0, maxChars));
-      w = w.slice(maxChars);
+      lines.push(w.slice(0, cut));
+      w = w.slice(cut);
     }
     if (!line) line = w;
-    else if (line.length + 1 + w.length <= maxChars) line = `${line} ${w}`;
+    else if (fits(`${line} ${w}`)) line = `${line} ${w}`;
     else {
       lines.push(line);
       line = w;
@@ -52,12 +62,14 @@ export class Typewriter {
   private elapsedMs = 0;
   private forced = false;
   private rate = 1;
+  private font: GameFont = 'ui';
 
   constructor(private readonly charsPerSec = 40) {}
 
   /** rate scales the reveal speed (the notify channel spits like a machine). */
-  set(text: string, maxChars: number, rate = 1): void {
-    this.wrapped = wrapText(text, maxChars);
+  set(text: string, maxChars: number, rate = 1, font: GameFont = 'ui'): void {
+    this.font = font;
+    this.wrapped = wrapText(text, maxChars, font);
     this.totalChars = this.wrapped.reduce((n, l) => n + l.length, 0);
     this.elapsedMs = 0;
     this.forced = false;
@@ -95,11 +107,22 @@ export class Typewriter {
   }
 
   /** Draw the revealed portion, one wrapped line at a time. */
-  drawText(ctx: CanvasRenderingContext2D, x: number, y: number, lineH: number, color: string): void {
+  drawText(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    lineH: number,
+    color: string,
+    firstLine = 0,
+    maxLines = Infinity,
+  ): void {
     let remaining = this.revealedChars();
     for (let i = 0; i < this.wrapped.length && remaining > 0; i++) {
       const line = this.wrapped[i];
-      drawPixelText(ctx, line.slice(0, remaining), x, y + i * lineH, color);
+      const row = i - firstLine;
+      if (row >= 0 && row < maxLines) {
+        drawPixelText(ctx, line.slice(0, remaining), x, y + row * lineH, color, 1, 'left', this.font);
+      }
       remaining -= line.length;
     }
   }
@@ -115,7 +138,7 @@ interface Message {
 
 const BOX_BOTTOM = 192;
 const PAD = 6;
-const LINE_H = 7;
+const LINE_H = 9;
 
 /** The broadcast speaker plate on every announce() box. */
 export const AI_NAME = 'THE CRAWL AI';
@@ -136,6 +159,8 @@ interface ChannelStyle {
   rate: number;
   /** Broadcast dressing: blinking ON AIR tally + double border. */
   onAir: boolean;
+  /** 'ai' = VT323 (the Crawl AI / interface); 'ui' = Pixelify Sans. */
+  font: GameFont;
 }
 
 const CHANNEL_STYLES: Record<VoiceChannel, ChannelStyle> = {
@@ -150,6 +175,7 @@ const CHANNEL_STYLES: Record<VoiceChannel, ChannelStyle> = {
     plate: AI_NAME,
     rate: 1,
     onAir: true,
+    font: 'ai',
   },
   // Dungeon interface: compact right-anchored toast, cold green, machine-fast.
   notify: {
@@ -162,6 +188,7 @@ const CHANNEL_STYLES: Record<VoiceChannel, ChannelStyle> = {
     plate: 'SYSTEM',
     rate: 3,
     onAir: false,
+    font: 'ai',
   },
   // Ambient narrator: classic full-width box in parchment/bone, no plate.
   describe: {
@@ -174,6 +201,7 @@ const CHANNEL_STYLES: Record<VoiceChannel, ChannelStyle> = {
     plate: null,
     rate: 1,
     onAir: false,
+    font: 'ui',
   },
 };
 
@@ -188,6 +216,7 @@ const SPEAKER_STYLE: ChannelStyle = {
   plate: null, // plate text comes from the message's speaker tag
   rate: 1,
   onAir: false,
+  font: 'ui',
 };
 
 function styleFor(message: Message): ChannelStyle {
@@ -228,7 +257,7 @@ export class NarratorBox {
     if (this.current) {
       const style = styleFor(this.current);
       const maxChars = Math.floor((boxWidth(style) - PAD * 2) / 4);
-      this.tw.set(this.current.text, maxChars, style.rate);
+      this.tw.set(this.current.text, maxChars, style.rate, style.font);
       audio.playSfx('sfx_chime');
     }
   }
@@ -270,7 +299,7 @@ export class NarratorBox {
     const w = boxWidth(style);
     const plate = this.current.speaker ? this.current.speaker.toUpperCase() : style.plate;
 
-    const h = 9 + this.tw.lines.length * LINE_H + PAD + (style.onAir ? 2 : 0);
+    const h = 10 + this.tw.lines.length * LINE_H + PAD + (style.onAir ? 2 : 0);
     const x = style.align === 'right' ? LOGICAL_W - style.margin - w : style.margin;
     const y = BOX_BOTTOM - h;
 
@@ -290,10 +319,10 @@ export class NarratorBox {
 
     if (plate) {
       // Plate tag overlapping the top border
-      const tagW = pixelTextWidth(plate) + 6;
+      const tagW = pixelTextWidth(plate, 1, style.font) + 6;
       ctx.fillStyle = accent;
-      ctx.fillRect(x + 6, y - 4, tagW, 9);
-      drawPixelText(ctx, plate, x + 9, y - 2, '#04121a');
+      ctx.fillRect(x + 6, y - 6, tagW, 12);
+      drawPixelText(ctx, plate, x + 9, y - 4, '#04121a', 1, 'left', style.font);
     } else {
       // Plateless ambient narration: a small ellipsis nub on the border
       ctx.fillStyle = accent;
@@ -303,18 +332,18 @@ export class NarratorBox {
     if (style.onAir) {
       // Blinking broadcast tally on the right of the top border
       const label = 'ON AIR';
-      const labelW = pixelTextWidth(label);
+      const labelW = pixelTextWidth(label, 1, style.font);
       const tx = x + w - labelW - 14;
       ctx.fillStyle = style.bg;
-      ctx.fillRect(tx - 4, y - 4, labelW + 16, 9);
+      ctx.fillRect(tx - 4, y - 6, labelW + 16, 12);
       ctx.strokeStyle = accent;
-      ctx.strokeRect(tx - 3.5, y - 3.5, labelW + 15, 8);
-      drawPixelText(ctx, label, tx + 6, y - 2, accent);
+      ctx.strokeRect(tx - 3.5, y - 5.5, labelW + 15, 11);
+      drawPixelText(ctx, label, tx + 6, y - 4, accent, 1, 'left', style.font);
       ctx.fillStyle = this.tw.blinkOn ? '#ff4d4d' : '#5a1717';
       ctx.fillRect(tx, y - 1, 3, 3);
     }
 
-    this.tw.drawText(ctx, x + PAD, y + 8 + (style.onAir ? 1 : 0), LINE_H, style.text);
+    this.tw.drawText(ctx, x + PAD, y + 9 + (style.onAir ? 1 : 0), LINE_H, style.text);
 
     // Blinking advance indicator once fully revealed
     if (this.tw.fullyRevealed && this.tw.blinkOn) {

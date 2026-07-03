@@ -16,6 +16,7 @@ export class Input {
   private readonly held = new Set<string>();
   private rightClicks = 0;
   private leftHeld = false;
+  private wheelSteps = 0;
 
   constructor(target: HTMLElement, toLogical: (clientX: number, clientY: number) => Point) {
     target.addEventListener('mousemove', (e: MouseEvent) => {
@@ -37,6 +38,15 @@ export class Input {
     window.addEventListener('mouseup', (e: MouseEvent) => {
       if (e.button === 0) this.leftHeld = false;
     });
+    // Wheel steps accumulate until a scene consumes them (dialogue scroll).
+    target.addEventListener(
+      'wheel',
+      (e: WheelEvent) => {
+        e.preventDefault();
+        if (e.deltaY !== 0) this.wheelSteps += Math.sign(e.deltaY);
+      },
+      { passive: false },
+    );
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       // Tab steals focus and Space scrolls; both are game keys (hotspot reveal).
       // Except while a DOM overlay input is focused (CMS / editor panels).
@@ -57,6 +67,13 @@ export class Input {
   /** True while the left mouse button is held (editor drags). */
   get mouseDown(): boolean {
     return this.leftHeld;
+  }
+
+  /** Accumulated wheel steps since last consumed (+down / -up), then reset. */
+  consumeWheel(): number {
+    const steps = this.wheelSteps;
+    this.wheelSteps = 0;
+    return steps;
   }
 
   /** True while the physical key is held (continuous movement, P10 fix). */

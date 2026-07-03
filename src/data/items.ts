@@ -38,13 +38,27 @@ export const items: Record<string, ItemDef> = {
     description: 'Compressed luck, pocket-grade. SPD +2.',
     equip: { slot: 'trinket', statMods: { spd: 2 } },
   },
-  // --- Act I starting kit ---
-  carls_jacket: {
-    id: 'carls_jacket',
-    name: "CARL'S JACKET",
+  // --- Act I starting kit (P19: Carl and Donut start visibly kitted) ---
+  pink_crocs: {
+    id: 'pink_crocs',
+    name: 'PINK CROCS',
     description:
-      'Your own winter jacket, formally registered as ARMOR. The System is very pleased with itself. DEFENSE +2.',
-    equip: { slot: 'armor', defense: 2 },
+      "Beatrice's foam footwear. They have survived a collapse, a descent, and every joke the audience has. Unfortunately comfortable. SPD +1.",
+    equip: { slot: 'trinket', statMods: { spd: 1 } },
+  },
+  leather_jacket: {
+    id: 'leather_jacket',
+    name: 'LEATHER JACKET',
+    description:
+      'Urban insulation, formally registered as ARMOR. The System is very pleased with itself. DEFENSE +1.',
+    equip: { slot: 'armor', defense: 1 },
+  },
+  jeweled_collar: {
+    id: 'jeweled_collar',
+    name: 'JEWELED COLLAR',
+    description:
+      'Show regalia for a four-time regional champion. The gems are real. She checked. MP +1.',
+    equip: { slot: 'trinket', statMods: { maxMp: 1 } },
   },
   fingerless_gloves: {
     id: 'fingerless_gloves',

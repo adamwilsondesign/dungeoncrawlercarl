@@ -22,7 +22,16 @@ export type VoiceChannel = 'announce' | 'notify' | 'describe';
 export type ActionVerb = 'look' | 'hand' | 'talk' | 'item';
 
 /** Glyph ids the placeholder system can paint for cursors and icon-bar icons. */
-export type UiGlyph = 'walk' | 'look' | 'hand' | 'talk' | 'item' | 'inventory' | 'settings';
+export type UiGlyph =
+  | 'walk'
+  | 'look'
+  | 'hand'
+  | 'talk'
+  | 'item'
+  | 'inventory'
+  | 'party'
+  | 'settings'
+  | 'magnify';
 
 /**
  * A flag test used by dialogue choices (and reusable elsewhere).
@@ -293,6 +302,8 @@ export interface DialogueChoice {
   showIf?: FlagCondition;
   /** Hide after being chosen once (tracked via flag dlg:<tree>:<node>:choice<i>). */
   once?: boolean;
+  /** Renders green: picking this moves the story forward (P19 bug 4). */
+  advances?: boolean;
 }
 
 export interface DialogueNode {
