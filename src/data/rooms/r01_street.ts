@@ -13,8 +13,10 @@ import {
   describe,
   disableExit,
   disableHotspot,
+  disableProp,
   enableExit,
   enableHotspot,
+  enableProp,
   moveActor,
   narrate,
   say,
@@ -44,17 +46,17 @@ export const donutCatSheet: SpriteSheetDef = {
   },
 };
 
-/** Shared street furniture: sodium lamp pool, lamp post, falling snow. */
+/**
+ * Shared street furniture: sodium light pool on the ground, falling snow.
+ * The lamp POST itself is a prop now (P17: props/r01_streetlamp.png) so Carl
+ * depth-sorts against it; only its ambient glow stays in the background.
+ */
 const drawStreetCommon = (ctx: CanvasRenderingContext2D): void => {
   const lamp = ctx.createRadialGradient(180, 150, 4, 180, 150, 60);
   lamp.addColorStop(0, 'rgba(255,170,80,0.30)');
   lamp.addColorStop(1, 'rgba(255,170,80,0)');
   ctx.fillStyle = lamp;
   ctx.fillRect(120, 100, 120, 100);
-  ctx.fillStyle = '#1a2334';
-  ctx.fillRect(178, 60, 3, 60);
-  ctx.fillStyle = '#ffcf8a';
-  ctx.fillRect(174, 56, 11, 4);
   // Snow: sparse falling flecks + ground dusting
   ctx.fillStyle = 'rgba(230,240,255,0.8)';
   for (let i = 0; i < 40; i++) {
@@ -72,15 +74,7 @@ const drawPreCollapse = (ctx: CanvasRenderingContext2D, pal: MoodPalette): void 
   ctx.fillRect(8, 22, 92, 90);
   ctx.fillStyle = '#0e1626';
   ctx.fillRect(4, 18, 100, 6); // parapet cap
-  // Distant intact towers behind the street, right side
-  ctx.fillStyle = '#101a2c';
-  ctx.fillRect(210, 40, 26, 68);
-  ctx.fillRect(248, 30, 34, 78);
-  ctx.fillRect(292, 48, 22, 60);
-  ctx.fillStyle = '#16233a';
-  for (const [tx, ty] of [[216, 52], [258, 44], [268, 66], [298, 58]] as const) {
-    ctx.fillRect(tx, ty, 4, 5);
-  }
+  // (The distant towers are the 'skyline' decoration prop - P17.)
   // Window grid, all dark except two: the lit first-floor window and CARL'S
   // OWN window standing open on the third floor (the cat's exit route).
   ctx.fillStyle = '#0a1220';
@@ -166,15 +160,8 @@ const drawPostCollapse = (ctx: CanvasRenderingContext2D, pal: MoodPalette): void
   ctx.stroke();
   ctx.lineWidth = 1;
   drawStreetCommon(ctx);
-  // The staircase of light, punching UP from the ground at far right
-  const beam = ctx.createLinearGradient(284, 0, 284, 200);
-  beam.addColorStop(0, 'rgba(255,236,170,0.10)');
-  beam.addColorStop(0.55, 'rgba(255,224,140,0.55)');
-  beam.addColorStop(1, 'rgba(255,210,110,0.85)');
-  ctx.fillStyle = beam;
-  ctx.fillRect(280, 20, 40, 180);
-  ctx.fillStyle = '#ffe9b0';
-  for (let i = 0; i < 6; i++) ctx.fillRect(284, 108 + i * 14, 32, 3);
+  // (The staircase of light is the 'stairwell' prop now - P17 - so Carl
+  // depth-sorts against the beam instead of walking "over" painted light.)
 };
 
 export const r01_street: RoomDef = {
@@ -196,11 +183,13 @@ export const r01_street: RoomDef = {
   playerSpawn: { x: 160, y: 175, facing: 'down' },
   onEnter: [
     // Reconcile the two-state street: post-collapse interactables (rubble,
-    // staircase) only exist after the flag; the intact window only before.
+    // staircase) only exist after the flag; the intact window and skyline
+    // only before. enableProp/enableHotspot share one store, so the mix
+    // here is cosmetic - props and hotspots reconcile identically.
     ifFlag(
       'r01:collapsed',
-      [enableHotspot('ruins'), enableHotspot('stairwell'), enableExit('stairs'), disableHotspot('window')],
-      [disableHotspot('ruins'), disableHotspot('stairwell'), disableExit('stairs'), enableHotspot('window')],
+      [enableProp('stairwell'), disableProp('skyline'), enableHotspot('ruins'), enableExit('stairs'), disableHotspot('window')],
+      [disableProp('stairwell'), enableProp('skyline'), disableHotspot('ruins'), disableExit('stairs'), enableHotspot('window')],
     ),
     playCutscene('act1_intro'),
   ],
@@ -293,10 +282,25 @@ export const r01_street: RoomDef = {
         ],
       },
     },
+  ],
+  // P17 demonstration props: real composited assets with baselines, own art
+  // (procedural placeholders; paintable at props/<id>.png via the CMS),
+  // depth-sorting against Carl, and walk blockers the A* routes around.
+  props: [
     {
+      // The staircase of light, now a real object in the scene. Same id as
+      // the old hotspot, so the intro cutscene's enableHotspot('stairwell')
+      // and every save keep working untouched. Starts hidden: it only
+      // exists after the collapse (onEnter below reconciles saves).
       id: 'stairwell',
       name: 'STAIRCASE OF LIGHT',
-      rect: { x: 284, y: 96, w: 36, h: 96 },
+      art: { kind: 'procedural', drawFn: 'r01_staircase' },
+      x: 302,
+      y: 196, // baseline at the beam's foot: Carl slips BEHIND the light
+      enabled: false,
+      // A sliver of solid light at the beam's left base; the exit approach
+      // (x >= 288) stays open, but Carl cannot walk through the beam edge.
+      blocker: { x: -20, y: -10, w: 5, h: 10 },
       verbs: {
         look: [
           ifFlag(
@@ -312,6 +316,39 @@ export const r01_street: RoomDef = {
           narrate('The light is warm. That is somehow worse. Walking in is the only way to test it further.'),
         ],
       },
+    },
+    {
+      // The sodium streetlamp, pulled out of the background painting. Carl
+      // walks behind it above the base line, in front below it, and paths
+      // around its post. def.scale compensates the depth band at y=126 so
+      // the art keeps its authored pixel size.
+      id: 'streetlamp',
+      name: 'STREETLAMP',
+      art: { kind: 'procedural', drawFn: 'r01_streetlamp' },
+      x: 179,
+      y: 126,
+      scale: 1.25,
+      blocker: { x: -4, y: -5, w: 8, h: 5 },
+      verbs: {
+        look: [
+          describe('One sodium lamp, still on, still faithful. It lights six feet of snow and the end of the world equally.'),
+        ],
+        hand: [
+          describe('You put a hand on the cold post. It hums with the same patience as everything else tonight. Solid. Unlike the city.'),
+        ],
+      },
+    },
+    {
+      // Decoration: the distant intact skyline. Art, depth, zero
+      // interaction - it never hovers, highlights, or takes verbs. The
+      // collapse beat disables it as the rubble background swaps in.
+      id: 'skyline',
+      art: { kind: 'procedural', drawFn: 'r01_skyline' },
+      x: 263,
+      y: 108,
+      scale: 4 / 3, // cancels the 0.75 depth band: authored pixels 1:1
+      zOverride: 0, // distant: always behind every actor and prop
+      decoration: true,
     },
   ],
   scaleBands: [

@@ -72,7 +72,7 @@ export class CmsScene implements Scene {
     });
     const catSel = document.createElement('select');
     catSel.style.cssText = 'background:#101826;color:#d8ecff;border:1px solid #39465e;padding:4px';
-    for (const c of ['all', 'backgrounds', 'masks', 'sprites', 'portraits', 'items', 'ui', 'audio']) {
+    for (const c of ['all', 'backgrounds', 'masks', 'props', 'sprites', 'portraits', 'items', 'ui', 'audio']) {
       const opt = document.createElement('option');
       opt.value = c;
       opt.textContent = c;

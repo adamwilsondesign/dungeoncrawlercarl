@@ -8,6 +8,7 @@
  */
 
 import { allAudioIds } from './audio';
+import { propDesigns } from './propArt';
 import { spriteDesigns } from './spriteArt';
 import type {
   CharacterDef,
@@ -20,7 +21,7 @@ import type {
 export interface CatalogEntry {
   /** Asset id == the path a real file would use under src/assets/. */
   id: string;
-  category: 'backgrounds' | 'masks' | 'sprites' | 'portraits' | 'items' | 'ui' | 'audio';
+  category: 'backgrounds' | 'masks' | 'props' | 'sprites' | 'portraits' | 'items' | 'ui' | 'audio';
   label: string;
   /** Human-readable expected format. */
   spec: string;
@@ -103,6 +104,21 @@ export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
       expectW: 320,
       expectH: 200,
     });
+    // Props (P17): every placed prop is a paintable drop-in slot. Procedural
+    // props resolve at props/<propId>.png; image props at their own path.
+    for (const prop of room.props ?? []) {
+      const drawFn = prop.art.kind === 'procedural' ? prop.art.drawFn : undefined;
+      const design = drawFn ? propDesigns[drawFn] : undefined;
+      add({
+        id: prop.art.kind === 'image' ? prop.art.path : `props/${prop.id}.png`,
+        category: 'props',
+        label: `${prop.name ?? prop.id} (${room.label})`,
+        spec: design
+          ? `transparent PNG prop, ~${design.w}x${design.h}, bottom-center = baseline`
+          : 'transparent PNG prop, bottom-center = baseline',
+        placeholder: { kind: 'prop', label: prop.name ?? prop.id, drawFn },
+      });
+    }
   }
 
   // Combat backdrops come from the encounter registry

@@ -13,6 +13,7 @@ import {
   type PortraitDesign,
   type SpriteDesign,
 } from '../data/spriteArt';
+import { EMPTY_PROP_ART, propDesigns } from '../data/propArt';
 import type { Mood, MoodPalette, PlaceholderOutfit, PlaceholderSpec, UiGlyph } from '../data/types';
 
 export type LoadedImage = HTMLImageElement | HTMLCanvasElement;
@@ -156,8 +157,52 @@ function makePlaceholder(path: string, spec?: PlaceholderSpec): HTMLCanvasElemen
     logPlaceholder(path, `item icon "${spec.label}"`);
     return makeItemPlaceholder(spec);
   }
+  if (spec?.kind === 'prop') {
+    // The reserved empty art (legacy hotspot conversions) renders nothing
+    // and logs nothing - it is by design, not a missing asset.
+    if (spec.drawFn !== EMPTY_PROP_ART) {
+      logPlaceholder(path, `prop "${spec.label}"${spec.drawFn ? ` (drawFn ${spec.drawFn})` : ''}`);
+    }
+    return makePropPlaceholder(spec);
+  }
   logPlaceholder(path, 'generic fallback');
   return makeGenericPlaceholder(path);
+}
+
+/**
+ * Prop art placeholder: the registered procedural design when the drawFn is
+ * known, otherwise a legible labeled crate (image-kind props with no file).
+ */
+function makePropPlaceholder(spec: { label: string; drawFn?: string }): HTMLCanvasElement {
+  if (spec.drawFn === EMPTY_PROP_ART) {
+    const [canvas] = makeCanvas(1, 1);
+    return canvas; // fully transparent: draws nothing, auto-hit finds nothing
+  }
+  const design = spec.drawFn ? propDesigns[spec.drawFn] : undefined;
+  if (design) {
+    const [canvas, ctx] = makeCanvas(design.w, design.h);
+    design.draw(ctx);
+    return canvas;
+  }
+  // Generic crate with the prop's label, sized to fit the text.
+  const label = spec.label.toUpperCase();
+  const w = Math.max(24, pixelTextWidth(label) + 8);
+  const h = 24;
+  const [canvas, ctx] = makeCanvas(w, h);
+  ctx.fillStyle = 'rgba(40,52,78,0.9)';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#8fa3c4';
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(w, h);
+  ctx.moveTo(w, 0);
+  ctx.lineTo(0, h);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(10,17,32,0.9)';
+  ctx.fillRect(2, h / 2 - 4, w - 4, 9);
+  drawPixelText(ctx, label, 4, h / 2 - 2, '#ffe9a8');
+  return canvas;
 }
 
 // ---------------------------------------------------------------------------

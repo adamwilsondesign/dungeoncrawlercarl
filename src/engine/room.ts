@@ -18,7 +18,6 @@ import type {
   EncounterDef,
   ExitDef,
   Facing,
-  HotspotDef,
   ItemDef,
   Point,
   Rect,
@@ -42,12 +41,12 @@ import {
 import { DebugOverlay } from './debug';
 import { DialogueBox, DialoguePlayer } from './dialogue';
 import type { Game, Scene } from './game';
-import { hotspotAt } from './hotspot';
 import { IconBar } from './iconbar';
 import { InventoryScreen } from './inventory';
 import { AchievementsScene, ListMenuScene } from './menus';
 import { NarratorBox, wrapText } from './narrator';
 import { dominantFacing, findPath, Mover, PLAYER_WALK_SPEED, WalkGrid } from './pathfinding';
+import { buildProp, propFromHotspot, RuntimeProp } from './props';
 import { RadialMenu, type RadialVerb } from './radial';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import {
@@ -90,21 +89,34 @@ function buildPlaceholderMask(def: RoomDef): HTMLCanvasElement {
 
 export class Room {
   readonly def: RoomDef;
-  readonly grid: WalkGrid;
   readonly actors: Actor[] = [];
+  /**
+   * Runtime props (P17): authored PropDefs first (visible art wins hover
+   * priority), then legacy hotspots converted to invisible internal props.
+   */
+  readonly props: RuntimeProp[] = [];
   /** Full background width; wider than 320 enables cameraPan. */
   readonly width: number;
 
   private background: LoadedImage;
   private readonly bands: RoomDef['scaleBands'];
+  /** The mask-derived grid; the effective grid re-adds live prop blockers. */
+  private readonly baseGrid: WalkGrid;
+  private effectiveGrid: WalkGrid;
 
   private constructor(def: RoomDef, background: LoadedImage, grid: WalkGrid, actors: Actor[]) {
     this.def = def;
     this.background = background;
-    this.grid = grid;
+    this.baseGrid = grid;
+    this.effectiveGrid = grid;
     this.actors.push(...actors);
     this.bands = [...def.scaleBands].sort((a, b) => a.yTop - b.yTop);
     this.width = Math.max(LOGICAL_W, def.backgroundWidth ?? LOGICAL_W);
+  }
+
+  /** The walk grid with all enabled prop blockers composed in. */
+  get grid(): WalkGrid {
+    return this.effectiveGrid;
   }
 
   /**
@@ -159,7 +171,50 @@ export class Room {
       }),
     );
 
-    return new Room(def, background, grid, actors);
+    const room = new Room(def, background, grid, actors);
+    await room.loadProps();
+    return room;
+  }
+
+  /** Build authored props (art + shapes) and convert legacy hotspots. */
+  private async loadProps(): Promise<void> {
+    const authored = await Promise.all(
+      (this.def.props ?? []).map((p) => buildProp(p, this.scaleAt(p.y))),
+    );
+    this.props.push(...authored);
+    this.props.push(...this.def.hotspots.map((h) => propFromHotspot(this.def.id, h)));
+    this.rebuildGrid();
+  }
+
+  /**
+   * Sync live prop enabled-state from the flag store; recompose the walk
+   * grid only when a blocker-carrying prop actually toggled.
+   */
+  syncProps(isEnabled: (prop: RuntimeProp) => boolean): void {
+    let blockersChanged = false;
+    for (const prop of this.props) {
+      const enabled = isEnabled(prop);
+      if (enabled !== prop.enabled) {
+        prop.enabled = enabled;
+        if (prop.blocker) blockersChanged = true;
+      }
+    }
+    if (blockersChanged) this.rebuildGrid();
+  }
+
+  private rebuildGrid(): void {
+    const rects = this.props
+      .filter((p) => p.enabled && p.blocker !== null)
+      .map((p) => p.blocker as Rect);
+    this.effectiveGrid = this.baseGrid.withBlockedRects(rects);
+  }
+
+  /** First enabled interactive prop containing the point (array order wins). */
+  propAt(p: Point): RuntimeProp | null {
+    for (const prop of this.props) {
+      if (prop.enabled && prop.hitTest(p)) return prop;
+    }
+    return null;
   }
 
   addActor(actor: Actor): void {
@@ -216,11 +271,24 @@ export class Room {
     for (const actor of this.actors) actor.update(dtMs);
   }
 
-  /** Background, then actors sorted by feet y (painter's order). */
+  /**
+   * Background, then props + actors interleaved in painter's order: both
+   * sort by baseline y (props may pin a z via zOverride), so Carl walks
+   * behind a streetlamp at feet-y above its base and in front below it.
+   * Ties keep props behind actors (stable sort, props listed first).
+   */
   draw(ctx: CanvasRenderingContext2D): void {
     ctx.drawImage(this.background, 0, 0, this.width, LOGICAL_H);
-    const sorted = [...this.actors].sort((a, b) => a.y - b.y);
-    for (const actor of sorted) actor.draw(ctx, this.scaleAt(actor.y));
+    const entries: Array<{ z: number; draw: () => void }> = [];
+    for (const prop of this.props) {
+      if (!prop.enabled || !prop.hasArt) continue;
+      entries.push({ z: prop.z, draw: () => prop.draw(ctx) });
+    }
+    for (const actor of this.actors) {
+      entries.push({ z: actor.y, draw: () => actor.draw(ctx, this.scaleAt(actor.y)) });
+    }
+    entries.sort((a, b) => a.z - b.z);
+    for (const e of entries) e.draw();
   }
 }
 
@@ -305,7 +373,7 @@ export class RoomScene implements Scene, ScriptHost {
   // Radial verb menu: hover-intent tracking + the target it was shown for.
   private readonly radial = new RadialMenu();
   private radialTarget:
-    | { kind: 'hotspot'; def: HotspotDef }
+    | { kind: 'prop'; def: RuntimeProp }
     | { kind: 'exit'; def: ExitDef }
     | null = null;
   private hoverIntentKey: string | null = null;
@@ -318,7 +386,7 @@ export class RoomScene implements Scene, ScriptHost {
   private activeVerb: Verb = 'walk';
   private cursors: Record<Verb, LoadedImage> | null = null;
   private readonly itemIcons = new Map<string, LoadedImage>();
-  private hover: HotspotDef | null = null;
+  private hover: RuntimeProp | null = null;
   private readonly timers: Timer[] = [];
   private scriptWalkResolve: (() => void) | null = null;
   private gotoRoomResolve: (() => void) | null = null;
@@ -459,6 +527,10 @@ export class RoomScene implements Scene, ScriptHost {
     for (const move of this.sceneMovers.splice(0)) move.resolve();
 
     const room = await Room.load(def, this.resolveBackgroundSpec(def));
+    // Resolve prop enabled-state before anything paths on the walk grid.
+    room.syncProps((p) =>
+      this.state.isHotspotEnabled(def.id, { id: p.id, enabled: p.initialEnabled }),
+    );
     const sheet = this.content.player.sheet;
     const image = await loadImage(sheet.path, {
       kind: 'actor',
@@ -978,6 +1050,11 @@ export class RoomScene implements Scene, ScriptHost {
 
     const room = this.room;
     room?.update(dtMs);
+    // Prop enabled-state follows the flag store every frame (cheap diff);
+    // the walk grid recomposes only when a blocker-carrying prop toggles.
+    room?.syncProps((p) =>
+      this.state.isHotspotEnabled(room.def.id, { id: p.id, enabled: p.initialEnabled }),
+    );
 
     switch (this.transition.kind) {
       case 'none':
@@ -1202,7 +1279,7 @@ export class RoomScene implements Scene, ScriptHost {
 
     // One-time, in-voice UI pointer (once ever, not per save). New key so
     // players who saw the pre-wheel hint get the updated one exactly once.
-    if (!localStorage.getItem('dcc_hint_ui') && (this.room?.def.hotspots.length ?? 0) > 0) {
+    if (!localStorage.getItem('dcc_hint_ui') && (this.room?.props.some((p) => p.interactive) ?? false)) {
       localStorage.setItem('dcc_hint_ui', '1');
       localStorage.setItem('dcc_hint_reveal', '1'); // retire the old hint
       // The AI addressing the Crawler directly: this rides the broadcast.
@@ -1217,7 +1294,7 @@ export class RoomScene implements Scene, ScriptHost {
     }
 
     const worldMouse = this.toWorld(input.mouse);
-    this.hover = this.iconBar.coversPoint(input.mouse) ? null : this.hotspotUnderPoint(worldMouse);
+    this.hover = this.iconBar.coversPoint(input.mouse) ? null : this.propUnderPoint(worldMouse);
     const exitUnderMouse = room.exitAt(worldMouse);
     this.hoverExit =
       !this.hover && exitUnderMouse && this.state.isExitEnabled(room.def.id, exitUnderMouse)
@@ -1233,7 +1310,7 @@ export class RoomScene implements Scene, ScriptHost {
       // Dismiss when the cursor leaves both the shown target and the wheel.
       const t = this.radialTarget;
       const overShown =
-        (t?.kind === 'hotspot' && this.hover === t.def) ||
+        (t?.kind === 'prop' && this.hover === t.def) ||
         (t?.kind === 'exit' && this.hoverExit === t.def);
       if (!overShown && !this.radial.contains(input.mouse)) this.radial.dismiss();
     }
@@ -1286,12 +1363,12 @@ export class RoomScene implements Scene, ScriptHost {
         this.hoverIntentMs += dtMs;
         if (this.hoverIntentMs >= RADIAL_HOVER_MS) {
           this.radialTarget = this.hover
-            ? { kind: 'hotspot', def: this.hover }
+            ? { kind: 'prop', def: this.hover }
             : this.hoverExit
               ? { kind: 'exit', def: this.hoverExit }
               : null;
           if (this.radialTarget) {
-            const label = this.hover ? this.hover.name : 'EXIT';
+            const label = this.hover ? this.hover.name ?? 'THAT' : 'EXIT';
             this.radial.show(input.mouse, label);
             console.info(`[radial] open: ${label}`);
           }
@@ -1434,12 +1511,9 @@ export class RoomScene implements Scene, ScriptHost {
     this.radial.forceHide();
   }
 
-  private hotspotUnderPoint(p: Point): HotspotDef | null {
-    const room = this.room;
-    if (!room) return null;
-    return hotspotAt(room.def.hotspots, p, (def) =>
-      this.state.isHotspotEnabled(room.def.id, def),
-    );
+  /** First enabled interactive prop under the point (props include legacy hotspots). */
+  private propUnderPoint(p: Point): RuntimeProp | null {
+    return this.room?.propAt(p) ?? null;
   }
 
   private handleBarClick(p: Point): void {
@@ -1470,13 +1544,13 @@ export class RoomScene implements Scene, ScriptHost {
         break;
       default: {
         const verb = this.activeVerb;
-        const hotspot = this.hotspotUnderPoint(click);
-        if (!hotspot) {
+        const prop = this.propUnderPoint(click);
+        if (!prop) {
           this.runLine(emptyClickLine(verb));
         } else {
-          const actions = hotspot.verbs[verb];
+          const actions = prop.verbs[verb];
           if (actions) this.runScript(actions);
-          else this.runLine(unhandledLine(verb, hotspot.name));
+          else this.runLine(unhandledLine(verb, prop.name ?? 'THAT'));
         }
       }
     }
@@ -1489,14 +1563,15 @@ export class RoomScene implements Scene, ScriptHost {
       return;
     }
     const heldName = this.content.items[held]?.name ?? held.toUpperCase();
-    const hotspot = this.hotspotUnderPoint(click);
-    if (!hotspot) {
+    const prop = this.propUnderPoint(click);
+    if (!prop) {
       this.runLine(itemOnNothingLine(heldName));
       return;
     }
-    const handler = hotspot.verbs.item;
+    const propName = prop.name ?? 'THAT';
+    const handler = prop.verbs.item;
     if (!handler) {
-      this.runLine(wrongItemLine(heldName, hotspot.name));
+      this.runLine(wrongItemLine(heldName, propName));
       return;
     }
     if (Array.isArray(handler)) {
@@ -1505,7 +1580,7 @@ export class RoomScene implements Scene, ScriptHost {
     }
     const actions = handler[held] ?? handler['default'];
     if (actions) this.runScript(actions);
-    else this.runLine(wrongItemLine(heldName, hotspot.name));
+    else this.runLine(wrongItemLine(heldName, propName));
   }
 
   // -------------------------------------------------------------------------
@@ -1530,27 +1605,16 @@ export class RoomScene implements Scene, ScriptHost {
     }
     const actions = target.def.verbs[verb];
     if (actions) this.runScript(actions);
-    else this.runLine(unhandledLine(verb, target.def.name));
-  }
-
-  private hotspotBounds(def: HotspotDef): Rect {
-    if (def.rect) return def.rect;
-    const pts = def.polygon ?? [];
-    if (pts.length === 0) return { x: 0, y: 0, w: 0, h: 0 };
-    const xs = pts.map((p) => p.x);
-    const ys = pts.map((p) => p.y);
-    const x = Math.min(...xs);
-    const y = Math.min(...ys);
-    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+    else this.runLine(unhandledLine(verb, target.def.name ?? 'THAT'));
   }
 
   /**
    * WALK from the radial: approach the target. Exits are walked into (the
-   * normal arrival transition fires); hotspots get the nearest reachable
-   * point just outside their bounds, then Carl turns to face them.
+   * normal arrival transition fires); props get the nearest reachable
+   * point just outside their hit bounds, then Carl turns to face them.
    */
   private walkToRadialTarget(
-    target: { kind: 'hotspot'; def: HotspotDef } | { kind: 'exit'; def: ExitDef },
+    target: { kind: 'prop'; def: RuntimeProp } | { kind: 'exit'; def: ExitDef },
   ): void {
     const room = this.room;
     const player = this.player;
@@ -1564,7 +1628,7 @@ export class RoomScene implements Scene, ScriptHost {
       }
       return;
     }
-    const r = this.hotspotBounds(target.def);
+    const r = target.def.bounds;
     const cx = Math.round(r.x + r.w / 2);
     const cy = Math.round(r.y + r.h / 2);
     const clampP = (p: Point): Point => ({
@@ -1659,9 +1723,15 @@ export class RoomScene implements Scene, ScriptHost {
             : [],
         actors: room.actors,
         exits: room.def.exits,
-        hotspots: room.def.hotspots.map((def) => ({
-          def,
-          enabled: this.state.isHotspotEnabled(room.def.id, def),
+        hotspots: room.props.map((p) => ({
+          def: {
+            id: p.id,
+            name: p.name ?? p.id,
+            rect: p.outline.rect ?? (p.outline.polygon ? undefined : p.bounds),
+            polygon: p.outline.polygon,
+            verbs: {},
+          },
+          enabled: p.enabled,
         })),
         fps: this.game.fps,
         mouse,
@@ -1716,7 +1786,7 @@ export class RoomScene implements Scene, ScriptHost {
       }
       this.toasts.render(ctx);
       if (!this.narrator.active && !this.dialogue.active && isTop && this.radial.hidden) {
-        if (this.hover) this.drawHoverLabel(ctx, this.hover.name);
+        if (this.hover) this.drawHoverLabel(ctx, this.hover.name ?? 'THAT');
         else if (this.hoverExit) this.drawHoverLabel(ctx, 'EXIT');
       }
       // Radial verb menu: above the reveal overlay and the hover chip.
@@ -1858,32 +1928,36 @@ export class RoomScene implements Scene, ScriptHost {
     ctx.lineWidth = 1;
 
     // The radial shows its own name chip; skip the reveal chip for that
-    // hotspot so the two overlays don't stack the same label.
-    const radialHotspotId =
-      !this.radial.hidden && this.radialTarget?.kind === 'hotspot'
+    // prop so the two overlays don't stack the same label.
+    const radialPropId =
+      !this.radial.hidden && this.radialTarget?.kind === 'prop'
         ? this.radialTarget.def.id
         : null;
 
-    for (const def of room.def.hotspots) {
-      if (!this.state.isHotspotEnabled(room.def.id, def)) continue;
+    // Every ACTIVE interactive prop (incl. converted legacy hotspots),
+    // outlined by its hit shape. Decorations never highlight.
+    for (const prop of room.props) {
+      if (!prop.enabled || !prop.interactive) continue;
       const color = bright ? '#3fd9ff' : '#2a93b3';
-      if (def.id === radialHotspotId) {
+      if (prop.id === radialPropId) {
         continue; // outline + chip both yield to the radial cluster
       }
-      if (def.polygon && def.polygon.length >= 3) {
+      const name = prop.name ?? prop.id;
+      const shape = prop.outline;
+      if (shape.polygon && shape.polygon.length >= 3) {
         ctx.strokeStyle = color;
         ctx.beginPath();
-        def.polygon.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x + 0.5, p.y + 0.5) : ctx.lineTo(p.x + 0.5, p.y + 0.5)));
+        shape.polygon.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x + 0.5, p.y + 0.5) : ctx.lineTo(p.x + 0.5, p.y + 0.5)));
         ctx.closePath();
         ctx.stroke();
-        const xs = def.polygon.map((p) => p.x);
-        const ys = def.polygon.map((p) => p.y);
-        chip(def.name, (Math.min(...xs) + Math.max(...xs)) / 2, Math.min(...ys), '#bdeeff');
-      } else if (def.rect) {
-        const r = def.rect;
+        const xs = shape.polygon.map((p) => p.x);
+        const ys = shape.polygon.map((p) => p.y);
+        chip(name, (Math.min(...xs) + Math.max(...xs)) / 2, Math.min(...ys), '#bdeeff');
+      } else if (shape.rect) {
+        const r = shape.rect;
         ctx.strokeStyle = color;
         ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-        chip(def.name, r.x + r.w / 2, r.y, '#bdeeff');
+        chip(name, r.x + r.w / 2, r.y, '#bdeeff');
       }
     }
 

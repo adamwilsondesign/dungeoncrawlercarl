@@ -11,7 +11,6 @@ import type {
   ExitDef,
   Facing,
   FlagValue,
-  HotspotDef,
   InventoryEntry,
 } from '../data/types';
 
@@ -230,8 +229,12 @@ export class GameState {
     return `exit:${roomId}:${exitId}`;
   }
 
-  /** Enabled unless a flag overrides; falls back to the def's initial value. */
-  isHotspotEnabled(roomId: string, hotspot: HotspotDef): boolean {
+  /**
+   * Enabled unless a flag overrides; falls back to the def's initial value.
+   * Takes anything with the hotspot id/enabled shape - HotspotDefs and
+   * runtime props share this store (P17), so enableHotspot == enableProp.
+   */
+  isHotspotEnabled(roomId: string, hotspot: { id: string; enabled?: boolean }): boolean {
     const v = this.flags[GameState.hotspotKey(roomId, hotspot.id)];
     return v === undefined ? hotspot.enabled !== false : Boolean(v);
   }

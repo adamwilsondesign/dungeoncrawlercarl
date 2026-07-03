@@ -28,6 +28,9 @@ export type ScriptAction =
   | { type: 'wait'; ms: number }
   | { type: 'enableHotspot'; id: string }
   | { type: 'disableHotspot'; id: string }
+  /** Prop aliases (P17): same flag store as enableHotspot/disableHotspot. */
+  | { type: 'enableProp'; id: string }
+  | { type: 'disableProp'; id: string }
   | { type: 'enableExit'; id: string }
   | { type: 'disableExit'; id: string }
   | { type: 'gotoRoom'; roomId: string; spawn?: SpawnPoint }
@@ -146,6 +149,10 @@ export const wait = (ms: number): ScriptAction => ({ type: 'wait', ms });
 export const enableHotspot = (id: string): ScriptAction => ({ type: 'enableHotspot', id });
 
 export const disableHotspot = (id: string): ScriptAction => ({ type: 'disableHotspot', id });
+
+export const enableProp = (id: string): ScriptAction => ({ type: 'enableProp', id });
+
+export const disableProp = (id: string): ScriptAction => ({ type: 'disableProp', id });
 
 export const enableExit = (id: string): ScriptAction => ({ type: 'enableExit', id });
 

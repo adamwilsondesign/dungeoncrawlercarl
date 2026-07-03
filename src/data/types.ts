@@ -151,6 +151,66 @@ export interface HotspotDef {
 }
 
 // ---------------------------------------------------------------------------
+// Props (P17): scene elements as individual composited assets
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a prop's image comes from.
+ * - image: explicit drop-in path (props/<id>.png convention). Missing file
+ *   degrades to a generic labeled placeholder.
+ * - procedural: a named draw registered in data/propArt.ts (like sprite
+ *   designs). The drop-in override at props/<propId>.png still wins, so
+ *   every procedural prop is a paintable CMS slot too.
+ */
+export type PropArt =
+  | { kind: 'image'; path: string }
+  | { kind: 'procedural'; drawFn: string };
+
+/**
+ * Hover/click hit area for a prop.
+ * - auto (default): the bounding box of the art's non-transparent pixels,
+ *   computed once at load.
+ * - rect/polygon: authored shapes in the prop art's pixel space, relative to
+ *   the art's TOP-LEFT corner (scaled with the prop).
+ */
+export type PropHitShape =
+  | { kind: 'auto' }
+  | { kind: 'rect'; rect: Rect }
+  | { kind: 'polygon'; polygon: Point[] };
+
+/**
+ * A placed scene object: sprite + hotspot + walk blocker, unified. (x, y) is
+ * the BASELINE point - the ground-contact bottom-center of the art - used
+ * for z-sorting against actors and for depth scaling. Enabled-state shares
+ * the hotspot flag store (`hotspot:<room>:<id>`), so enableHotspot /
+ * enableProp are interchangeable and legacy saves keep working.
+ */
+export interface PropDef {
+  /** Unique in the room, stable (flags and CMS ids derive from it). */
+  id: string;
+  art: PropArt;
+  /** Baseline x (art bottom-center). */
+  x: number;
+  /** Baseline y (feet / ground contact); default z-sort key. */
+  y: number;
+  /** Authored scale multiplier on top of depth scaling. Default 1. */
+  scale?: number;
+  /** Fixed z-sort key; unset = sort by baseline y like actors. */
+  zOverride?: number;
+  /** Walk-collision rect relative to the baseline point (unscaled px). */
+  blocker?: Rect;
+  /** Default { kind: 'auto' }. */
+  hitShape?: PropHitShape;
+  /** Hover label (like HotspotDef.name). Required to interact. */
+  name?: string;
+  verbs?: HotspotVerbs;
+  /** Initial enabled state (default true); toggled via enableProp flags. */
+  enabled?: boolean;
+  /** Purely visual: never hit-tested, hovered, or highlighted. */
+  decoration?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Characters, portraits, dialogue
 // ---------------------------------------------------------------------------
 
@@ -471,6 +531,12 @@ export interface RoomDef {
   exits: ExitDef[];
   actors: ActorDef[];
   hotspots: HotspotDef[];
+  /**
+   * Composited scene objects (P17). At room load, legacy `hotspots` are
+   * converted into invisible internal props, so both lists share one runtime
+   * store, one flag namespace, and one interaction path.
+   */
+  props?: PropDef[];
   scaleBands: ScaleBand[];
   /**
    * Runs through the script runner every time the room is entered (after
@@ -513,4 +579,6 @@ export type PlaceholderSpec =
   | { kind: 'cursor'; glyph: UiGlyph }
   | { kind: 'icon'; glyph: UiGlyph; label: string; w: number; h: number }
   | { kind: 'portrait'; label: string; color: string; expression: string }
-  | { kind: 'item'; label: string };
+  | { kind: 'item'; label: string }
+  /** Prop art: renders the registered drawFn, else a generic labeled crate. */
+  | { kind: 'prop'; label: string; drawFn?: string };

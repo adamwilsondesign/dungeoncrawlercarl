@@ -16,8 +16,10 @@ import {
   describe,
   despawnActor,
   disableHotspot,
+  disableProp,
   enableExit,
   enableHotspot,
+  enableProp,
   equipItem,
   facePlayer,
   fadeIn,
@@ -103,7 +105,10 @@ const act1Intro: CutsceneDef = {
     sfxCue('deep_rumble'),
     shake(700, 2),
     enableHotspot('ruins'),
-    enableHotspot('stairwell'),
+    // The staircase and skyline are composited PROPS (P17): the beam pops
+    // into existence and the intact towers vanish with the rubble swap.
+    enableProp('stairwell'),
+    disableProp('skyline'),
     enableExit('stairs'),
     disableHotspot('window'),
     describe('The skyline folds. Quietly. Politely. Every building on Earth, collapsing at once into neat gravel, like the world had been asked in advance and was embarrassed about the noise. Everyone still indoors goes with them. Carl is outside because of a cat.'),

@@ -190,9 +190,11 @@ export class ScriptRunner {
         await host.wait(action.ms);
         break;
       case 'enableHotspot':
+      case 'enableProp':
         state.setHotspotEnabled(host.currentRoomId(), action.id, true);
         break;
       case 'disableHotspot':
+      case 'disableProp':
         state.setHotspotEnabled(host.currentRoomId(), action.id, false);
         break;
       case 'enableExit':

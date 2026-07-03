@@ -6,7 +6,7 @@
  * A* is 8-directional with no corner cutting through blocked cells.
  */
 
-import type { Facing, Point } from '../data/types';
+import type { Facing, Point, Rect } from '../data/types';
 import type { Actor } from './actor';
 import type { LoadedImage } from './assets';
 import { makeCanvas } from './assets';
@@ -47,6 +47,33 @@ export class WalkGrid {
         const i = (py * LOGICAL_W + px) * 4;
         const white = data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255;
         cells[cy * GRID_COLS + cx] = white ? 1 : 0;
+      }
+    }
+    return new WalkGrid(cells);
+  }
+
+  /**
+   * A copy of this grid with extra blocked rects stamped in (prop blockers,
+   * P17). A cell blocks when its center pixel - the same sample point the
+   * mask uses - falls inside any rect. The source grid is untouched, so the
+   * room can recompose from its base mask whenever props toggle.
+   */
+  withBlockedRects(rects: readonly Rect[]): WalkGrid {
+    if (rects.length === 0) return this;
+    const cells = this.cells.slice();
+    for (const r of rects) {
+      const cx0 = Math.max(0, Math.floor(r.x / CELL_SIZE));
+      const cy0 = Math.max(0, Math.floor(r.y / CELL_SIZE));
+      const cx1 = Math.min(GRID_COLS - 1, Math.floor((r.x + r.w) / CELL_SIZE));
+      const cy1 = Math.min(GRID_ROWS - 1, Math.floor((r.y + r.h) / CELL_SIZE));
+      for (let cy = cy0; cy <= cy1; cy++) {
+        for (let cx = cx0; cx <= cx1; cx++) {
+          const px = cx * CELL_SIZE + 2;
+          const py = cy * CELL_SIZE + 2;
+          if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) {
+            cells[cy * GRID_COLS + cx] = 0;
+          }
+        }
       }
     }
     return new WalkGrid(cells);
