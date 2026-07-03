@@ -10,7 +10,7 @@
  */
 
 import { del } from '@vercel/blob';
-import { checkAdmin, isValidAssetId, json, listOverrides } from '../_lib';
+import { checkAdmin, isValidAssetId, json, listOverrides } from '../_lib.js';
 
 export async function GET(request: Request): Promise<Response> {
   const denied = checkAdmin(request);

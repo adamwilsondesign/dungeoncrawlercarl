@@ -8,7 +8,7 @@
  * signature (a default export would be invoked with Node's (req, res)).
  */
 
-import { json, listOverrides } from './_lib';
+import { json, listOverrides } from './_lib.js';
 
 export async function GET(request: Request): Promise<Response> {
   void request;

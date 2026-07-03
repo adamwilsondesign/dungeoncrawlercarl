@@ -8,7 +8,7 @@
  */
 
 import { put } from '@vercel/blob';
-import { checkAdmin, isValidAssetId, json, OVERRIDE_PREFIX } from '../_lib';
+import { checkAdmin, isValidAssetId, json, OVERRIDE_PREFIX } from '../_lib.js';
 
 const MAX_BYTES = 4 * 1024 * 1024; // plenty for 320x200-era art
 
