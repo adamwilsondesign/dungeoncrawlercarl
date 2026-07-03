@@ -15,6 +15,8 @@ import type { Game, Scene } from './game';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 
 const TOKEN_KEY = 'dcc_admin_token';
+/** Mirrors MAX_BYTES in api/assets/upload.ts (and Vercel's ~4.5mb body cap). */
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 type ApiState = 'checking' | 'ok' | 'offline' | 'unauthorized' | 'unconfigured';
 
@@ -38,6 +40,12 @@ export class CmsScene implements Scene {
   private filterText = '';
   private filterCategory = 'all';
   private closed = false;
+  // One persistent, DOM-attached file input shared by every UPLOAD button.
+  // Detached inputs can be garbage-collected while the OS picker is open
+  // (notably in Safari), which drops the change event and makes the button
+  // look dead. Keeping it in the overlay pins it for the picker's lifetime.
+  private readonly filePicker: HTMLInputElement;
+  private pickerTarget: CatalogEntry | null = null;
 
   constructor(game: Game, catalog: CatalogEntry[]) {
     this.game = game;
@@ -90,7 +98,17 @@ export class CmsScene implements Scene {
     this.listEl = document.createElement('div');
     this.listEl.style.cssText = 'overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px';
 
-    this.root.append(header, this.banner, this.listEl);
+    this.filePicker = document.createElement('input');
+    this.filePicker.type = 'file';
+    this.filePicker.style.display = 'none';
+    this.filePicker.addEventListener('change', () => {
+      const entry = this.pickerTarget;
+      const f = this.filePicker.files?.[0];
+      this.pickerTarget = null;
+      if (entry && f) void this.upload(entry, f);
+    });
+
+    this.root.append(header, this.banner, this.listEl, this.filePicker);
     document.body.appendChild(this.root);
 
     for (const entry of this.catalog) this.listEl.appendChild(this.buildRow(entry));
@@ -140,36 +158,67 @@ export class CmsScene implements Scene {
   }
 
   private async upload(entry: CatalogEntry, file: File): Promise<void> {
+    if (this.apiState !== 'ok') {
+      this.flashBanner(`Cannot upload ${entry.id}: ${this.disabledReason()}`);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      this.flashBanner(
+        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}mb - the server caps uploads at ${MAX_UPLOAD_BYTES / 1024 / 1024}mb.`,
+      );
+      return;
+    }
     const warn = await this.dimensionWarning(entry, file);
     if (warn && !window.confirm(`${warn}\nUpload anyway?`)) return;
+    this.renderBanner(`Uploading ${entry.id} (${(file.size / 1024).toFixed(1)}kb)...`);
     const form = new FormData();
     form.set('id', entry.id);
     form.set('file', file);
-    const res = await fetch('/api/assets/upload', {
-      method: 'POST',
-      headers: { 'x-admin-token': this.token() },
-      body: form,
-    });
-    const body = (await res.json()) as { url?: string; error?: string };
-    if (!res.ok || !body.url) {
-      this.renderBanner(`Upload of ${entry.id} failed: ${body.error ?? res.status}`);
+    try {
+      const res = await fetch('/api/assets/upload', {
+        method: 'POST',
+        headers: { 'x-admin-token': this.token() },
+        body: form,
+      });
+      // Platform errors (413 body-too-large, gateway pages) are not JSON;
+      // never let the parse throw or the failure is invisible.
+      const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !body.url) {
+        this.flashBanner(`Upload of ${entry.id} failed: ${body.error ?? `HTTP ${res.status}`}`);
+        return;
+      }
+      setAssetOverride(entry.id, body.url);
+      this.remote.set(entry.id, { id: entry.id, url: body.url, size: file.size, uploadedAt: new Date().toISOString() });
+      this.renderBanner(`Uploaded ${entry.id}. Live for scenes loaded from now on (re-enter a room / relaunch from title to see it in-game).`);
+    } catch (err) {
+      this.flashBanner(`Upload of ${entry.id} failed: ${String(err)}`);
       return;
     }
-    setAssetOverride(entry.id, body.url);
-    this.remote.set(entry.id, { id: entry.id, url: body.url, size: file.size, uploadedAt: new Date().toISOString() });
-    this.renderBanner(`Uploaded ${entry.id}. Live for scenes loaded from now on (re-enter a room / relaunch from title to see it in-game).`);
     this.refreshRow(entry);
     this.refreshCounts();
   }
 
   private async revert(entry: CatalogEntry): Promise<void> {
-    const res = await fetch(`/api/assets?id=${encodeURIComponent(entry.id)}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-token': this.token() },
-    });
-    const body = (await res.json()) as { error?: string };
-    if (!res.ok) {
-      this.renderBanner(`Revert of ${entry.id} failed: ${body.error ?? res.status}`);
+    if (this.apiState !== 'ok' || assetSource(entry.id) !== 'override') {
+      this.flashBanner(
+        this.apiState !== 'ok'
+          ? `Cannot revert ${entry.id}: ${this.disabledReason()}`
+          : `${entry.id} has no Blob override active - nothing to revert.`,
+      );
+      return;
+    }
+    try {
+      const res = await fetch(`/api/assets?id=${encodeURIComponent(entry.id)}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': this.token() },
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        this.flashBanner(`Revert of ${entry.id} failed: ${body.error ?? `HTTP ${res.status}`}`);
+        return;
+      }
+    } catch (err) {
+      this.flashBanner(`Revert of ${entry.id} failed: ${String(err)}`);
       return;
     }
     setAssetOverride(entry.id, null);
@@ -177,6 +226,21 @@ export class CmsScene implements Scene {
     this.renderBanner(`Reverted ${entry.id} to its ${entry.placeholder ? 'bundled/procedural' : 'local'} source.`);
     this.refreshRow(entry);
     this.refreshCounts();
+  }
+
+  private disabledReason(): string {
+    switch (this.apiState) {
+      case 'offline':
+        return 'API unreachable - run on the Vercel deploy (or vercel dev).';
+      case 'unauthorized':
+        return 'the admin token was rejected - use SET TOKEN.';
+      case 'unconfigured':
+        return 'the server is missing ADMIN_TOKEN / a Blob store.';
+      case 'checking':
+        return 'still checking the API - try again in a moment.';
+      default:
+        return '';
+    }
   }
 
   private async dimensionWarning(entry: CatalogEntry, file: File): Promise<string | null> {
@@ -235,14 +299,14 @@ export class CmsScene implements Scene {
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:6px;flex:none';
     const uploadBtn = this.button('UPLOAD REPLACEMENT', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = entry.category === 'audio' ? 'audio/*,.ogg,.mp3,.wav' : 'image/*';
-      input.addEventListener('change', () => {
-        const f = input.files?.[0];
-        if (f) void this.upload(entry, f);
-      });
-      input.click();
+      if (this.apiState !== 'ok') {
+        this.flashBanner(`Uploads are disabled: ${this.disabledReason()}`);
+        return;
+      }
+      this.pickerTarget = entry;
+      this.filePicker.accept = entry.category === 'audio' ? 'audio/*,.ogg,.mp3,.wav' : 'image/*';
+      this.filePicker.value = ''; // re-picking the same file must still fire change
+      this.filePicker.click();
     });
     uploadBtn.className = 'cms-upload';
     const dlBtn = this.button('DOWNLOAD', () => void this.download(entry));
@@ -285,24 +349,19 @@ export class CmsScene implements Scene {
             : '<b style="color:#8fa3c4">PROCEDURAL</b>';
       srcLine.innerHTML = `source: ${badge}`;
     }
+    // Inactive buttons stay clickable (dimmed, not disabled): a disabled
+    // button swallows the click silently, which reads as "the button is
+    // broken". Clicking an inactive one flashes the reason into the banner.
     const canUpload = this.apiState === 'ok';
-    const reason =
-      this.apiState === 'offline'
-        ? 'API unreachable - run on the Vercel deploy (or vercel dev)'
-        : this.apiState === 'unauthorized'
-          ? 'admin token rejected - use SET TOKEN'
-          : this.apiState === 'unconfigured'
-            ? 'server missing ADMIN_TOKEN / Blob store'
-            : '';
     for (const sel of ['.cms-upload', '.cms-revert'] as const) {
       const btn = row.querySelector(sel);
       if (btn instanceof HTMLButtonElement) {
-        btn.disabled = sel === '.cms-revert' ? !(canUpload && source === 'override') : !canUpload;
-        btn.style.opacity = btn.disabled ? '0.45' : '1';
-        btn.title = btn.disabled
+        const inactive = sel === '.cms-revert' ? !(canUpload && source === 'override') : !canUpload;
+        btn.style.opacity = inactive ? '0.45' : '1';
+        btn.title = inactive
           ? sel === '.cms-revert' && canUpload
             ? 'nothing to revert (no Blob override active)'
-            : reason
+            : this.disabledReason()
           : sel === '.cms-revert'
             ? 'delete the Blob override; the bundled/procedural art returns'
             : `replace ${entry.id} for all visitors`;
@@ -420,6 +479,17 @@ export class CmsScene implements Scene {
 
   private renderBanner(text: string): void {
     this.banner.textContent = text;
+  }
+
+  /** Banner update that also pulses the border - for answers to a click. */
+  private flashBanner(text: string): void {
+    this.renderBanner(text);
+    this.banner.style.borderColor = '#ffb46a';
+    this.banner.style.color = '#ffb46a';
+    window.setTimeout(() => {
+      this.banner.style.borderColor = '#39465e';
+      this.banner.style.color = '#d8ecff';
+    }, 1200);
   }
 
   private refreshCounts(): void {
