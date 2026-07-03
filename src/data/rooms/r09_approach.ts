@@ -136,7 +136,7 @@ export const r09_approach: RoomDef = {
             [
               walkPlayerTo(132, 166),
               setFlag('r09.grease_taken', true),
-              narrate('You decant a tin of chopper grease, to the exact brim. A line cook pours clean or not at all.'),
+              narrate('You decant a tin of chopper grease, to the exact brim. A boat mechanic pours clean or not at all.'),
               giveItem('chopper_grease'),
             ],
           ),

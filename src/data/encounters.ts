@@ -283,7 +283,7 @@ const warChieftainLair: EncounterDef = {
   ],
   beforeTurn: (ctx) => {
     if (ctx.round === 2 && !ctx.state.getFlag('chieftain:detonated')) {
-      return 'THE AUDIENCE SUGGESTS: THIS IS A WORKSHOP FULL OF POWDER, CRAWLER. THINK LIKE A COOK.';
+      return 'THE AUDIENCE SUGGESTS: THIS IS A WORKSHOP FULL OF POWDER, CRAWLER. THINK LIKE AN ENGINEER.';
     }
     if (ctx.round >= 4 && !ctx.state.getFlag('chieftain:detonated')) {
       return 'DONUT: CARL. WE ARE LEAVING THE MOMENT YOU FINISH DYING.';

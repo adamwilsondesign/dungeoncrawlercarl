@@ -70,7 +70,7 @@ export const achievements: Record<string, AchievementDef> = {
   night_shift: {
     id: 'night_shift',
     name: 'THE NIGHT SHIFT',
-    description: 'Four caregivers, one cat, one cook. The worst floor in the world formed its best crew.',
+    description: 'Four caregivers, one cat, one mechanic. The worst floor in the world formed its best crew.',
   },
   gym_membership: {
     id: 'gym_membership',

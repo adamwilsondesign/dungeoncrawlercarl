@@ -199,9 +199,9 @@ export const r13_meadowlark: RoomDef = {
                             [
                               setFlag('raid:formed', true),
                               awardAchievement('night_shift'),
-                              describe('Brandon drops the bridge. Four night-shifters fall in behind a cook and a cat.'),
+                              describe('Brandon drops the bridge. Four night-shifters fall in behind a repairman and a cat.'),
                               notify('Raid registered: THE ROYAL COURT AND THE NIGHT SHIFT. Members: 6.'),
-                              announce('Viewers, it is HAPPENING: four eldercare workers, one line cook, and a cat with a title are going to fight the thing that has held this floor hostage all season. The gift queues just crashed in two systems. This is why we make the show, people.'),
+                              announce('Viewers, it is HAPPENING: four eldercare workers, one boat mechanic, and a cat with a title are going to fight the thing that has held this floor hostage all season. The gift queues just crashed in two systems. This is why we make the show, people.'),
                               say('donut', 'Adequate. We march at MY pace, which is a saunter.'),
                               enableExit('east'),
                             ],

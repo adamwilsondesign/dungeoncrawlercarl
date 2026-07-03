@@ -46,7 +46,7 @@ const mordecai: DialogueTree = {
     },
     crawl: {
       lines: [
-        { speakerId: 'mordecai', text: 'The plain version. A mining syndicate bought your planet. To take the minerals, they have to clear the current tenants - that is you - and interstellar law says tenants must be given a way out. This is the way out. Eighteen floors, straight down.' },
+        { speakerId: 'mordecai', text: 'The plain version. An off-world corporation was handed your planet - REGENCY, they call it, which is lawyer for keeps. To take the minerals they must clear the current tenants - that is you - and galactic law says tenants get a way out. This is the way out. Eighteen floors, straight down.' },
         { speakerId: 'mordecai', text: 'Every floor is a world of its own - monsters, bosses, locked stairwells. Clear the stairwell boss, take the stairs, do it again. Anyone who reaches the bottom alive walks away free, rich, and famous in places you have never heard of.' },
         { speakerId: 'mordecai', text: 'And because clearing a planet is expensive, they film it. You are on the show now - the whole galaxy watches crawlers die for entertainment. The audience is not a joke, Carl. Their attention is food, money, and survival. Remember that.', expression: 'worried' },
         { speakerId: 'mordecai', text: 'One more thing, because the voice upstairs says it fast and cheerful and hopes you miss it: the floors CLOSE. Each one is on a timer. Move like a tourist and the ceiling settles the argument. Do not sprint - but do not homestead, either.', expression: 'worried' },
@@ -56,8 +56,8 @@ const mordecai: DialogueTree = {
     },
     syndicate: {
       lines: [
-        { speakerId: 'mordecai', text: 'Three layers, top to bottom. The Valtay Syndicate holds your planetary license - miners, lawyers, worse. They own the dirt. They could not care less what happens above the ore line.' },
-        { speakerId: 'mordecai', text: 'The show itself is a Borant Corporation production. Borant runs the crawl: builds the seasons, sells the sponsorships, sets the prize pool. The show pays for the dig, the dig pays for the show. Tidy arrangement, if you are not the dirt.' },
+        { speakerId: 'mordecai', text: 'One owner, Carl, and a wolf at its door. The Borant Corporation holds your planet - regency rights, assigned under Syndicate law while nobody from Earth was in the room. The dirt, the minerals, the dungeon, the show: Borant, top to bottom. They are the landlord AND the network.' },
+        { speakerId: 'mordecai', text: 'The wolf is called the Valtay - a corporate government, one of the biggest there is. Borant owes them more than this planet is worth, and there is a Valtay fleet parked at the edge of this system waiting to collect. This season started in a HURRY, if you take my meaning. If it does not pay out, the Valtay run the next one. Desperate landlords make dangerous floors.', expression: 'worried' },
         { speakerId: 'mordecai', text: 'My opinion of Borant. Hm. They are cheap, Carl. Cheap in the way that kills people - understaffed floors, recycled monsters, safety rules written by the marketing department. Everything down here that works, works because somebody like me shims it up nightly.', expression: 'worried' },
         { speakerId: 'mordecai', text: 'And under all of it, the one you will actually hear: the dungeon AI. The game-show voice. It builds the floors, counts the kills, narrates your worst moments to an audience of billions. It answers to Borant. Mostly. Lately it laughs at strange times, and I do not know what that means yet.', expression: 'worried' },
         { speakerId: 'mordecai', text: 'Do not try to fight the system itself. Not yet. Learn it first. Systems have seams.' },
