@@ -20,8 +20,10 @@ import type {
   Facing,
   ItemDef,
   Point,
+  PropDef,
   Rect,
   RoomDef,
+  RoomLayout,
   SkillDef,
   SpawnPoint,
   SpriteSheetDef,
@@ -40,13 +42,15 @@ import {
 } from './assets';
 import { DebugOverlay } from './debug';
 import { DialogueBox, DialoguePlayer } from './dialogue';
+import { EditorScene } from './editor';
 import type { Game, Scene } from './game';
 import { IconBar } from './iconbar';
 import { InventoryScreen } from './inventory';
 import { AchievementsScene, ListMenuScene } from './menus';
 import { NarratorBox, wrapText } from './narrator';
 import { dominantFacing, findPath, Mover, PLAYER_WALK_SPEED, WalkGrid } from './pathfinding';
-import { buildProp, propFromHotspot, RuntimeProp } from './props';
+import { buildProp, buildPropFromImage, propFromHotspot, RuntimeProp } from './props';
+import { effectivePropDefs, getRoomLayout, isAdminMode } from './layouts';
 import { RadialMenu, type RadialVerb } from './radial';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import {
@@ -127,6 +131,7 @@ export class Room {
   static async load(
     def: RoomDef,
     bg?: { path: string; label: string; draw?: RoomDef['placeholderArtDraw'] },
+    layout?: RoomLayout | null,
   ): Promise<Room> {
     const background = await loadImage(bg?.path ?? def.backgroundPath, {
       kind: 'background',
@@ -172,18 +177,63 @@ export class Room {
     );
 
     const room = new Room(def, background, grid, actors);
-    await room.loadProps();
+    await room.loadProps(layout ?? null);
     return room;
   }
 
-  /** Build authored props (art + shapes) and convert legacy hotspots. */
-  private async loadProps(): Promise<void> {
-    const authored = await Promise.all(
-      (this.def.props ?? []).map((p) => buildProp(p, this.scaleAt(p.y))),
-    );
+  /**
+   * Build authored props (art + shapes) with any saved layout overrides
+   * merged in (P18), then convert legacy hotspots.
+   */
+  private async loadProps(layout: RoomLayout | null): Promise<void> {
+    const defs = effectivePropDefs(this.def.id, this.def.props ?? [], layout);
+    const authored = await Promise.all(defs.map((p) => buildProp(p, this.scaleAt(p.y))));
     this.props.push(...authored);
     this.props.push(...this.def.hotspots.map((h) => propFromHotspot(this.def.id, h)));
     this.rebuildGrid();
+  }
+
+  // --- Editor support (P18): live placement rebuilds -------------------------
+
+  findProp(id: string): RuntimeProp | undefined {
+    return this.props.find((p) => p.id === id);
+  }
+
+  /**
+   * Rebuild an existing prop from a patched def, reusing its loaded image
+   * (synchronous: safe to call every frame during an editor drag). The new
+   * prop previews the def's enabled value directly - the editor pauses the
+   * scene, so the flag sync reconciles on resume.
+   */
+  rebuildPropSync(def: PropDef): RuntimeProp | null {
+    const i = this.props.findIndex((p) => p.id === def.id);
+    const image = i >= 0 ? this.props[i].imageRef : null;
+    if (i < 0 || !image) return null;
+    const next = buildPropFromImage(def, image, this.scaleAt(def.y));
+    next.enabled = def.enabled !== false;
+    this.props[i] = next;
+    this.rebuildGrid();
+    return next;
+  }
+
+  /** Editor: place a brand-new prop (art loads through the normal tiers). */
+  async addPropLive(def: PropDef): Promise<RuntimeProp> {
+    const prop = await buildProp(def, this.scaleAt(def.y));
+    // Keep authored-props-before-legacy ordering for hover priority.
+    const firstLegacy = this.props.findIndex((p) => p.legacy);
+    if (firstLegacy < 0) this.props.push(prop);
+    else this.props.splice(firstLegacy, 0, prop);
+    this.rebuildGrid();
+    return prop;
+  }
+
+  /** Editor: drop a prop entirely (hidden authored / removed added). */
+  removePropLive(id: string): boolean {
+    const i = this.props.findIndex((p) => p.id === id);
+    if (i < 0) return false;
+    this.props.splice(i, 1);
+    this.rebuildGrid();
+    return true;
   }
 
   /**
@@ -202,7 +252,7 @@ export class Room {
     if (blockersChanged) this.rebuildGrid();
   }
 
-  private rebuildGrid(): void {
+  rebuildGrid(): void {
     const rects = this.props
       .filter((p) => p.enabled && p.blocker !== null)
       .map((p) => p.blocker as Rect);
@@ -526,7 +576,8 @@ export class RoomScene implements Scene, ScriptHost {
     this.finishScriptWalk(true);
     for (const move of this.sceneMovers.splice(0)) move.resolve();
 
-    const room = await Room.load(def, this.resolveBackgroundSpec(def));
+    const layout = await getRoomLayout(def.id);
+    const room = await Room.load(def, this.resolveBackgroundSpec(def), layout);
     // Resolve prop enabled-state before anything paths on the walk grid.
     room.syncProps((p) =>
       this.state.isHotspotEnabled(def.id, { id: p.id, enabled: p.initialEnabled }),
@@ -1269,6 +1320,20 @@ export class RoomScene implements Scene, ScriptHost {
 
     // Free play: each queued right-click advances one verb.
     while (input.consumeRightClick()) this.activeVerb = nextVerb(this.activeVerb);
+
+    // P18: the hidden admin room editor. Gated on the per-browser admin
+    // flag (localStorage, never GameState) - players without it never see
+    // any editor UI and Shift+E stays a dead key.
+    if (
+      isAdminMode() &&
+      (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) &&
+      input.consumePress('KeyE') &&
+      this.room
+    ) {
+      this.radial.forceHide();
+      this.game.pushScene(new EditorScene(this.game, this.room));
+      return;
+    }
 
     // Hotspot-reveal pin toggle (discoverability fix); persists across reloads.
     if (input.consumePress('KeyH')) {

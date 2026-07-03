@@ -10,6 +10,22 @@
 import { list } from '@vercel/blob';
 
 export const OVERRIDE_PREFIX = 'overrides/';
+/** Room layout files (P18 admin editor) live under their own prefix. */
+export const LAYOUT_PREFIX = 'layouts/';
+
+/** Room ids are simple slugs (r01_street). */
+export function isValidRoomId(id: string): boolean {
+  return /^[a-z0-9_-]{1,64}$/.test(id);
+}
+
+/** The Blob entry for one room's layout file, if it exists. */
+export async function findLayoutBlob(
+  roomId: string,
+): Promise<{ url: string; uploadedAt: string } | null> {
+  const page = await list({ prefix: `${LAYOUT_PREFIX}${roomId}.json` });
+  const hit = page.blobs.find((b) => b.pathname === `${LAYOUT_PREFIX}${roomId}.json`);
+  return hit ? { url: hit.url, uploadedAt: new Date(hit.uploadedAt).toISOString() } : null;
+}
 
 /** Asset ids are relative paths like backgrounds/r01_street.png. */
 export function isValidAssetId(id: string): boolean {

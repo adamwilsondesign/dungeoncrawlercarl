@@ -8,6 +8,7 @@
 import type { AchievementDef, Point } from '../data/types';
 import { drawPixelText, outlinedPanel } from './assets';
 import { audio } from './audio';
+import { isAdminMode, setAdminMode } from './layouts';
 import type { Game, Scene } from './game';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import type { GameState } from './state';
@@ -310,6 +311,14 @@ export class TitleScene implements Scene {
         this.handlers.onOpenCms?.();
         return;
       }
+      // Hidden admin-mode toggle (P18): the bottom-LEFT corner, complement
+      // to the CMS corner. Per-browser flag; Shift+E in a room opens the
+      // editor while it is on. The ADMIN chip below is the only feedback.
+      if (click.x <= 22 && click.y >= LOGICAL_H - 14) {
+        setAdminMode(!isAdminMode());
+        audio.playSfx('sfx_ui_click');
+        return;
+      }
       items.forEach((item, i) => {
         const r = this.rowRect(i);
         if (!item.disabled && click.x >= r.x && click.x < r.x + r.w && click.y >= r.y && click.y < r.y + r.h) {
@@ -345,6 +354,13 @@ export class TitleScene implements Scene {
     });
 
     drawPixelText(ctx, 'PLACEHOLDER BUILD - ALL ART GENERATED', LOGICAL_W / 2, 188, '#37415a', 1, 'center');
+    // Admin-mode indicator (P18): only ever visible once the hidden corner
+    // hotspot has been toggled on - regular players never see it.
+    if (isAdminMode()) {
+      ctx.fillStyle = 'rgba(255,138,180,0.16)';
+      ctx.fillRect(2, LOGICAL_H - 11, 34, 9);
+      drawPixelText(ctx, 'ADMIN', 5, LOGICAL_H - 9, '#ff8ab4');
+    }
     drawMenuCursor(ctx, this.game.input.mouse);
   }
 }

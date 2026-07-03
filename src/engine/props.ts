@@ -33,6 +33,8 @@ interface PropInit {
   hitPolygon: Point[] | null;
   /** Absolute walk-blocker rect in room coords. */
   blocker: Rect | null;
+  /** The (possibly layout-merged) def this was built from; null = legacy. */
+  sourceDef: PropDef | null;
 }
 
 export class RuntimeProp {
@@ -47,6 +49,8 @@ export class RuntimeProp {
   readonly initialEnabled: boolean;
   readonly blocker: Rect | null;
   readonly z: number;
+  /** The def this prop was built from (editor rebuilds placement); null = legacy. */
+  readonly sourceDef: PropDef | null;
   /** Live enabled state, synced from GameState flags by the scene. */
   enabled: boolean;
 
@@ -69,6 +73,17 @@ export class RuntimeProp {
     this.hitRect = init.hitRect;
     this.hitPolygon = init.hitPolygon;
     this.blocker = init.blocker;
+    this.sourceDef = init.sourceDef;
+  }
+
+  /** The resolved art image (editor rebuilds placement without a reload). */
+  get imageRef(): LoadedImage | null {
+    return this.image;
+  }
+
+  /** The scaled on-screen art rect (editor selection and handles), if drawn. */
+  get artBounds(): Rect | null {
+    return this.drawRect;
   }
 
   /** Interactive props hover, highlight, and take verbs. */
@@ -114,8 +129,18 @@ export class RuntimeProp {
   }
 }
 
+const alphaBoundsCache = new WeakMap<LoadedImage, Rect | null>();
+
 /** Bounding box of pixels with alpha > threshold, in image pixel coords. */
 function alphaBounds(image: LoadedImage): Rect | null {
+  const hit = alphaBoundsCache.get(image);
+  if (hit !== undefined) return hit;
+  const bb = computeAlphaBounds(image);
+  alphaBoundsCache.set(image, bb);
+  return bb;
+}
+
+function computeAlphaBounds(image: LoadedImage): Rect | null {
   const w = image.width;
   const h = image.height;
   if (w === 0 || h === 0) return null;
@@ -162,6 +187,18 @@ export async function buildProp(def: PropDef, depthScale: number): Promise<Runti
     label: def.name ?? def.id,
     drawFn: def.art.kind === 'procedural' ? def.art.drawFn : undefined,
   });
+  return buildPropFromImage(def, image, depthScale);
+}
+
+/**
+ * Synchronous variant used by the editor: rebuild a prop's placement from an
+ * already-resolved image (drags recompute every frame; alpha bounds cache).
+ */
+export function buildPropFromImage(
+  def: PropDef,
+  image: LoadedImage,
+  depthScale: number,
+): RuntimeProp {
   const s = (def.scale ?? 1) * depthScale;
   const w = image.width * s;
   const h = image.height * s;
@@ -206,6 +243,7 @@ export async function buildProp(def: PropDef, depthScale: number): Promise<Runti
     blocker: def.blocker
       ? { x: def.x + def.blocker.x, y: def.y + def.blocker.y, w: def.blocker.w, h: def.blocker.h }
       : null,
+    sourceDef: def,
   });
 }
 
@@ -236,5 +274,6 @@ export function propFromHotspot(roomId: string, def: HotspotDef): RuntimeProp {
     hitRect: def.rect ?? null,
     hitPolygon: def.polygon ?? null,
     blocker: null,
+    sourceDef: null,
   });
 }

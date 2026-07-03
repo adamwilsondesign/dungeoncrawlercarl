@@ -15,6 +15,7 @@ export class Input {
   private readonly pressed = new Set<string>();
   private readonly held = new Set<string>();
   private rightClicks = 0;
+  private leftHeld = false;
 
   constructor(target: HTMLElement, toLogical: (clientX: number, clientY: number) => Point) {
     target.addEventListener('mousemove', (e: MouseEvent) => {
@@ -27,12 +28,23 @@ export class Input {
       const p = toLogical(e.clientX, e.clientY);
       const inBounds = p.x >= 0 && p.x < LOGICAL_W && p.y >= 0 && p.y < LOGICAL_H;
       if (!inBounds) return;
-      if (e.button === 0) this.clicks.push(p);
-      else if (e.button === 2) this.rightClicks++;
+      if (e.button === 0) {
+        this.clicks.push(p);
+        this.leftHeld = true;
+      } else if (e.button === 2) this.rightClicks++;
+    });
+    // Release tracked on window so drags ending off-canvas still end.
+    window.addEventListener('mouseup', (e: MouseEvent) => {
+      if (e.button === 0) this.leftHeld = false;
     });
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       // Tab steals focus and Space scrolls; both are game keys (hotspot reveal).
-      if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
+      // Except while a DOM overlay input is focused (CMS / editor panels).
+      const typing =
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLSelectElement ||
+        document.activeElement instanceof HTMLTextAreaElement;
+      if (!typing && (e.code === 'Tab' || e.code === 'Space')) e.preventDefault();
       if (!e.repeat) this.pressed.add(e.code);
       this.held.add(e.code);
     });
@@ -40,6 +52,11 @@ export class Input {
       this.held.delete(e.code);
     });
     window.addEventListener('blur', () => this.held.clear());
+  }
+
+  /** True while the left mouse button is held (editor drags). */
+  get mouseDown(): boolean {
+    return this.leftHeld;
   }
 
   /** True while the physical key is held (continuous movement, P10 fix). */

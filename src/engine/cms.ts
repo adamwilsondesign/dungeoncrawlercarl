@@ -12,6 +12,7 @@
 import type { CatalogEntry } from '../data/assetCatalog';
 import { assetSource, invalidateAsset, loadImage, setAssetOverride } from './assets';
 import type { Game, Scene } from './game';
+import { isAdminMode, setAdminMode } from './layouts';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 
 const TOKEN_KEY = 'dcc_admin_token';
@@ -90,7 +91,20 @@ export class CmsScene implements Scene {
       }
     });
     const closeBtn = this.button('CLOSE (ESC)', () => this.close());
-    header.append(title, this.counts, search, catSel, tokenBtn, closeBtn);
+    // P18: the CMS user is the admin user - expose the admin-mode toggle
+    // here too (same per-browser flag as the title's hidden corner). With
+    // it on, Shift+E inside any room opens the placement editor.
+    const adminBtn = this.button('', () => {
+      setAdminMode(!isAdminMode());
+      adminBtn.textContent = `ADMIN MODE: ${isAdminMode() ? 'ON' : 'OFF'}`;
+      this.renderBanner(
+        isAdminMode()
+          ? 'Admin mode ON: press Shift+E inside any room to open the layout editor.'
+          : 'Admin mode OFF.',
+      );
+    });
+    adminBtn.textContent = `ADMIN MODE: ${isAdminMode() ? 'ON' : 'OFF'}`;
+    header.append(title, this.counts, search, catSel, tokenBtn, adminBtn, closeBtn);
 
     this.banner = document.createElement('div');
     this.banner.style.cssText = 'padding:6px 10px;border:1px solid #39465e;background:#101826';

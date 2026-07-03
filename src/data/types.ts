@@ -211,6 +211,50 @@ export interface PropDef {
 }
 
 // ---------------------------------------------------------------------------
+// Room layout overrides (P18): the in-game admin editor's save format.
+// Stored per room as JSON in Blob storage at layouts/<roomId>.json.
+// ---------------------------------------------------------------------------
+
+/**
+ * Placement-only override for one authored prop. Omitted fields inherit
+ * from the RoomDef; the editor never touches verbs, name, art, or blocker
+ * geometry (the blocker rect follows the baseline automatically).
+ */
+export interface PropPlacementOverride {
+  x?: number;
+  y?: number;
+  scale?: number;
+  /** A number pins z; null explicitly CLEARS an author's zOverride. */
+  zOverride?: number | null;
+  enabled?: boolean;
+  /** Author-declared prop hidden entirely by the editor. */
+  removed?: true;
+}
+
+/**
+ * A prop authored entirely in the editor. Its art is a propArt design name
+ * (or a props/<id>.png asset id); such props are decoration-only until an
+ * author upgrades them in code.
+ */
+export interface EditorAddedProp {
+  id: string;
+  artDesign: string;
+  x: number;
+  y: number;
+  scale?: number;
+  zOverride?: number;
+}
+
+/** One room's saved layout file (layouts/<roomId>.json). */
+export interface RoomLayout {
+  version: 1;
+  roomId: string;
+  updatedAt: number;
+  overrides: Record<string, PropPlacementOverride>;
+  added: EditorAddedProp[];
+}
+
+// ---------------------------------------------------------------------------
 // Characters, portraits, dialogue
 // ---------------------------------------------------------------------------
 

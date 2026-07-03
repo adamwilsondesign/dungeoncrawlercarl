@@ -29,6 +29,7 @@ import { skills } from './data/skills';
 import { buildAssetCatalog } from './data/assetCatalog';
 import type { RoomDef, SpriteSheetDef } from './data/types';
 import { initAssetOverrides } from './engine/assets';
+import { initLayouts } from './engine/layouts';
 import { audio } from './engine/audio';
 import { CmsScene } from './engine/cms';
 import { Game } from './engine/game';
@@ -96,6 +97,10 @@ async function boot(): Promise<void> {
   // Hosted-asset overrides (the CMS tier): fetched once; never throws, and
   // without a reachable API the game runs on bundled + procedural art.
   await initAssetOverrides();
+
+  // Saved room layouts (P18, the admin editor's output): public index
+  // fetched once; rooms apply their layout at load. Never throws.
+  await initLayouts();
 
   // Audio wakes on the first user gesture (autoplay policy); cues fired
   // before that are remembered and start once the context unlocks.
