@@ -51,7 +51,6 @@ const PLAN_FRAMES: Record<string, [number, number]> = {
 };
 
 const VERBS = ['walk', 'look', 'hand', 'talk', 'item', 'magnify'] as const;
-const BAR_GLYPHS = ['inventory', 'party', 'settings'] as const;
 
 export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
   const out: CatalogEntry[] = [];
@@ -198,18 +197,6 @@ export function buildAssetCatalog(src: CatalogSource): CatalogEntry[] {
       placeholder: { kind: 'cursor', glyph: verb },
     });
   }
-  for (const glyph of BAR_GLYPHS) {
-    add({
-      id: `ui/icon_${glyph}.png`,
-      category: 'ui',
-      label: `${glyph} bar button`,
-      spec: '52x18 PNG button',
-      expectW: 52,
-      expectH: 18,
-      placeholder: { kind: 'icon', glyph, label: glyph.toUpperCase(), w: 52, h: 18 },
-    });
-  }
-
   // Audio: every music loop and one-shot from the audio registry. A real
   // file (Blob override or bundled at src/assets/audio/<id>.ogg|mp3|wav)
   // beats the synth, exactly like the art tiers.

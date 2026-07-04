@@ -11,6 +11,9 @@ export class Input {
   /** Current mouse position in logical coords (may be outside 0..319/0..199 in the letterbox). */
   readonly mouse: Point = { x: 0, y: 0 };
 
+  /** True while the pointer hovers DOM UI (overlay panels), not the canvas. */
+  overUi = false;
+
   private readonly clicks: Point[] = [];
   private readonly pressed = new Set<string>();
   private readonly held = new Set<string>();
@@ -19,10 +22,13 @@ export class Input {
   private wheelSteps = 0;
 
   constructor(target: HTMLElement, toLogical: (clientX: number, clientY: number) => Point) {
-    target.addEventListener('mousemove', (e: MouseEvent) => {
+    // Window-level so the position never goes stale while the pointer is
+    // over a DOM overlay (narration boxes, nav) that swallows canvas events.
+    window.addEventListener('mousemove', (e: MouseEvent) => {
       const p = toLogical(e.clientX, e.clientY);
       this.mouse.x = p.x;
       this.mouse.y = p.y;
+      this.overUi = e.target !== target;
     });
     target.addEventListener('contextmenu', (e: Event) => e.preventDefault());
     target.addEventListener('mousedown', (e: MouseEvent) => {

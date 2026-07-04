@@ -13,6 +13,8 @@ export interface Scene {
   render(ctx: CanvasRenderingContext2D): void;
   /** Called instead of update() while another scene is on top (e.g. toast anims). */
   updatePassive?(dtMs: number): void;
+  /** Called when the scene leaves the stack (DOM-rendering scenes clean up). */
+  dispose?(): void;
 }
 
 const STEP_MS = 1000 / 60;
@@ -42,11 +44,13 @@ export class Game {
   }
 
   popScene(): Scene | undefined {
-    return this.scenes.pop();
+    const scene = this.scenes.pop();
+    scene?.dispose?.();
+    return scene;
   }
 
   replaceScene(scene: Scene): void {
-    this.scenes.pop();
+    this.scenes.pop()?.dispose?.();
     this.scenes.push(scene);
   }
 
@@ -58,12 +62,14 @@ export class Game {
   /** Pop scenes until the given scene is on top (no-op if absent). */
   popTo(scene: Scene): void {
     if (!this.scenes.includes(scene)) return;
-    while (this.scenes.length > 0 && !this.isTop(scene)) this.scenes.pop();
+    while (this.scenes.length > 0 && !this.isTop(scene)) this.scenes.pop()?.dispose?.();
   }
 
   /** Replace the whole stack with a single scene. */
   resetTo(scene: Scene): void {
-    this.scenes.length = 0;
+    for (const s of this.scenes.splice(0)) {
+      if (s !== scene) s.dispose?.();
+    }
     this.scenes.push(scene);
   }
 

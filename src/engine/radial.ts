@@ -11,10 +11,13 @@
  */
 
 import type { Point } from '../data/types';
-import { drawPixelText, pixelTextWidth, type LoadedImage } from './assets';
-import { IconBar } from './iconbar';
+import type { LoadedImage } from './assets';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
+import { el, getUi } from './ui';
 import type { Verb } from './verbs';
+
+/** Logical rows covered by the DOM top nav (48px CSS at 4x upscale). */
+const TOP_UI_H = 12;
 
 export type RadialVerb = 'look' | 'hand' | 'talk' | 'walk';
 
@@ -63,16 +66,54 @@ export class RadialMenu {
   /** Pop the cluster at the cursor, clamped fully onscreen. */
   show(at: Point, label: string): void {
     const margin = RADIUS + DISC_R + 2;
-    // Label chip needs ~12px above (or below when clamped near the top).
-    this.labelBelow = at.y - margin - 12 < IconBar.HEIGHT;
-    const minY = IconBar.HEIGHT + margin + (this.labelBelow ? 0 : 12);
-    const maxY = LOGICAL_H - margin - (this.labelBelow ? 12 : 0);
+    // The DOM label chip needs ~10px above (or below when top-clamped).
+    this.labelBelow = at.y - margin - 10 < TOP_UI_H;
+    const minY = TOP_UI_H + margin + (this.labelBelow ? 0 : 10);
+    const maxY = LOGICAL_H - margin - (this.labelBelow ? 10 : 0);
     this.cx = Math.max(margin, Math.min(LOGICAL_W - margin, at.x));
     this.cy = Math.max(minY, Math.min(maxY, at.y));
     this.label = label;
     this.selected = 0;
     this.phase = 'opening';
     this.t = 0;
+    this.syncChip();
+  }
+
+  /** The target-name label is DOM (P20): crisp text over canvas discs. */
+  private chip: HTMLDivElement | null = null;
+
+  private ensureChip(): HTMLDivElement {
+    if (!this.chip) {
+      this.chip = el(
+        'div',
+        'position:absolute;display:none;transform:translateX(-50%);padding:2px 10px;' +
+          'background:rgba(4,10,18,0.92);border:1px solid var(--dcc-gold);color:var(--dcc-gold);' +
+          'font-size:14px;letter-spacing:1px;white-space:nowrap',
+      );
+      this.chip.dataset.radialLabel = '1';
+      getUi().layer('narrator').appendChild(this.chip);
+    }
+    return this.chip;
+  }
+
+  private syncChip(): void {
+    const chip = this.ensureChip();
+    if (this.phase === 'hidden') {
+      chip.style.display = 'none';
+      return;
+    }
+    const scale = getUi().scale;
+    const gap = RADIUS + DISC_R + 3;
+    chip.textContent = this.label;
+    chip.style.display = 'block';
+    chip.style.left = `${this.cx * scale}px`;
+    if (this.labelBelow) {
+      chip.style.top = `${(this.cy + gap) * scale}px`;
+      chip.style.bottom = 'auto';
+    } else {
+      chip.style.top = `${(this.cy - gap) * scale - 24}px`;
+      chip.style.bottom = 'auto';
+    }
   }
 
   /** Animated dismiss (quick fade-out). */
@@ -80,12 +121,14 @@ export class RadialMenu {
     if (this.active) {
       this.phase = 'dismissing';
       this.t = 0;
+      this.syncChip();
     }
   }
 
   /** Instant hide (mode gates: cutscene/dialogue/menu/combat/transition). */
   forceHide(): void {
     this.phase = 'hidden';
+    this.syncChip();
   }
 
   tick(dtMs: number): void {
@@ -94,7 +137,10 @@ export class RadialMenu {
       if (this.t >= OPEN_MS) this.phase = 'visible';
     } else if (this.phase === 'dismissing') {
       this.t += dtMs;
-      if (this.t >= CLOSE_MS) this.phase = 'hidden';
+      if (this.t >= CLOSE_MS) {
+        this.phase = 'hidden';
+        this.syncChip();
+      }
     }
   }
 
@@ -171,19 +217,7 @@ export class RadialMenu {
       ctx.drawImage(icon, Math.round(cx - icon.width / 2), Math.round(cy - icon.height / 2));
     }
 
-    // Hotspot name chip, centered over (or under, when top-clamped) the
-    // cluster - same styling as the world hover chip.
-    const w = pixelTextWidth(this.label);
-    let lx = Math.round(this.cx - w / 2);
-    lx = Math.max(2, Math.min(lx, LOGICAL_W - w - 8));
-    const ly = this.labelBelow ? this.cy + RADIUS + DISC_R + 5 : this.cy - RADIUS - DISC_R - 12;
-    ctx.fillStyle = 'rgba(4,10,18,0.9)';
-    ctx.fillRect(lx - 3, ly - 3, w + 6, 11);
-    ctx.strokeStyle = '#ffe9a8';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(lx - 2.5, ly - 2.5, w + 5, 10);
-    drawPixelText(ctx, this.label, lx, ly, '#ffe9a8');
-
+    // (P20: the target-name label is a DOM chip; only discs draw here.)
     ctx.restore();
   }
 }

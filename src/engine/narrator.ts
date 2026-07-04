@@ -1,51 +1,43 @@
 /**
- * The narration message boxes, placed where the KQ5 narrator lived (bottom
- * third). One queue, three distinct voice channels (see
- * src/data/VOICE_BIBLE.md):
- * - announce: The Crawl AI's live broadcast - widest box, amber, ON AIR tally.
- * - notify:   dungeon-interface pops - compact, right-anchored, cold green,
- *             machine-fast typewriter.
- * - describe: the ambient narrator - full-width, muted bone, no plate.
- * Externally-tagged speaker lines keep their classic gold plate styling.
+ * The narration boxes - P20: DOM overlay rendering at native resolution,
+ * one queue, three voice channels with per-channel docking (Task 5 rules):
+ * - announce: The Crawl AI broadcast - LARGE, top-center just below the nav,
+ *   full-width across the play area, amber broadcast border + ON AIR tally,
+ *   VT323 at 20px.
+ * - notify:   interface pops - compact, top-right below the nav, cold green,
+ *   VT323 at 18px, machine-fast reveal, AUTO-DISMISSES (~2.4s after the
+ *   reveal) so interface chatter never demands a click; any advance input
+ *   still dismisses early.
+ * - describe: ambient narrator - bottom dock, parchment on dark, Pixelify
+ *   at 15px. Speaker-tagged lines share the bottom dock with a gold plate.
  *
- * Typewriter reveal at a configurable chars/sec (elapsed-ms based); the
- * first advance completes the reveal, the second dismisses. show() resolves
- * on dismissal so the script runner can await it; queued messages play
- * back-to-back. The Typewriter + wrapText helpers are shared with the
- * dialogue box so all channels feel identical to drive.
+ * The queue/advance semantics are unchanged: show() resolves on dismissal,
+ * the first advance completes the typewriter reveal, the second dismisses.
+ * update() ticks the reveal off the game loop's clock. render() is a no-op
+ * kept for call-site compatibility (nothing draws to canvas anymore).
  */
 
 import type { VoiceChannel } from '../data/types';
-import { drawPixelText, pixelTextWidth } from './assets';
-import type { GameFont } from './fonts';
 import { audio } from './audio';
-import { LOGICAL_W } from './renderer';
+import { TopNav } from './iconbar';
+import { el, type UiLayer } from './ui';
 
-/**
- * Wrap text to a width budget. The legacy unit is kept for call-site
- * stability: maxChars is the old 4px-per-glyph bitmap budget, so the pixel
- * budget is maxChars * 4 - now measured with the real font.
- */
-export function wrapText(text: string, maxChars: number, font: GameFont = 'ui'): string[] {
-  const maxPx = maxChars * 4;
+/** Word-wrap helper retained for canvas consumers (menu body text). */
+export function wrapText(text: string, maxChars: number): string[] {
   const lines: string[] = [];
   let line = '';
-  const fits = (t: string): boolean => pixelTextWidth(t, 1, font) <= maxPx;
   for (const word of text.split(' ')) {
     let w = word;
-    // Hard-break words that are longer than a full line.
-    while (!fits(w)) {
-      let cut = w.length - 1;
-      while (cut > 1 && !fits(w.slice(0, cut))) cut--;
+    while (w.length > maxChars) {
       if (line) {
         lines.push(line);
         line = '';
       }
-      lines.push(w.slice(0, cut));
-      w = w.slice(cut);
+      lines.push(w.slice(0, maxChars));
+      w = w.slice(maxChars);
     }
     if (!line) line = w;
-    else if (fits(`${line} ${w}`)) line = `${line} ${w}`;
+    else if (line.length + 1 + w.length <= maxChars) line = `${line} ${w}`;
     else {
       lines.push(line);
       line = w;
@@ -55,22 +47,17 @@ export function wrapText(text: string, maxChars: number, font: GameFont = 'ui'):
   return lines;
 }
 
-/** Elapsed-ms character reveal shared by narrator and dialogue boxes. */
+/** Elapsed-ms character reveal (pacing only; wrapping is CSS-native now). */
 export class Typewriter {
-  private wrapped: string[] = [];
-  private totalChars = 0;
+  private text = '';
   private elapsedMs = 0;
   private forced = false;
   private rate = 1;
-  private font: GameFont = 'ui';
 
   constructor(private readonly charsPerSec = 40) {}
 
-  /** rate scales the reveal speed (the notify channel spits like a machine). */
-  set(text: string, maxChars: number, rate = 1, font: GameFont = 'ui'): void {
-    this.font = font;
-    this.wrapped = wrapText(text, maxChars, font);
-    this.totalChars = this.wrapped.reduce((n, l) => n + l.length, 0);
+  set(text: string, rate = 1): void {
+    this.text = text;
     this.elapsedMs = 0;
     this.forced = false;
     this.rate = rate;
@@ -80,151 +67,50 @@ export class Typewriter {
     this.elapsedMs += dtMs;
   }
 
-  get lines(): readonly string[] {
-    return this.wrapped;
+  get full(): string {
+    return this.text;
   }
 
   revealedChars(): number {
-    if (this.forced) return this.totalChars;
-    return Math.min(
-      this.totalChars,
-      Math.floor((this.elapsedMs * this.charsPerSec * this.rate) / 1000),
-    );
+    if (this.forced) return this.text.length;
+    return Math.min(this.text.length, Math.floor((this.elapsedMs * this.charsPerSec * this.rate) / 1000));
+  }
+
+  revealed(): string {
+    return this.text.slice(0, this.revealedChars());
   }
 
   get fullyRevealed(): boolean {
-    return this.revealedChars() >= this.totalChars;
+    return this.revealedChars() >= this.text.length;
   }
 
-  /** Skip to the end of the reveal (first advance click). */
   complete(): void {
     this.forced = true;
   }
 
-  /** Blink phase for the advance indicator. */
   get blinkOn(): boolean {
     return Math.floor(this.elapsedMs / 400) % 2 === 0;
-  }
-
-  /** Draw the revealed portion, one wrapped line at a time. */
-  drawText(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    lineH: number,
-    color: string,
-    firstLine = 0,
-    maxLines = Infinity,
-  ): void {
-    let remaining = this.revealedChars();
-    for (let i = 0; i < this.wrapped.length && remaining > 0; i++) {
-      const line = this.wrapped[i];
-      const row = i - firstLine;
-      if (row >= 0 && row < maxLines) {
-        drawPixelText(ctx, line.slice(0, remaining), x, y + row * lineH, color, 1, 'left', this.font);
-      }
-      remaining -= line.length;
-    }
   }
 }
 
 interface Message {
   text: string;
-  /** Speaker tag for externally-tagged lines; overrides the channel plate. */
   speaker?: string;
   channel: VoiceChannel;
   resolve: () => void;
 }
 
-const BOX_BOTTOM = 192;
-const PAD = 6;
-const LINE_H = 9;
-
 /** The broadcast speaker plate on every announce() box. */
 export const AI_NAME = 'THE CRAWL AI';
 
-interface ChannelStyle {
-  /** Horizontal margin from the screen edges. */
-  margin: number;
-  /** Fraction of the available width the panel occupies. */
-  widthFrac: number;
-  /** Which edge a sub-full-width panel hugs. */
-  align: 'left' | 'right';
-  bg: string;
-  accent: string;
-  text: string;
-  /** Plate text; null = plateless (describe gets a small ellipsis nub). */
-  plate: string | null;
-  /** Typewriter speed multiplier. */
-  rate: number;
-  /** Broadcast dressing: blinking ON AIR tally + double border. */
-  onAir: boolean;
-  /** 'ai' = VT323 (the Crawl AI / interface); 'ui' = Pixelify Sans. */
-  font: GameFont;
-}
+/** notify() lingers this long after its reveal, then dismisses itself. */
+const NOTIFY_LINGER_MS = 2400;
 
-const CHANNEL_STYLES: Record<VoiceChannel, ChannelStyle> = {
-  // Live-broadcast game show: widest box, warm amber, ON AIR tally.
-  announce: {
-    margin: 3,
-    widthFrac: 1,
-    align: 'left',
-    bg: '#1a0e03',
-    accent: '#ffab2e',
-    text: '#ffe9c9',
-    plate: AI_NAME,
-    rate: 1,
-    onAir: true,
-    font: 'ai',
-  },
-  // Dungeon interface: compact right-anchored toast, cold green, machine-fast.
-  notify: {
-    margin: 6,
-    widthFrac: 0.62,
-    align: 'right',
-    bg: '#03130c',
-    accent: '#57e6a8',
-    text: '#c9f5e2',
-    plate: 'SYSTEM',
-    rate: 3,
-    onAir: false,
-    font: 'ai',
-  },
-  // Ambient narrator: classic full-width box in parchment/bone, no plate.
-  describe: {
-    margin: 6,
-    widthFrac: 1,
-    align: 'left',
-    bg: '#141109',
-    accent: '#b3a68a',
-    text: '#e6ddc4',
-    plate: null,
-    rate: 1,
-    onAir: false,
-    font: 'ui',
-  },
-};
-
-/** Externally-tagged speaker lines keep the classic gold narrator styling. */
-const SPEAKER_STYLE: ChannelStyle = {
-  margin: 6,
-  widthFrac: 1,
-  align: 'left',
-  bg: '#0a1120',
-  accent: '#ffd166',
-  text: '#d8ecff',
-  plate: null, // plate text comes from the message's speaker tag
-  rate: 1,
-  onAir: false,
-  font: 'ui',
-};
-
-function styleFor(message: Message): ChannelStyle {
-  return message.speaker ? SPEAKER_STYLE : CHANNEL_STYLES[message.channel];
-}
-
-function boxWidth(style: ChannelStyle): number {
-  return Math.round((LOGICAL_W - style.margin * 2) * style.widthFrac);
+interface ChannelDom {
+  box: HTMLDivElement;
+  plate: HTMLSpanElement | null;
+  text: HTMLDivElement;
+  more: HTMLSpanElement;
 }
 
 export class NarratorBox {
@@ -232,9 +118,56 @@ export class NarratorBox {
   private current: Message | null = null;
   private readonly tw: Typewriter;
   private lastBlipAt = 0;
+  private notifyLingerMs = 0;
+  private readonly dom: Record<'announce' | 'notify' | 'describe' | 'speaker', ChannelDom>;
+  private shown: ChannelDom | null = null;
 
-  constructor(charsPerSec = 40) {
+  constructor(ui: UiLayer, charsPerSec = 40) {
     this.tw = new Typewriter(charsPerSec);
+    const host = ui.layer('narrator');
+    this.dom = {
+      announce: buildBox(host, {
+        css:
+          `top:${TopNav.HEIGHT + 12}px;left:12px;right:12px;` +
+          'background:var(--dcc-amber-bg);border:2px solid var(--dcc-amber);' +
+          'box-shadow:inset 0 0 0 2px rgba(255,171,46,0.25);' +
+          'font-family:var(--dcc-font-ai);font-size:20px;color:var(--dcc-amber-text)',
+        plate: AI_NAME,
+        plateCss: 'background:var(--dcc-amber);color:#180d02',
+        onAir: true,
+      }),
+      notify: buildBox(host, {
+        css:
+          `top:${TopNav.HEIGHT + 12}px;right:12px;max-width:46%;` +
+          'background:var(--dcc-notify-bg);border:1px solid var(--dcc-notify);' +
+          'font-family:var(--dcc-font-ai);font-size:18px;color:var(--dcc-notify-text)',
+        plate: 'SYSTEM',
+        plateCss: 'background:var(--dcc-notify);color:#04140b',
+        onAir: false,
+      }),
+      describe: buildBox(host, {
+        css:
+          'bottom:8px;left:8px;right:8px;' +
+          'background:var(--dcc-parchment-bg);border:2px solid var(--dcc-parchment);' +
+          'font-family:var(--dcc-font-ui);font-size:15px;color:var(--dcc-parchment-text)',
+        plate: null,
+        plateCss: '',
+        onAir: false,
+      }),
+      speaker: buildBox(host, {
+        css:
+          'bottom:8px;left:8px;right:8px;' +
+          'background:#0a1120;border:2px solid var(--dcc-gold);' +
+          'font-family:var(--dcc-font-ui);font-size:15px;color:var(--dcc-text-primary)',
+        plate: '',
+        plateCss: 'background:var(--dcc-gold);color:#081018',
+        onAir: false,
+      }),
+    };
+    // Clicking any narration box advances it (same as clicking the world).
+    for (const dom of Object.values(this.dom)) {
+      dom.box.addEventListener('mousedown', () => this.advance());
+    }
   }
 
   get active(): boolean {
@@ -252,13 +185,28 @@ export class NarratorBox {
   }
 
   private next(): void {
+    this.hideShown();
     this.current = this.queue.shift() ?? null;
     this.lastBlipAt = 0;
-    if (this.current) {
-      const style = styleFor(this.current);
-      const maxChars = Math.floor((boxWidth(style) - PAD * 2) / 4);
-      this.tw.set(this.current.text, maxChars, style.rate, style.font);
-      audio.playSfx('sfx_chime');
+    this.notifyLingerMs = 0;
+    if (!this.current) return;
+    const message = this.current;
+    const kind = message.speaker ? 'speaker' : message.channel;
+    const dom = this.dom[kind];
+    if (message.speaker && dom.plate) dom.plate.textContent = message.speaker.toUpperCase();
+    const rate = message.channel === 'notify' && !message.speaker ? 3 : 1;
+    this.tw.set(message.text, rate);
+    dom.text.textContent = '';
+    dom.more.style.visibility = 'hidden';
+    dom.box.style.display = 'block';
+    this.shown = dom;
+    audio.playSfx('sfx_chime');
+  }
+
+  private hideShown(): void {
+    if (this.shown) {
+      this.shown.box.style.display = 'none';
+      this.shown = null;
     }
   }
 
@@ -266,6 +214,7 @@ export class NarratorBox {
   skipAll(): void {
     const all = this.current ? [this.current, ...this.queue.splice(0)] : this.queue.splice(0);
     this.current = null;
+    this.hideShown();
     for (const message of all) message.resolve();
   }
 
@@ -282,77 +231,83 @@ export class NarratorBox {
   }
 
   update(dtMs: number): void {
-    if (!this.current) return;
+    const message = this.current;
+    const dom = this.shown;
+    if (!message || !dom) return;
     this.tw.update(dtMs);
+    const revealed = this.tw.revealed();
+    if (dom.text.textContent !== revealed) dom.text.textContent = revealed;
+    const done = this.tw.fullyRevealed;
+    dom.more.style.visibility = done ? 'visible' : 'hidden';
     // Typewriter blip: one soft tick per few revealed characters.
-    const revealed = this.tw.revealedChars();
-    if (revealed >= this.lastBlipAt + 4 && !this.tw.fullyRevealed) {
-      this.lastBlipAt = revealed;
+    if (!done && revealed.length >= this.lastBlipAt + 4) {
+      this.lastBlipAt = revealed.length;
       audio.playSfx('sfx_blip');
     }
+    // Interface pops dismiss themselves; chatter never demands a click.
+    if (done && message.channel === 'notify' && !message.speaker) {
+      this.notifyLingerMs += dtMs;
+      if (this.notifyLingerMs >= NOTIFY_LINGER_MS) {
+        const finished = message;
+        this.next();
+        finished.resolve();
+      }
+    }
   }
 
+  /** Legacy no-op: narration is DOM now. */
   render(ctx: CanvasRenderingContext2D): void {
-    if (!this.current) return;
-    const style = styleFor(this.current);
-    const { accent } = style;
-    const w = boxWidth(style);
-    const plate = this.current.speaker ? this.current.speaker.toUpperCase() : style.plate;
-
-    const h = 10 + this.tw.lines.length * LINE_H + PAD + (style.onAir ? 2 : 0);
-    const x = style.align === 'right' ? LOGICAL_W - style.margin - w : style.margin;
-    const y = BOX_BOTTOM - h;
-
-    // Panel with accent border and an inner shadow line
-    ctx.fillStyle = style.bg;
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(x + 1, y + 1, w - 2, 1);
-    if (style.onAir) {
-      // Broadcast dressing: a second inner border line
-      ctx.strokeStyle = 'rgba(255,171,46,0.35)';
-      ctx.strokeRect(x + 2.5, y + 2.5, w - 5, h - 5);
-    }
-
-    if (plate) {
-      // Plate tag overlapping the top border
-      const tagW = pixelTextWidth(plate, 1, style.font) + 6;
-      ctx.fillStyle = accent;
-      ctx.fillRect(x + 6, y - 6, tagW, 12);
-      drawPixelText(ctx, plate, x + 9, y - 4, '#04121a', 1, 'left', style.font);
-    } else {
-      // Plateless ambient narration: a small ellipsis nub on the border
-      ctx.fillStyle = accent;
-      for (let i = 0; i < 3; i++) ctx.fillRect(x + 8 + i * 4, y - 1, 2, 2);
-    }
-
-    if (style.onAir) {
-      // Blinking broadcast tally on the right of the top border
-      const label = 'ON AIR';
-      const labelW = pixelTextWidth(label, 1, style.font);
-      const tx = x + w - labelW - 14;
-      ctx.fillStyle = style.bg;
-      ctx.fillRect(tx - 4, y - 6, labelW + 16, 12);
-      ctx.strokeStyle = accent;
-      ctx.strokeRect(tx - 3.5, y - 5.5, labelW + 15, 11);
-      drawPixelText(ctx, label, tx + 6, y - 4, accent, 1, 'left', style.font);
-      ctx.fillStyle = this.tw.blinkOn ? '#ff4d4d' : '#5a1717';
-      ctx.fillRect(tx, y - 1, 3, 3);
-    }
-
-    this.tw.drawText(ctx, x + PAD, y + 9 + (style.onAir ? 1 : 0), LINE_H, style.text);
-
-    // Blinking advance indicator once fully revealed
-    if (this.tw.fullyRevealed && this.tw.blinkOn) {
-      const ax = x + w - 9;
-      const ay = y + h - 6;
-      ctx.fillStyle = accent;
-      ctx.fillRect(ax, ay, 5, 1);
-      ctx.fillRect(ax + 1, ay + 1, 3, 1);
-      ctx.fillRect(ax + 2, ay + 2, 1, 1);
-    }
+    void ctx;
   }
+}
+
+function buildBox(
+  host: HTMLElement,
+  spec: { css: string; plate: string | null; plateCss: string; onAir: boolean },
+): ChannelDom {
+  const box = el(
+    'div',
+    'position:absolute;display:none;padding:14px 16px 12px;pointer-events:auto;cursor:auto;' + spec.css,
+  );
+  let plate: HTMLSpanElement | null = null;
+  if (spec.plate !== null) {
+    plate = el(
+      'span',
+      'position:absolute;top:-12px;left:12px;padding:1px 10px;font-size:14px;' +
+        'font-weight:700;letter-spacing:1px;font-family:inherit;' + spec.plateCss,
+      spec.plate,
+    );
+    box.appendChild(plate);
+  } else {
+    box.appendChild(
+      el(
+        'span',
+        'position:absolute;top:-9px;left:12px;letter-spacing:3px;color:var(--dcc-parchment);font-size:12px',
+        '...',
+      ),
+    );
+  }
+  if (spec.onAir) {
+    const tally = el(
+      'span',
+      'position:absolute;top:-12px;right:12px;display:flex;align-items:center;gap:6px;' +
+        'padding:1px 10px;font-size:14px;background:var(--dcc-amber-bg);' +
+        'border:1px solid var(--dcc-amber);color:var(--dcc-amber);font-family:inherit',
+    );
+    tally.append(
+      el('span', 'width:8px;height:8px;background:var(--dcc-danger);animation:dcc-blink 0.8s infinite'),
+      el('span', '', 'ON AIR'),
+    );
+    box.appendChild(tally);
+  }
+  const text = el('div', 'white-space:pre-wrap');
+  const more = el(
+    'span',
+    'position:absolute;right:10px;bottom:2px;visibility:hidden;font-family:inherit;' +
+      'animation:dcc-blink 0.8s infinite;font-size:0.9em',
+    '▼',
+  );
+  box.append(text, more);
+  host.appendChild(box);
+  return { box, plate, text, more };
 }

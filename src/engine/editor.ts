@@ -83,11 +83,12 @@ export class EditorScene implements Scene {
     this.roomId = room.def.id;
 
     this.root = document.createElement('div');
+    this.root.className = 'dcc-ui';
     this.root.style.cssText = [
-      'position:fixed', 'left:0', 'top:0', 'bottom:0', 'width:270px', 'z-index:40',
-      'background:rgba(6,10,20,0.88)', 'color:#d8ecff', 'font:12px/1.45 monospace',
-      'display:flex', 'flex-direction:column', 'gap:6px', 'padding:10px',
-      'box-sizing:border-box', 'border-right:1px solid #39465e', 'cursor:auto',
+      'position:fixed', 'left:0', 'top:0', 'bottom:0', 'width:280px', 'z-index:40',
+      'background:rgba(6,10,20,0.92)', 'color:var(--dcc-text-primary)', 'font-size:13px',
+      'display:flex', 'flex-direction:column', 'gap:8px', 'padding:12px',
+      'box-sizing:border-box', 'border-right:2px solid var(--dcc-border)', 'cursor:auto',
     ].join(';');
 
     const header = document.createElement('div');
@@ -752,10 +753,9 @@ export class EditorScene implements Scene {
 
   private button(label: string, onClick: () => void, cls?: string): HTMLButtonElement {
     const b = document.createElement('button');
+    b.className = 'dcc-btn' + (cls ? ` ${cls}` : '');
     b.textContent = label;
-    if (cls) b.className = cls;
-    b.style.cssText =
-      'background:#16283c;color:#d8ecff;border:1px solid #3fd9ff;padding:3px 8px;cursor:pointer;font:11px monospace';
+    b.style.cssText += ';font-size:12px;padding:3px 8px';
     b.addEventListener('click', onClick);
     return b;
   }

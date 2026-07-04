@@ -6,17 +6,16 @@
  */
 
 import type { AchievementDef, Point } from '../data/types';
-import { drawPixelText, outlinedPanel } from './assets';
+import { drawPixelText } from './assets';
 import { audio } from './audio';
 import { isAdminMode, setAdminMode } from './layouts';
 import type { Game, Scene } from './game';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import type { GameState } from './state';
+import { el, getUi } from './ui';
 
-const PANEL_BG = '#0e1420';
 const DIM = '#8fa3c4';
 const LIT = '#ffe9a8';
-const TEXT = '#e6eeff';
 
 /** Simple arrow cursor for menu scenes (the room scene draws verb cursors). */
 export function drawMenuCursor(ctx: CanvasRenderingContext2D, p: Point): void {
@@ -31,7 +30,7 @@ export function drawMenuCursor(ctx: CanvasRenderingContext2D, p: Point): void {
 }
 
 // ---------------------------------------------------------------------------
-// Generic list menu
+// Generic list menu - P20: DOM panel (settings, save/load, confirms, death)
 // ---------------------------------------------------------------------------
 
 export interface MenuItem {
@@ -51,11 +50,11 @@ export interface ListMenuSpec {
   onCancel?: () => void;
 }
 
-const MENU_W = 240;
-
 export class ListMenuScene implements Scene {
   private selected = 0;
-  private lastMouse: Point = { x: -1, y: -1 };
+  private readonly backdrop: HTMLDivElement;
+  private readonly rows: HTMLDivElement[] = [];
+  private disposed = false;
 
   constructor(
     private readonly game: Game,
@@ -63,27 +62,91 @@ export class ListMenuScene implements Scene {
   ) {
     this.selected = this.spec.items.findIndex((i) => !i.disabled);
     if (this.selected < 0) this.selected = 0;
-  }
 
-  private rowHeight(item: MenuItem): number {
-    return item.sub !== undefined ? 17 : 10;
-  }
+    const accent = spec.accent ?? 'var(--dcc-border-accent)';
+    this.backdrop = el(
+      'div',
+      'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:32;display:flex;' +
+        'align-items:center;justify-content:center;pointer-events:auto;cursor:auto',
+    );
+    this.backdrop.className = 'dcc-ui';
+    const panel = el(
+      'div',
+      'min-width:380px;max-width:560px;max-height:80vh;overflow-y:auto;padding:16px 24px 12px;' +
+        `background:var(--dcc-bg-panel);border:2px solid ${accent};display:flex;flex-direction:column`,
+    );
+    panel.className += ' dcc-scroll';
+    panel.addEventListener('mousedown', (e) => e.stopPropagation());
+    this.backdrop.addEventListener('mousedown', () => spec.onCancel?.());
 
-  private layout(): { x: number; y: number; w: number; h: number; rows: Array<{ y: number; h: number }> } {
-    const body = this.spec.body ?? [];
-    let h = 16; // title zone
-    h += body.length * 7 + (body.length > 0 ? 5 : 0);
-    const rows: Array<{ y: number; h: number }> = [];
-    let cursor = h;
-    for (const item of this.spec.items) {
-      const rh = this.rowHeight(item);
-      rows.push({ y: cursor, h: rh });
-      cursor += rh;
+    panel.appendChild(
+      el(
+        'div',
+        `text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;color:${accent};margin-bottom:8px`,
+        spec.title,
+      ),
+    );
+    for (const line of spec.body ?? []) {
+      panel.appendChild(
+        el('div', 'text-align:center;font-size:14px;color:var(--dcc-text-primary);margin:2px 0', line),
+      );
     }
-    h = cursor + (this.spec.footer ? 12 : 6);
-    const x = Math.floor((LOGICAL_W - MENU_W) / 2);
-    const y = Math.floor((LOGICAL_H - h) / 2);
-    return { x, y, w: MENU_W, h, rows: rows.map((r) => ({ y: r.y + y, h: r.h })) };
+    const list = el('div', 'display:flex;flex-direction:column;gap:2px;margin:10px 0');
+    this.spec.items.forEach((item, i) => {
+      const row = el(
+        'div',
+        'padding:6px 12px;border-left:3px solid transparent;' +
+          (item.disabled ? 'opacity:0.4;cursor:default' : 'cursor:pointer'),
+      );
+      row.dataset.menuItem = String(i);
+      row.appendChild(el('div', 'font-size:15px', item.label));
+      if (item.sub !== undefined) {
+        row.appendChild(el('div', 'font-size:12px;color:var(--dcc-text-dim)', item.sub));
+      }
+      if (!item.disabled) {
+        row.addEventListener('mouseenter', () => {
+          this.selected = i;
+          this.refresh();
+        });
+        row.addEventListener('mousedown', () => this.pick(i));
+      }
+      this.rows.push(row);
+      list.appendChild(row);
+    });
+    panel.appendChild(list);
+    if (spec.footer) {
+      panel.appendChild(
+        el('div', 'text-align:center;font-size:12px;color:var(--dcc-text-dim);margin-top:4px', spec.footer),
+      );
+    }
+    this.backdrop.appendChild(panel);
+    getUi(); // token stylesheet must exist
+    document.body.appendChild(this.backdrop);
+    this.refresh();
+  }
+
+  private refresh(): void {
+    this.rows.forEach((row, i) => {
+      const item = this.spec.items[i];
+      const on = i === this.selected && !item.disabled;
+      row.style.background = on ? 'rgba(255,233,168,0.10)' : 'transparent';
+      row.style.borderLeftColor = on ? 'var(--dcc-gold)' : 'transparent';
+      const label = row.firstElementChild;
+      if (label instanceof HTMLElement) {
+        label.style.color = item.disabled
+          ? 'var(--dcc-text-dim)'
+          : on
+            ? 'var(--dcc-gold)'
+            : 'var(--dcc-text-muted)';
+      }
+    });
+  }
+
+  private pick(i: number): void {
+    const item = this.spec.items[i];
+    if (!item || item.disabled) return;
+    audio.playSfx('sfx_ui_click');
+    this.spec.onPick(i);
   }
 
   private move(delta: number): void {
@@ -93,14 +156,24 @@ export class ListMenuScene implements Scene {
       i = (i + delta + items.length) % items.length;
       if (!items[i].disabled) {
         this.selected = i;
+        this.refresh();
+        this.rows[i]?.scrollIntoView({ block: 'nearest' });
         return;
       }
     }
   }
 
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.backdrop.remove();
+  }
+
   update(): void {
     const input = this.game.input;
     input.clearRightClicks();
+    input.clearClicks(); // pointer input is DOM-native
+    input.consumeWheel();
     if (input.consumePress('Escape')) {
       this.spec.onCancel?.();
       return;
@@ -108,126 +181,84 @@ export class ListMenuScene implements Scene {
     if (input.consumePress('ArrowUp')) this.move(-1);
     if (input.consumePress('ArrowDown')) this.move(1);
     if (input.consumePress('Enter') || input.consumePress('Space')) {
-      const item = this.spec.items[this.selected];
-      if (item && !item.disabled) {
-        audio.playSfx('sfx_ui_click');
-        this.spec.onPick(this.selected);
-      }
-      return;
-    }
-
-    const { rows, x, w } = this.layout();
-    const mouse = input.mouse;
-    // Hover only steals the selection when the mouse actually moves, so a
-    // parked cursor never fights keyboard navigation.
-    const mouseMoved = mouse.x !== this.lastMouse.x || mouse.y !== this.lastMouse.y;
-    this.lastMouse = { x: mouse.x, y: mouse.y };
-    if (mouseMoved) {
-      const hoverRow = rows.findIndex(
-        (r) => mouse.x >= x + 4 && mouse.x < x + w - 4 && mouse.y >= r.y && mouse.y < r.y + r.h,
-      );
-      if (hoverRow >= 0 && !this.spec.items[hoverRow].disabled) this.selected = hoverRow;
-    }
-
-    const click = input.consumeClick();
-    if (click) {
-      const row = rows.findIndex(
-        (r) => click.x >= x + 4 && click.x < x + w - 4 && click.y >= r.y && click.y < r.y + r.h,
-      );
-      if (row >= 0 && !this.spec.items[row].disabled) {
-        audio.playSfx('sfx_ui_click');
-        this.spec.onPick(row);
-      }
+      this.pick(this.selected);
     }
   }
 
   render(ctx: CanvasRenderingContext2D): void {
-    const accent = this.spec.accent ?? '#3fd9ff';
-    const { x, y, w, h, rows } = this.layout();
-
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    outlinedPanel(ctx, x, y, w, h, PANEL_BG, accent);
-    drawPixelText(ctx, this.spec.title, x + w / 2, y + 5, accent, 1, 'center');
-
-    const body = this.spec.body ?? [];
-    for (let i = 0; i < body.length; i++) {
-      drawPixelText(ctx, body[i], x + w / 2, y + 16 + i * 7, TEXT, 1, 'center');
-    }
-
-    this.spec.items.forEach((item, i) => {
-      const row = rows[i];
-      const selected = i === this.selected;
-      const color = item.disabled ? '#4a586f' : selected ? LIT : DIM;
-      if (selected && !item.disabled) {
-        ctx.fillStyle = 'rgba(255,233,168,0.1)';
-        ctx.fillRect(x + 4, row.y - 1, w - 8, row.h);
-        drawPixelText(ctx, '>', x + 8, row.y + 1, LIT);
-      }
-      drawPixelText(ctx, item.label, x + 16, row.y + 1, color);
-      if (item.sub !== undefined) {
-        drawPixelText(ctx, item.sub.slice(0, 52), x + 16, row.y + 9, item.disabled ? '#3c4759' : '#7d90b0');
-      }
-    });
-
-    if (this.spec.footer) {
-      drawPixelText(ctx, this.spec.footer, x + w / 2, y + h - 9, DIM, 1, 'center');
-    }
-    drawMenuCursor(ctx, this.game.input.mouse);
+    void ctx; // fully DOM
   }
 }
 
 // ---------------------------------------------------------------------------
-// Achievements panel
+// Achievements panel - P20: DOM
 // ---------------------------------------------------------------------------
 
 export class AchievementsScene implements Scene {
+  private readonly backdrop: HTMLDivElement;
+  private disposed = false;
+
   constructor(
     private readonly game: Game,
-    private readonly defs: Record<string, AchievementDef>,
-    private readonly state: GameState,
-  ) {}
-
-  update(): void {
-    const input = this.game.input;
-    input.clearRightClicks();
-    if (
-      input.consumePress('Escape') ||
-      input.consumePress('Enter') ||
-      input.consumeClick() !== null
-    ) {
-      this.game.popScene();
-    }
-  }
-
-  render(ctx: CanvasRenderingContext2D): void {
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    const x = 30;
-    const y = 18;
-    const w = LOGICAL_W - 60;
-    const h = LOGICAL_H - 36;
-    outlinedPanel(ctx, x, y, w, h, PANEL_BG, '#ffd166');
-    drawPixelText(ctx, 'ACHIEVEMENTS', LOGICAL_W / 2, y + 5, '#ffd166', 1, 'center');
-
-    const list = Object.values(this.defs);
-    let rowY = y + 18;
-    for (const def of list) {
-      const earned = Boolean(this.state.getFlag(`ach:${def.id}`));
+    defs: Record<string, AchievementDef>,
+    state: GameState,
+  ) {
+    this.backdrop = el(
+      'div',
+      'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:32;display:flex;' +
+        'align-items:center;justify-content:center;pointer-events:auto;cursor:auto',
+    );
+    this.backdrop.className = 'dcc-ui';
+    const panel = el(
+      'div',
+      'width:100%;max-width:640px;max-height:80vh;overflow-y:auto;margin:24px;padding:16px 24px;' +
+        'background:var(--dcc-bg-panel);border:2px solid var(--dcc-gold);display:flex;flex-direction:column;gap:10px',
+    );
+    panel.className += ' dcc-scroll';
+    panel.appendChild(
+      el('div', 'text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;color:var(--dcc-gold)', 'ACHIEVEMENTS'),
+    );
+    for (const def of Object.values(defs)) {
+      const earned = Boolean(state.getFlag(`ach:${def.id}`));
       const name = earned ? def.name : def.hidden ? '???' : def.name;
       const desc = earned
         ? def.description
         : def.hidden
           ? 'Keep crawling. Or stop. It finds you either way.'
           : 'LOCKED';
-      drawPixelText(ctx, name, x + 8, rowY, earned ? '#ffd166' : '#5b6b85');
-      drawPixelText(ctx, desc.slice(0, 62), x + 8, rowY + 7, earned ? TEXT : '#4a586f');
-      rowY += 18;
-      if (rowY > y + h - 20) break;
+      const row = el('div', earned ? '' : 'opacity:0.5');
+      row.append(
+        el('div', `font-size:15px;color:${earned ? 'var(--dcc-gold)' : 'var(--dcc-text-dim)'}`, name),
+        el('div', 'font-size:13px;color:var(--dcc-text-muted)', desc),
+      );
+      panel.appendChild(row);
     }
+    panel.appendChild(
+      el('div', 'text-align:center;font-size:12px;color:var(--dcc-text-dim);margin-top:8px', 'CLICK OR ESC: CLOSE'),
+    );
+    this.backdrop.addEventListener('mousedown', () => this.game.popScene());
+    this.backdrop.appendChild(panel);
+    getUi();
+    document.body.appendChild(this.backdrop);
+  }
 
-    drawPixelText(ctx, 'CLICK OR ESC: CLOSE', LOGICAL_W / 2, y + h - 9, DIM, 1, 'center');
-    drawMenuCursor(ctx, this.game.input.mouse);
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.backdrop.remove();
+  }
+
+  update(): void {
+    const input = this.game.input;
+    input.clearRightClicks();
+    input.clearClicks();
+    if (input.consumePress('Escape') || input.consumePress('Enter')) {
+      this.game.popScene();
+    }
+  }
+
+  render(ctx: CanvasRenderingContext2D): void {
+    void ctx;
   }
 }
 

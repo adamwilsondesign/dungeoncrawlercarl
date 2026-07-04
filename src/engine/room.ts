@@ -44,8 +44,9 @@ import { DebugOverlay } from './debug';
 import { DialogueBox, DialoguePlayer } from './dialogue';
 import { EditorScene } from './editor';
 import type { Game, Scene } from './game';
-import { IconBar } from './iconbar';
+import { TopNav, type BarAction } from './iconbar';
 import { InventoryScreen } from './inventory';
+import { getUi } from './ui';
 import { AchievementsScene, ListMenuScene } from './menus';
 import { NarratorBox, wrapText } from './narrator';
 import { dominantFacing, findPath, Mover, PLAYER_WALK_SPEED, WalkGrid } from './pathfinding';
@@ -403,12 +404,12 @@ export class RoomScene implements Scene, ScriptHost {
   private player: Actor | null = null;
   private readonly mover = new Mover();
   private readonly debug = new DebugOverlay();
-  private readonly iconBar = new IconBar();
-  private readonly narrator = new NarratorBox();
-  private readonly dialogue = new DialogueBox();
+  private readonly nav = new TopNav(getUi(), (action) => this.handleBarAction(action));
+  private readonly narrator = new NarratorBox(getUi());
+  private readonly dialogue = new DialogueBox(getUi());
   private readonly dialoguePlayer: DialoguePlayer;
-  private readonly invScreen = new InventoryScreen();
-  private readonly toasts = new ToastManager();
+  private readonly invScreen: InventoryScreen;
+  private readonly toasts = new ToastManager(getUi());
   private readonly runner = new ScriptRunner(this);
   private keyWalking = false;
   /** Hotspot-reveal pin (H toggles; persisted as a UI pref, not save data). */
@@ -460,6 +461,18 @@ export class RoomScene implements Scene, ScriptHost {
     private readonly flow: GameFlow,
   ) {
     state.autosaveHook = () => this.autosaveNow();
+    this.invScreen = new InventoryScreen({
+      state,
+      items: content.items,
+      combatants: content.combatants,
+      icons: this.itemIcons,
+      onHold: (id) => {
+        this.state.heldItem = id;
+        this.invScreen.close();
+      },
+      onCombine: (a, b) => this.resolveCombine(a, b),
+      onEquip: (memberId, itemId) => this.equipTo(memberId, itemId),
+    });
     this.dialoguePlayer = new DialoguePlayer({
       trees: content.dialogues,
       characters: content.characters,
@@ -554,7 +567,6 @@ export class RoomScene implements Scene, ScriptHost {
     const [cursors, magnifier] = await Promise.all([
       loadCursors(),
       loadImage('ui/cursor_magnify.png', { kind: 'cursor', glyph: 'magnify' }),
-      this.iconBar.load(),
       this.loadItemIcons(),
     ]);
     this.cursors = cursors;
@@ -1010,32 +1022,6 @@ export class RoomScene implements Scene, ScriptHost {
     );
   }
 
-  /** Equip an equipment item: straight to Carl solo, else pick the member. */
-  private startEquipFlow(itemId: string): void {
-    const def = this.content.items[itemId];
-    const equip = def?.equip;
-    if (!equip) return;
-    const party = this.state.party;
-    if (party.length <= 1) {
-      this.equipTo(party[0] ?? 'carl', itemId);
-      return;
-    }
-    this.game.pushScene(
-      new ListMenuScene(this.game, {
-        title: `EQUIP ${def.name}`,
-        items: party.map((id) => ({
-          label: this.content.combatants[id]?.name ?? id.toUpperCase(),
-        })),
-        footer: 'ESC: BACK',
-        onPick: (i) => {
-          this.game.popScene();
-          this.equipTo(party[i], itemId);
-        },
-        onCancel: () => this.game.popScene(),
-      }),
-    );
-  }
-
   private equipTo(memberId: string, itemId: string): void {
     const def = this.content.items[itemId];
     if (!def?.equip) return;
@@ -1043,16 +1029,6 @@ export class RoomScene implements Scene, ScriptHost {
       const who = this.content.combatants[memberId]?.name ?? memberId.toUpperCase();
       this.toasts.push('EQUIPPED', `${def.name} - ${who}`, '#3fd9ff');
     }
-  }
-
-  private equipSummaryLines(): string[] {
-    return this.state.party.map((memberId) => {
-      const who = this.content.combatants[memberId]?.name ?? memberId.toUpperCase();
-      const slots = this.state.getEquipped(memberId);
-      const nameOf = (id?: string): string =>
-        id ? this.content.items[id]?.name ?? id.toUpperCase() : '-';
-      return `${who}: W:${nameOf(slots.weapon)} A:${nameOf(slots.armor)} T:${nameOf(slots.trinket)}`;
-    });
   }
 
   private doSave(slot: SaveSlot): void {
@@ -1220,8 +1196,6 @@ export class RoomScene implements Scene, ScriptHost {
     if (!room || !player) return;
     const input = this.game.input;
 
-    const barMouse = this.invScreen.open ? { x: -1, y: -1 } : input.mouse;
-    this.iconBar.update(dtMs, barMouse);
     this.narrator.update(dtMs);
     this.dialogue.update(dtMs);
     this.toasts.update(dtMs);
@@ -1285,49 +1259,13 @@ export class RoomScene implements Scene, ScriptHost {
       return;
     }
 
-    // Inventory screen: world paused; click takes/equips, right-click examines.
+    // Inventory screen (P20: DOM-native): the room only guards world input
+    // and handles ESC; every pointer interaction happens inside the overlay.
     if (this.invScreen.open) {
       if (input.consumePress('Escape')) this.invScreen.close();
-      let examined = false;
-      while (input.consumeRightClick()) {
-        if (examined) continue;
-        const action = this.invScreen.actionAt(
-          input.mouse,
-          true,
-          this.state.inventory,
-          this.content.items,
-          this.state.heldItem,
-        );
-        if (action?.kind === 'look') {
-          examined = true;
-          const def = this.content.items[action.id];
-          this.runLine(def?.description ?? `It's ${action.id}. The dungeon shrugs.`);
-        }
-      }
-      const click = input.consumeClick();
-      if (click) {
-        const action = this.invScreen.actionAt(
-          click,
-          false,
-          this.state.inventory,
-          this.content.items,
-          this.state.heldItem,
-        );
-        if (action?.kind === 'close') this.invScreen.close();
-        else if (action?.kind === 'select') {
-          this.state.heldItem = action.id;
-          this.invScreen.close();
-        } else if (action?.kind === 'unhold') {
-          this.state.heldItem = null;
-        } else if (action?.kind === 'combine') {
-          this.resolveCombine(action.a, action.b);
-        } else if (action?.kind === 'equip') {
-          this.startEquipFlow(action.id);
-        } else if (action?.kind === 'look') {
-          const def = this.content.items[action.id];
-          this.runLine(def?.description ?? `It's ${action.id}. The dungeon shrugs.`);
-        }
-      }
+      input.clearClicks();
+      input.clearRightClicks();
+      input.consumeWheel();
       this.hover = null;
       this.hoverExit = null;
       return;
@@ -1396,8 +1334,10 @@ export class RoomScene implements Scene, ScriptHost {
     }
 
     const worldMouse = this.toWorld(input.mouse);
-    this.hover = this.iconBar.coversPoint(input.mouse) ? null : this.propUnderPoint(worldMouse);
-    const exitUnderMouse = room.exitAt(worldMouse);
+    // No world hover while the pointer rides DOM UI (nav, narration boxes):
+    // it keeps the radial from ghost-popping under a panel.
+    this.hover = input.overUi ? null : this.propUnderPoint(worldMouse);
+    const exitUnderMouse = input.overUi ? null : room.exitAt(worldMouse);
     this.hoverExit =
       !this.hover && exitUnderMouse && this.state.isExitEnabled(room.def.id, exitUnderMouse)
         ? exitUnderMouse
@@ -1502,10 +1442,7 @@ export class RoomScene implements Scene, ScriptHost {
     }
 
     const click = input.consumeClick();
-    if (click) {
-      if (this.iconBar.coversPoint(click)) this.handleBarClick(click);
-      else this.handleWorldClick(this.toWorld(click));
-    }
+    if (click) this.handleWorldClick(this.toWorld(click));
 
     // Continuous keyboard walking - ARROWS ONLY (P19: WASD became the
     // radial verb shortcuts). Shares the walkmask and speed with
@@ -1631,13 +1568,33 @@ export class RoomScene implements Scene, ScriptHost {
     return this.room?.propAt(p) ?? null;
   }
 
-  private handleBarClick(p: Point): void {
-    const action = this.iconBar.actionAt(p);
-    if (!action) return;
+  /** Top-nav clicks arrive straight from the DOM; gate them to free play. */
+  private handleBarAction(action: BarAction): void {
+    if (
+      !this.game.isTop(this) ||
+      this.transition.kind !== 'none' ||
+      this.runner.running ||
+      this.dialogue.active ||
+      this.narrator.active ||
+      this.invScreen.open ||
+      this.dying
+    ) {
+      return;
+    }
     audio.playSfx('sfx_ui_click');
-    if (action.kind === 'inventory') this.invScreen.show();
-    else if (action.kind === 'party') this.openPartyScreen();
+    this.radial.forceHide();
+    if (action === 'inventory') this.invScreen.show();
+    else if (action === 'party') this.openPartyScreen();
     else this.openSettingsMenu();
+  }
+
+  /** RoomScene leaves the stack (quit to title): hide the persistent HUD. */
+  dispose(): void {
+    this.nav.setVisible(false);
+    this.narrator.skipAll();
+    this.dialogue.forceResolveAll();
+    this.invScreen.close();
+    this.radial.forceHide();
   }
 
   private openPartyScreen(): void {
@@ -1887,17 +1844,10 @@ export class RoomScene implements Scene, ScriptHost {
       // (cutscenes, dialogue, inventory, transitions, other scenes on top).
       if (this.revealVisible(isTop)) this.drawReveal(ctx);
 
-      this.iconBar.render(ctx, this.room?.def.label ?? '', isTop ? mouse : undefined);
-      this.invScreen.render(
-        ctx,
-        this.state.inventory,
-        this.content.items,
-        this.itemIcons,
-        this.state.heldItem,
-        this.invScreen.open ? this.equipSummaryLines() : [],
-        this.state.gold,
-      );
-
+      // P20: HUD chrome is DOM - keep it fed with live state.
+      this.nav.setVisible(isTop);
+      this.nav.setArea(this.room?.def.label ?? '');
+      this.nav.setViews(this.state.views);
       // Cinematic letterbox bars
       if (this.letterboxT > 0) {
         const barH = Math.round(LETTERBOX_H * this.letterboxT);
@@ -1906,45 +1856,6 @@ export class RoomScene implements Scene, ScriptHost {
         ctx.fillRect(0, LOGICAL_H - barH, LOGICAL_W, barH);
       }
 
-      this.narrator.render(ctx);
-      this.dialogue.render(ctx);
-      // (P19: the room-name chip moved into the top bar as AREA NAME.)
-      // Diegetic score: broadcast viewer count, once the show has premiered.
-      if (this.state.views > 0) {
-        const label = `LIVE ${this.state.views}`;
-        const w = pixelTextWidth(label) + 9;
-        const y = IconBar.HEIGHT + 2;
-        ctx.fillStyle = 'rgba(10,17,32,0.85)';
-        ctx.fillRect(LOGICAL_W - w - 2, y, w, 9);
-        ctx.fillStyle = '#ff5a5a';
-        ctx.fillRect(LOGICAL_W - w + 1, y + 3, 3, 3);
-        drawPixelText(ctx, label, LOGICAL_W - w + 6, y + 2, '#ffd9d9');
-      }
-      // P19 footer: non-interactive key reference, free-play only.
-      if (
-        isTop &&
-        this.transition.kind === 'none' &&
-        !this.runner.running &&
-        !this.narrator.active &&
-        !this.dialogue.active &&
-        !this.invScreen.open &&
-        !this.dying
-      ) {
-        ctx.fillStyle = 'rgba(8,12,22,0.78)';
-        ctx.fillRect(0, LOGICAL_H - 10, LOGICAL_W, 10);
-        const footer = 'ARROWS: MOVE  A: GO TO  W: GRAB  S: LOOK  D: TALK  TAB: REVEAL  H: PIN';
-        const fits = pixelTextWidth(footer) <= LOGICAL_W - 4;
-        drawPixelText(
-          ctx,
-          fits ? footer : 'ARROWS: MOVE  A: GO TO  W: GRAB  S: LOOK  D: TALK  TAB: REVEAL',
-          LOGICAL_W / 2,
-          LOGICAL_H - 8,
-          '#5c7090',
-          1,
-          'center',
-        );
-      }
-      this.toasts.render(ctx);
       if (!this.narrator.active && !this.dialogue.active && isTop && this.radial.hidden) {
         if (this.hover) this.drawHoverLabel(ctx, this.hover.name ?? 'THAT');
         else if (this.hoverExit) this.drawHoverLabel(ctx, 'EXIT');
@@ -2076,7 +1987,7 @@ export class RoomScene implements Scene, ScriptHost {
       let x = Math.round(cx - w / 2);
       x = Math.max(2, Math.min(x, LOGICAL_W - w - 2));
       let y = topY - 10;
-      if (y < IconBar.HEIGHT + 2) y = topY + 2;
+      if (y < 14) y = topY + 2; // keep chips clear of the DOM nav band
       ctx.fillStyle = 'rgba(4,10,18,0.85)';
       ctx.fillRect(x - 2, y - 1, w + 4, 9);
       drawPixelText(ctx, text, x, y, color);

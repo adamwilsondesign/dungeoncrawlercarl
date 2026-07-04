@@ -52,17 +52,18 @@ export class CmsScene implements Scene {
     this.game = game;
     this.catalog = catalog;
     this.root = document.createElement('div');
+    this.root.className = 'dcc-ui';
     this.root.style.cssText = [
-      'position:fixed', 'inset:0', 'z-index:40', 'background:rgba(4,8,16,0.92)',
-      'color:#d8ecff', 'font:13px/1.5 monospace', 'display:flex', 'flex-direction:column',
-      'padding:16px', 'gap:10px', 'box-sizing:border-box', 'cursor:auto',
+      'position:fixed', 'inset:0', 'z-index:40', 'background:rgba(4,8,16,0.94)',
+      'color:var(--dcc-text-primary)', 'font-size:14px', 'display:flex', 'flex-direction:column',
+      'padding:16px 24px', 'gap:12px', 'box-sizing:border-box', 'cursor:auto',
     ].join(';');
 
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap';
     const title = document.createElement('strong');
     title.textContent = 'ASSET CMS';
-    title.style.color = '#3fd9ff';
+    title.style.cssText = 'color:var(--dcc-cyan);font-size:22px;letter-spacing:1px;font-weight:700';
     this.counts = document.createElement('span');
     const search = document.createElement('input');
     search.placeholder = 'filter ids...';
@@ -484,9 +485,8 @@ export class CmsScene implements Scene {
 
   private button(label: string, onClick: () => void): HTMLButtonElement {
     const b = document.createElement('button');
+    b.className = 'dcc-btn';
     b.textContent = label;
-    b.style.cssText =
-      'background:#16283c;color:#d8ecff;border:1px solid #3fd9ff;padding:4px 10px;cursor:pointer;font:12px monospace';
     b.addEventListener('click', onClick);
     return b;
   }

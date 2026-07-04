@@ -34,6 +34,7 @@ import { initLayouts } from './engine/layouts';
 import { audio } from './engine/audio';
 import { CmsScene } from './engine/cms';
 import { Game } from './engine/game';
+import { initUi } from './engine/ui';
 import { AchievementsScene, ListMenuScene, TitleScene } from './engine/menus';
 import { RoomScene } from './engine/room';
 import { formatPlaytime, formatTimestamp, MANUAL_SLOTS, readSave, type SaveSlot } from './engine/saves';
@@ -112,6 +113,8 @@ async function boot(): Promise<void> {
   audio.installUnlock();
 
   const game = new Game(canvas);
+  // P20: the DOM UI layer - native-resolution text above the pixel canvas.
+  initUi(game.renderer);
   const state = new GameState();
 
   let titleScene: TitleScene;

@@ -49,6 +49,7 @@ import { wrapText } from './narrator';
 import { LOGICAL_H, LOGICAL_W } from './renderer';
 import { ScriptRunner, type ScriptHost } from './script';
 import { checkFlagCondition, type GameState } from './state';
+import { el, getUi } from './ui';
 
 export type CombatResult = 'victory' | 'defeat' | 'fled';
 
@@ -211,6 +212,8 @@ export class CombatScene implements Scene {
   private readonly floats: FloatText[] = [];
   private logLine = '';
   private logAge = 0;
+  /** P20: the log banner is DOM (crisp reading text); tactical text stays canvas. */
+  private readonly logBox: HTMLDivElement;
   private animMs = 0;
   private lastPhaseIndex = -2;
   private lastMouse: Point = { x: -1, y: -1 };
@@ -250,6 +253,20 @@ export class CombatScene implements Scene {
     };
     this.props = props;
     this.initArrivalPositions();
+    this.logBox = el(
+      'div',
+      'position:absolute;top:56px;left:50%;transform:translateX(-50%);max-width:72%;display:none;' +
+        'padding:8px 16px;text-align:center;background:var(--dcc-bg-primary);' +
+        'border:1px solid var(--dcc-border);font-size:15px;color:var(--dcc-text-primary);' +
+        'pointer-events:none',
+    );
+    this.logBox.dataset.combatLog = '1';
+    getUi().layer('narrator').appendChild(this.logBox);
+  }
+
+  /** Scene popped (finish/quit): drop the DOM log banner. */
+  dispose(): void {
+    this.logBox.remove();
   }
 
   static async create(deps: CombatDeps, encounter: EncounterDef): Promise<CombatScene> {
@@ -656,6 +673,7 @@ export class CombatScene implements Scene {
   private pushLog(text: string): void {
     this.logLine = text;
     this.logAge = 0;
+    this.logBox.textContent = text;
     console.info(`[combat] ${text}`);
   }
 
@@ -1080,6 +1098,9 @@ export class CombatScene implements Scene {
   update(dtMs: number): void {
     this.animMs += dtMs;
     this.logAge += dtMs;
+    // Arrival lines stay up until advanced; battle log clears after 3.5s.
+    const holdLine = this.mode.kind === 'arrival' || this.mode.kind === 'transition';
+    this.logBox.style.display = this.logLine && (holdLine || this.logAge <= 3500) ? 'block' : 'none';
     for (let i = this.floats.length - 1; i >= 0; i--) {
       const f = this.floats[i];
       f.age += dtMs;
@@ -1363,7 +1384,6 @@ export class CombatScene implements Scene {
     ctx.translate(shake.x, shake.y);
     this.renderStage(ctx);
     this.renderTurnStrip(ctx);
-    this.renderLog(ctx);
     this.renderProps(ctx);
     this.renderCombatants(ctx);
     this.renderFloats(ctx);
@@ -1611,22 +1631,6 @@ export class CombatScene implements Scene {
       x += w + 2;
       if (x > LOGICAL_W - 30) break;
     }
-  }
-
-  private renderLog(ctx: CanvasRenderingContext2D): void {
-    // Arrival lines stay up until advanced; battle log fades after 3.5s.
-    const arrivalLine = this.mode.kind === 'arrival' || this.mode.kind === 'transition';
-    if (!this.logLine || (!arrivalLine && this.logAge > 3500)) return;
-    const lines = wrapText(this.logLine, 74);
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    lines.slice(0, 3).forEach((line, i) => {
-      const w = pixelTextWidth(line) + 8;
-      const x = Math.floor((LOGICAL_W - w) / 2);
-      ctx.fillRect(x, 16 + i * 9, w, 9);
-    });
-    lines.slice(0, 3).forEach((line, i) => {
-      drawPixelText(ctx, line, LOGICAL_W / 2, 18 + i * 9, '#e6eeff', 1, 'center');
-    });
   }
 
   private renderPanels(ctx: CanvasRenderingContext2D): void {

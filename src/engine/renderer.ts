@@ -39,6 +39,9 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
+  /** Called after every resize so the DOM overlay can track the playfield. */
+  onLayoutChange: (() => void) | null = null;
+
   private resize(): void {
     const dpr = window.devicePixelRatio || 1;
     const w = Math.max(1, Math.floor(window.innerWidth * dpr));
@@ -50,6 +53,19 @@ export class Renderer {
     this.offsetY = Math.floor((h - LOGICAL_H * this.scale) / 2);
     // Resizing a canvas resets its context state.
     this.screenCtx.imageSmoothingEnabled = false;
+    this.onLayoutChange?.();
+  }
+
+  /** The playfield rect and per-logical-px scale, in CSS pixels. */
+  layoutCss(): { x: number; y: number; w: number; h: number; scale: number } {
+    const dpr = window.devicePixelRatio || 1;
+    return {
+      x: this.offsetX / dpr,
+      y: this.offsetY / dpr,
+      w: (LOGICAL_W * this.scale) / dpr,
+      h: (LOGICAL_H * this.scale) / dpr,
+      scale: this.scale / dpr,
+    };
   }
 
   /** Blit the offscreen buffer to the visible canvas. */
